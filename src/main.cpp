@@ -285,9 +285,9 @@ void setupEndpoints() {
         server.send(response.statusCode, response.contentType, response.data);
     });
 
-    server.on("/api/wifi/reset", HTTP_POST, []() {
+    server.on("/api/wifi", HTTP_DELETE, []() {
         EndpointRequest request;
-        request.method = HttpMethod::POST;
+        request.method = HttpMethod::DELETE;
         request.endpoint = Endpoint::WIFI_RESET;
         request.content = "";
         request.offset = 0;
