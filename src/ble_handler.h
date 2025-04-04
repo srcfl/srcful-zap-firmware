@@ -9,7 +9,6 @@
 #include <string>
 #include <ArduinoJson.h>
 #include "ble_constants.h"
-#include <WebServer.h>
 
 // Include FreeRTOS queue headers
 #include <freertos/FreeRTOS.h>
@@ -34,7 +33,7 @@ public:
 
 class BLEHandler {
 public:
-    BLEHandler(WebServer* server);
+    BLEHandler();
     void init();
     void stop();
     bool sendResponse(const String& location, const String& method, const String& data, int offset = 0);
@@ -44,7 +43,6 @@ public:
     void enqueueRequest(const String& requestStr);
 
 private:
-    WebServer* webServer;
     BLEServer* pServer;
     BLEService* pService;
     BLECharacteristic* pRequestChar;

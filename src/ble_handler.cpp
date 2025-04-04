@@ -6,7 +6,6 @@
 #include <esp_bt.h>              // For esp_bt_controller functions
 #include <esp_bt_main.h>         // For esp_bluedroid functions
 #include <esp_gap_ble_api.h>     // For BLE GAP functionality
-#include <WebServer.h>
 #include <ArduinoJson.h>
 #include "crypto.h"
 #include "endpoint_mapper.h"
@@ -17,7 +16,7 @@
 #define REQUEST_QUEUE_ITEM_SIZE sizeof(char*) // Size of the pointer to the data
 #define REQUEST_QUEUE_RECEIVE_TIMEOUT_MS 10 // Timeout for waiting on the queue
 
-BLEHandler::BLEHandler(WebServer* server) : webServer(server) {
+BLEHandler::BLEHandler() {
     pServer = nullptr;
     pService = nullptr;
     pRequestChar = nullptr;

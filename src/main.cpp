@@ -36,7 +36,7 @@ unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no 
 
 #if defined(USE_BLE_SETUP)
     #include "ble_handler.h"
-    BLEHandler bleHandler(&server);
+    BLEHandler bleHandler();
     bool isBleActive = false;  // Track BLE state
 #endif
 
