@@ -16,12 +16,12 @@
 #include "esp_heap_caps.h"
 #include "graphql.h"
 #include "config.h"
-#include "server/webserver.h"
+#include "server/server_task.h"
 
 #define LED_PIN 7
 
 // Global variables
-WebServerHandler webServer(80);
+ServerTask serverTask(80); // Create a server task instance
 bool isProvisioned = false;
 String configuredSSID = "";
 String configuredPassword = "";
@@ -34,7 +34,7 @@ unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no 
 
 #if defined(USE_BLE_SETUP)
     #include "ble_handler.h"
-    BLEHandler bleHandler();
+    BLEHandler bleHandler;  // Remove parentheses to make it an object, not a function
     bool isBleActive = false;  // Track BLE state
 #endif
 
@@ -137,11 +137,11 @@ void setup() {
         Serial.println("Error setting up MDNS responder!");
     }
     
-    Serial.println("Setting up HTTP endpoints...");
-    webServer.setupEndpoints();
-    Serial.println("Starting HTTP server...");
-    webServer.begin();
-    Serial.println("HTTP server started");
+    // Start the server task
+    Serial.println("Starting server task...");
+    serverTask.begin();
+    Serial.println("Server task started");
+    
     Serial.println("Setup completed successfully!");
     Serial.print("Free heap after setup: ");
     Serial.println(ESP.getFreeHeap());
@@ -210,10 +210,15 @@ void loop() {
         }
     #endif
 
-    // Handle incoming client requests if we're connected
+    // Check if the server task is running
     if (WiFi.status() == WL_CONNECTED) {
         digitalWrite(LED_PIN, LOW); // Solid LED when connected
-        webServer.handleClient();
+        
+        // Check if the server task is running, restart if needed
+        if (!serverTask.isRunning()) {
+            Serial.println("Server task not running, restarting...");
+            serverTask.begin();
+        }
     }
     
     yield();
