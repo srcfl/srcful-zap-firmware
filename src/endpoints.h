@@ -13,7 +13,7 @@ struct EndpointResponse {
 
 // Request structure that normalizes input from both BLE and HTTP
 struct EndpointRequest {
-    HttpMethod method;
+    EndpointVerb method;
     Endpoint endpoint;
     String content;
     int offset;

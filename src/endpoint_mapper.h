@@ -20,8 +20,8 @@ public:
     // Mapping functions
     static Endpoint pathToEndpoint(const String& path);
     static String endpointToPath(Endpoint endpoint);
-    static HttpMethod stringToMethod(const String& method);
-    static String methodToString(HttpMethod method);
+    static EndpointVerb stringToMethod(const String& method);
+    static String methodToString(EndpointVerb method);
     static EndpointResponse route(const EndpointRequest& request);
     static void printPaths();
 }; 

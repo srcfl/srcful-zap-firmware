@@ -27,6 +27,8 @@ Endpoint EndpointMapper::pathToEndpoint(const String& path) {
     return Endpoint::UNKNOWN;
 }
 
+
+
 String EndpointMapper::endpointToPath(Endpoint endpoint) {
     switch (endpoint) {
         case Endpoint::WIFI_CONFIG: return WIFI_CONFIG_PATH;
@@ -42,16 +44,16 @@ String EndpointMapper::endpointToPath(Endpoint endpoint) {
     }
 }
 
-HttpMethod EndpointMapper::stringToMethod(const String& method) {
-    if (method == "GET") return HttpMethod::GET;
-    if (method == "POST") return HttpMethod::POST;
-    return HttpMethod::UNKNOWN;
+EndpointVerb EndpointMapper::stringToMethod(const String& method) {
+    if (method == "GET") return EndpointVerb::GET;
+    if (method == "POST") return EndpointVerb::POST;
+    return EndpointVerb::UNKNOWN;
 }
 
-String EndpointMapper::methodToString(HttpMethod method) {
+String EndpointMapper::methodToString(EndpointVerb method) {
     switch (method) {
-        case HttpMethod::GET: return "GET";
-        case HttpMethod::POST: return "POST";
+        case EndpointVerb::GET: return "GET";
+        case EndpointVerb::POST: return "POST";
         default: return "UNKNOWN";
     }
 }
@@ -65,51 +67,51 @@ EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
     // Route based on endpoint and method
     switch (request.endpoint) {
         case Endpoint::WIFI_CONFIG:
-            if (request.method == HttpMethod::POST) {
+            if (request.method == EndpointVerb::POST) {
                 return handleWiFiConfig(request);
-            } else if (request.method == HttpMethod::GET) {
+            } else if (request.method == EndpointVerb::GET) {
                 return handleWiFiStatus(request);
             }
             break;
             
         case Endpoint::SYSTEM_INFO:
-            if (request.method == HttpMethod::GET) {
+            if (request.method == EndpointVerb::GET) {
                 return handleSystemInfo(request);
             }
             break;
             
         case Endpoint::WIFI_RESET:
-            if (request.method == HttpMethod::DELETE) {
+            if (request.method == EndpointVerb::DELETE) {
                 return handleWiFiReset(request);
             }
             break;
             
         case Endpoint::CRYPTO_INFO:
-            if (request.method == HttpMethod::GET) {
+            if (request.method == EndpointVerb::GET) {
                 return handleCryptoInfo(request);
             }
             break;
             
         case Endpoint::NAME_INFO:
-            if (request.method == HttpMethod::GET) {
+            if (request.method == EndpointVerb::GET) {
                 return handleNameInfo(request);
             }
             break;
             
         case Endpoint::WIFI_STATUS:
-            if (request.method == HttpMethod::GET) {
+            if (request.method == EndpointVerb::GET) {
                 return handleWiFiStatus(request);
             }
             break;
             
         case Endpoint::WIFI_SCAN:
-            if (request.method == HttpMethod::GET) {
+            if (request.method == EndpointVerb::GET) {
                 return handleWiFiScan(request);
             }
             break;
             
         case Endpoint::BLE_STOP:
-            if (request.method == HttpMethod::POST) {
+            if (request.method == EndpointVerb::POST) {
                 #if defined(USE_BLE_SETUP)
                     extern unsigned long bleShutdownTime;
                     // Schedule BLE shutdown in 10 seconds
@@ -126,13 +128,13 @@ EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
             break;
             
         case Endpoint::CRYPTO_SIGN:
-            if (request.method == HttpMethod::POST) {
+            if (request.method == EndpointVerb::POST) {
                 return handleCryptoSign(request);
             }
             break;
             
         case Endpoint::OTA_UPDATE:
-            if (request.method == HttpMethod::POST) {
+            if (request.method == EndpointVerb::POST) {
                 return OTAHandler::handleOTAUpdate(request);
             }
             break;

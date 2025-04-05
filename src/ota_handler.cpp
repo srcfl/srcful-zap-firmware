@@ -3,12 +3,13 @@
 #include <ArduinoJson.h>
 #include <Update.h>
 #include <HTTPClient.h>
+#include <algorithm>
 
 EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::POST) {
+    if (request.method != EndpointVerb::POST) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -103,7 +104,7 @@ EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
         
         size_t available = stream->available();
         if (available) {
-            size_t bytes = stream->readBytes(buff, min(available, sizeof(buff)));
+            size_t bytes = stream->readBytes(buff, (available < sizeof(buff)) ? available : sizeof(buff));
             if (bytes == 0) {
                 Serial.println("Failed to read data");
                 http.end();

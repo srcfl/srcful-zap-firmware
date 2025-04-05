@@ -15,7 +15,7 @@ EndpointResponse handleWiFiConfig(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::POST) {
+    if (request.method != EndpointVerb::POST) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -67,7 +67,7 @@ EndpointResponse handleSystemInfo(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::GET) {
+    if (request.method != EndpointVerb::GET) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -106,7 +106,7 @@ EndpointResponse handleWiFiReset(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::POST) {
+    if (request.method != EndpointVerb::POST) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -133,7 +133,7 @@ EndpointResponse handleCryptoInfo(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::GET) {
+    if (request.method != EndpointVerb::GET) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -159,7 +159,7 @@ EndpointResponse handleNameInfo(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::GET) {
+    if (request.method != EndpointVerb::GET) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -180,7 +180,7 @@ EndpointResponse handleWiFiStatus(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::GET) {
+    if (request.method != EndpointVerb::GET) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -211,7 +211,7 @@ EndpointResponse handleWiFiScan(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::GET) {
+    if (request.method != EndpointVerb::GET) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -240,7 +240,7 @@ EndpointResponse handleInitialize(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::POST) {
+    if (request.method != EndpointVerb::POST) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -282,7 +282,7 @@ EndpointResponse handleCryptoSign(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::POST) {
+    if (request.method != EndpointVerb::POST) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;

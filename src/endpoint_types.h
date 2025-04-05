@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 // Define HTTP methods as an enum
-enum class HttpMethod {
+enum class EndpointVerb {
     GET,
     POST,
     DELETE,

@@ -16,14 +16,12 @@
 #include "esp_heap_caps.h"
 #include "graphql.h"
 #include "config.h"
-
+#include "server/webserver.h"
 
 #define LED_PIN 7
 
-
-
 // Global variables
-WebServer server(80);
+WebServerHandler webServer(80);
 bool isProvisioned = false;
 String configuredSSID = "";
 String configuredPassword = "";
@@ -42,7 +40,6 @@ unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no 
 
 // Function declarations
 void setupAP();
-void setupEndpoints();
 bool connectToWiFi(const String& ssid, const String& password, bool updateGlobals = true);
 void runSigningTest();
 String getId();
@@ -141,9 +138,9 @@ void setup() {
     }
     
     Serial.println("Setting up HTTP endpoints...");
-    setupEndpoints();
+    webServer.setupEndpoints();
     Serial.println("Starting HTTP server...");
-    server.begin();
+    webServer.begin();
     Serial.println("HTTP server started");
     Serial.println("Setup completed successfully!");
     Serial.print("Free heap after setup: ");
@@ -216,166 +213,10 @@ void loop() {
     // Handle incoming client requests if we're connected
     if (WiFi.status() == WL_CONNECTED) {
         digitalWrite(LED_PIN, LOW); // Solid LED when connected
-        server.handleClient();
+        webServer.handleClient();
     }
     
     yield();
-}
-
-void setupEndpoints() {
-    Serial.println("Setting up endpoints...");
-
-    // Print server configuration
-    Serial.print("Server port: ");
-    Serial.println(80);  // Default port
-    
-    // Handle root path separately as it serves HTML
-    Serial.println("Registering root (/) endpoint...");
-    server.on("/", HTTP_GET, []() {
-        Serial.println("Handling root request");
-        if (!isProvisioned) {
-            #if defined(USE_SOFTAP_SETUP)
-                // Check if we need a fresh scan
-                if (millis() - lastScanTime >= SCAN_CACHE_TIME) {
-                    scanWiFiNetworks();
-                }
-                
-                // Create the network options HTML
-                String networkOptions = "";
-                for (const String& ssid : lastScanResults) {
-                    networkOptions += "          <option value=\"" + ssid + "\">" + ssid + "</option>\n";
-                }
-                
-                String html = String(WIFI_SETUP_HTML);
-                html.replace("MDNS_NAME", MDNS_NAME);
-                html.replace("NETWORK_OPTIONS", networkOptions);
-                server.send(200, "text/html", html);
-            #elif defined(USE_BLE_SETUP)
-                // BLE setup page
-                server.send(200, "text/html", "Please use BLE to configure device");
-            #endif
-        } else {
-            // If already provisioned, redirect to system info
-            server.sendHeader("Location", "/api/system/info", true);
-            server.send(302, "text/plain", "");
-        }
-    });
-
-    // Handle API endpoints using the endpoint mapper
-    server.on("/api/wifi", HTTP_POST, []() {
-        Serial.println("Handling POST /api/wifi request");
-        EndpointRequest request;
-        request.method = HttpMethod::POST;
-        request.endpoint = Endpoint::WIFI_CONFIG;
-        request.content = server.arg("plain");
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    server.on("/api/system/info", HTTP_GET, []() {
-        EndpointRequest request;
-        request.method = HttpMethod::GET;
-        request.endpoint = Endpoint::SYSTEM_INFO;
-        request.content = "";
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    server.on("/api/wifi", HTTP_DELETE, []() {
-        EndpointRequest request;
-        request.method = HttpMethod::DELETE;
-        request.endpoint = Endpoint::WIFI_RESET;
-        request.content = "";
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    server.on("/api/crypto", HTTP_GET, []() {
-        Serial.println("Handling GET /api/crypto request");
-        EndpointRequest request;
-        request.method = HttpMethod::GET;
-        request.endpoint = Endpoint::CRYPTO_INFO;
-        request.content = "";
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    server.on("/api/name", HTTP_GET, []() {
-        EndpointRequest request;
-        request.method = HttpMethod::GET;
-        request.endpoint = Endpoint::NAME_INFO;
-        request.content = "";
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    server.on("/api/wifi", HTTP_GET, []() {
-        EndpointRequest request;
-        request.method = HttpMethod::GET;
-        request.endpoint = Endpoint::WIFI_STATUS;
-        request.content = "";
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    server.on("/api/wifi/scan", HTTP_GET, []() {
-        EndpointRequest request;
-        request.method = HttpMethod::GET;
-        request.endpoint = Endpoint::WIFI_SCAN;
-        request.content = "";
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    server.on("/api/ota/update", HTTP_POST, []() {
-        EndpointRequest request;
-        request.method = HttpMethod::POST;
-        request.endpoint = Endpoint::OTA_UPDATE;
-        request.content = server.arg("plain");
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    server.on("/api/ble/stop", HTTP_POST, []() {
-        Serial.println("Handling POST /api/ble/stop request");
-        EndpointRequest request;
-        request.method = HttpMethod::POST;
-        request.endpoint = Endpoint::BLE_STOP;
-        request.content = "";
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
-
-    // Handle not found
-    server.onNotFound([]() {
-        Serial.println("404 - Not found: " + server.uri());
-        EndpointRequest request;
-        request.method = server.method() == HTTP_GET ? HttpMethod::GET : HttpMethod::POST;
-        request.endpoint = EndpointMapper::pathToEndpoint(server.uri());
-        request.content = server.arg("plain");
-        request.offset = 0;
-
-        EndpointResponse response = EndpointMapper::route(request);
-        server.send(response.statusCode, response.contentType, response.data);
-    });
 }
 
 void setupAP() {
@@ -552,9 +393,7 @@ void scanWiFiNetworks() {
 
 void setupSSL() {
     // Nothing needed here - HTTPClient handles SSL internally
-}
-
-// Add JWT sending function
+}// Add JWT sending function
 void sendJWT() {
     String deviceId = getId();
     
@@ -598,3 +437,4 @@ void sendJWT() {
         Serial.println("Failed to create P1 JWT");
     }
 }
+
