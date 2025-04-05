@@ -69,11 +69,11 @@ EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
         response.data = "{\"status\":\"error\",\"message\":\"Endpoint not found\"}";
         
         #if defined(USE_BLE_SETUP)
-            extern unsigned long bleShutdownTime;
-            // Schedule BLE shutdown in 10 seconds
-            bleShutdownTime = millis() + 10000;
+            // Don't automatically shut down BLE
+            // extern unsigned long bleShutdownTime;
+            // bleShutdownTime = millis() + 10000;
             response.statusCode = 200;
-            response.data = "{\"status\":\"success\",\"message\":\"BLE shutdown scheduled\"}";
+            response.data = "{\"status\":\"success\",\"message\":\"BLE will continue advertising\"}";
         #else
             response.statusCode = 400;
             response.data = "{\"status\":\"error\",\"message\":\"BLE not enabled\"}";

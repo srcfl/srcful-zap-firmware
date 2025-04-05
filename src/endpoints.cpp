@@ -133,7 +133,10 @@ EndpointResponse handleCryptoInfo(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
+    Serial.println("Handling crypto info request");
+    
     if (request.endpoint.verb != Endpoint::Verb::GET) {
+        Serial.println("Method not allowed");
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
@@ -144,14 +147,24 @@ EndpointResponse handleCryptoInfo(const EndpointRequest& request) {
     doc["deviceName"] = "software_zap";
     
     extern String getId();
-    doc["serialNumber"] = getId();
+    String serialNumber = getId();
+    Serial.print("Serial number: ");
+    Serial.println(serialNumber);
+    doc["serialNumber"] = serialNumber;
     
     extern const char* PRIVATE_KEY_HEX;
+    Serial.print("Private key hex: ");
+    Serial.println(PRIVATE_KEY_HEX);
+    
     String publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
+    Serial.print("Public key: ");
+    Serial.println(publicKey);
     doc["publicKey"] = publicKey;
     
     response.statusCode = 200;
     serializeJson(doc, response.data);
+    Serial.print("Response data: ");
+    Serial.println(response.data);
     return response;
 }
 
