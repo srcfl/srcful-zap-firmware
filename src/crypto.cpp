@@ -8,6 +8,8 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
 
+static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len);
+
 // Use NimBLE's ECC implementation
 static const uint8_t CURVE_P[32] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -319,4 +321,69 @@ String crypto_create_signature_hex(const char* data, const char* private_key_hex
     char hex_result[129];  // Changed to 129 to accommodate 64 bytes (128 hex chars + null terminator)
     bytes_to_hex_string(signature, 64, hex_result);  // Changed to 64 bytes
     return String(hex_result);
+} 
+
+
+String crypto_create_signature_der_hex(const char* data, const char* private_key_hex) {
+    uint8_t signature[64];
+
+    uint8_t privateKey[32];
+    if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
+        return "";
+    }
+    
+    if (!Crypto::signMessage(privateKey, (const uint8_t*)data, strlen(data), signature)) {
+        return String();
+    }
+
+    uint8_t der[64 + 6];
+    size_t der_len;
+    if (!crypto_convert_to_der(signature, der, &der_len)) {
+        return String();
+    }
+
+    char der_hex[der_len * 2];
+    bytes_to_hex_string(der, der_len, der_hex);
+    return String(der_hex);
+}
+
+static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len) {
+    uint8_t r[32], s[32];
+    memcpy(r, signature, 32);
+    memcpy(s, signature + 32, 32);
+
+    int r_len = 32, s_len = 32;
+
+    // Remove leading zeros for DER encoding without modifying the pointer
+    int r_offset = 0, s_offset = 0;
+
+    // For r: Shift data left until there are no leading zeros
+    while (r_len > 1 && r[r_offset] == 0x00 && (r[r_offset + 1] & 0x80) == 0)
+    {
+        r_offset++;
+        r_len--;
+    }
+
+    // For s: Shift data left until there are no leading zeros
+    while (s_len > 1 && s[s_offset] == 0x00 && (s[s_offset + 1] & 0x80) == 0)
+    {
+        s_offset++;
+        s_len--;
+    }
+
+    // DER format
+    uint8_t *p = der;
+    *p++ = 0x30;                  // SEQUENCE
+    *p++ = 2 + r_len + 2 + s_len; // Total length
+    *p++ = 0x02;
+    *p++ = r_len;                   // INTEGER (r)
+    memcpy(p, r + r_offset, r_len); // Copy the modified r
+    p += r_len;
+    *p++ = 0x02;
+    *p++ = s_len;                   // INTEGER (s)
+    memcpy(p, s + s_offset, s_len); // Copy the modified s
+    p += s_len;
+
+    *der_len = p - der;
+    return 1;
 } 
