@@ -28,6 +28,9 @@ String crypto_create_signature_base64url(const char* data, const char* private_k
 // Create a signature and return it as hex string
 String crypto_create_signature_hex(const char* data, const char* private_key_hex);
 
+// Create a signature and return it as DER string in hex format
+String crypto_create_signature_der_hex(const char* data, const char* private_key_hex);
+
 #ifdef __cplusplus
 }
 #endif

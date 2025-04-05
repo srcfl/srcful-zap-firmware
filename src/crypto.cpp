@@ -8,6 +8,7 @@ static int get_random(uint8_t *dest, unsigned size);
 static void calculate_sha256(const char* input, uint8_t* output);
 static const struct uECC_Curve_t* create_curve(void);
 static bool create_signature(const char* data, const char* private_key_hex, uint8_t* signature_out);
+static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len);
 
 String crypto_get_public_key(const char* private_key_hex) {
     const struct uECC_Curve_t* curve = create_curve();
@@ -76,6 +77,65 @@ String crypto_create_signature_hex(const char* data, const char* private_key_hex
     bytes_to_hex_string(signature, 64, signature_hex);
     return String(signature_hex);
 }
+
+String crypto_create_signature_der_hex(const char* data, const char* private_key_hex) {
+    uint8_t signature[64];
+    
+    if (!create_signature(data, private_key_hex, signature)) {
+        return String();
+    }
+
+    uint8_t der[64 + 6];
+    size_t der_len;
+    if (!crypto_convert_to_der(signature, der, &der_len)) {
+        return String();
+    }
+
+    char der_hex[der_len * 2];
+    bytes_to_hex_string(der, der_len, der_hex);
+    return String(der_hex);
+}
+
+static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len) {
+    uint8_t r[32], s[32];
+    memcpy(r, signature, 32);
+    memcpy(s, signature + 32, 32);
+
+    int r_len = 32, s_len = 32;
+
+    // Remove leading zeros for DER encoding without modifying the pointer
+    int r_offset = 0, s_offset = 0;
+
+    // For r: Shift data left until there are no leading zeros
+    while (r_len > 1 && r[r_offset] == 0x00 && (r[r_offset + 1] & 0x80) == 0)
+    {
+        r_offset++;
+        r_len--;
+    }
+
+    // For s: Shift data left until there are no leading zeros
+    while (s_len > 1 && s[s_offset] == 0x00 && (s[s_offset + 1] & 0x80) == 0)
+    {
+        s_offset++;
+        s_len--;
+    }
+
+    // DER format
+    uint8_t *p = der;
+    *p++ = 0x30;                  // SEQUENCE
+    *p++ = 2 + r_len + 2 + s_len; // Total length
+    *p++ = 0x02;
+    *p++ = r_len;                   // INTEGER (r)
+    memcpy(p, r + r_offset, r_len); // Copy the modified r
+    p += r_len;
+    *p++ = 0x02;
+    *p++ = s_len;                   // INTEGER (s)
+    memcpy(p, s + s_offset, s_len); // Copy the modified s
+    p += s_len;
+
+    *der_len = p - der;
+    return 1;
+} 
 
 // Private helper functions
 static bool hex_string_to_bytes(const char* hex_string, uint8_t* bytes, size_t length) {
