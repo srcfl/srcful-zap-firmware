@@ -211,27 +211,7 @@ cleanup:
     mbedtls_entropy_free(&entropy);
     mbedtls_ctr_drbg_free(&ctr_drbg);
     
-    // Fall back to a deterministic signature for testing
-    // First, create a deterministic hash of the message
-    uint8_t messageHash[32];
-    for (int i = 0; i < 32; i++) {
-        messageHash[i] = 0;
-        for (int j = 0; j < messageLen; j++) {
-            messageHash[i] ^= message[j] ^ (j * 0x11);
-        }
-    }
-    
-    // For the r value (first 32 bytes of signature), use a deterministic function of the private key and message hash
-    for (int i = 0; i < 32; i++) {
-        signature[i] = privateKey[i] ^ messageHash[i] ^ (i * 0x13);
-    }
-    
-    // For the s value (second 32 bytes of signature), use a different deterministic function
-    for (int i = 0; i < 32; i++) {
-        signature[i + 32] = privateKey[i] ^ messageHash[(i + 16) % 32] ^ (i * 0x17);
-    }
-    
-    return true;
+    return false;
 }
 
 // Legacy function implementations
