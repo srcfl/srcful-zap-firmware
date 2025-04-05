@@ -26,7 +26,6 @@ void test_crypto_create_signature(void) {
     Serial.println(hexMsg);
     Serial.print("Generated signature (der format): ");
     Serial.println(hexSignature);
-    TEST_MESSAGE("Hello world");
     
     // Basic validation
     TEST_ASSERT_NOT_EQUAL(0, hexSignature.length());
