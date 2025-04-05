@@ -9,7 +9,7 @@ EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != EndpointVerb::POST) {
+    if (request.endpoint.verb != Endpoint::Verb::POST) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;

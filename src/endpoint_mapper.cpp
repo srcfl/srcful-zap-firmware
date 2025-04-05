@@ -13,138 +13,85 @@ const char* EndpointMapper::WIFI_STATUS_PATH = "/api/wifi";
 const char* EndpointMapper::WIFI_SCAN_PATH = "/api/wifi/scan";
 const char* EndpointMapper::BLE_STOP_PATH = "/api/ble/stop";
 const char* EndpointMapper::CRYPTO_SIGN_PATH = "/api/crypto/sign";
+const char* EndpointMapper::OTA_UPDATE_PATH = "/api/ota/update";
 
-Endpoint EndpointMapper::pathToEndpoint(const String& path) {
-    if (path == WIFI_CONFIG_PATH) return Endpoint::WIFI_CONFIG;
-    if (path == SYSTEM_INFO_PATH) return Endpoint::SYSTEM_INFO;
-    if (path == WIFI_RESET_PATH) return Endpoint::WIFI_RESET;
-    if (path == CRYPTO_INFO_PATH) return Endpoint::CRYPTO_INFO;
-    if (path == NAME_INFO_PATH) return Endpoint::NAME_INFO;
-    if (path == WIFI_STATUS_PATH) return Endpoint::WIFI_STATUS;
-    if (path == WIFI_SCAN_PATH) return Endpoint::WIFI_SCAN;
-    if (path == BLE_STOP_PATH) return Endpoint::BLE_STOP;
-    if (path == CRYPTO_SIGN_PATH) return Endpoint::CRYPTO_SIGN;
-    return Endpoint::UNKNOWN;
-}
+const Endpoint endpoints[] = {
+    Endpoint(Endpoint::WIFI_CONFIG, Endpoint::Verb::POST, EndpointMapper::WIFI_CONFIG_PATH, handleWiFiConfig),
+    Endpoint(Endpoint::SYSTEM_INFO, Endpoint::Verb::GET, EndpointMapper::SYSTEM_INFO_PATH, handleSystemInfo),
+    Endpoint(Endpoint::WIFI_RESET, Endpoint::Verb::DELETE, EndpointMapper::WIFI_RESET_PATH, handleWiFiReset),
+    Endpoint(Endpoint::CRYPTO_INFO, Endpoint::Verb::GET, EndpointMapper::CRYPTO_INFO_PATH, handleCryptoInfo),
+    Endpoint(Endpoint::NAME_INFO, Endpoint::Verb::GET, EndpointMapper::NAME_INFO_PATH, handleNameInfo),
+    Endpoint(Endpoint::WIFI_STATUS, Endpoint::Verb::GET, EndpointMapper::WIFI_STATUS_PATH, handleWiFiStatus),
+    Endpoint(Endpoint::WIFI_SCAN, Endpoint::Verb::GET, EndpointMapper::WIFI_SCAN_PATH, handleWiFiScan),
+    Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, nullptr), // Special case handled in route
+    Endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, EndpointMapper::CRYPTO_SIGN_PATH, handleCryptoSign),
+    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, OTAHandler::handleOTAUpdate)
+};
 
+EndpointMapper::Iterator EndpointMapper::begin() const { return EndpointMapper::Iterator(endpoints); }
+EndpointMapper::Iterator EndpointMapper::end() const { return EndpointMapper::Iterator(endpoints + sizeof(endpoints) / sizeof(endpoints[0])); }
 
+const Endpoint unknownEndpoint = Endpoint(Endpoint::UNKNOWN, Endpoint::Verb::UNKNOWN, "", nullptr);
 
-String EndpointMapper::endpointToPath(Endpoint endpoint) {
-    switch (endpoint) {
-        case Endpoint::WIFI_CONFIG: return WIFI_CONFIG_PATH;
-        case Endpoint::SYSTEM_INFO: return SYSTEM_INFO_PATH;
-        case Endpoint::WIFI_RESET: return WIFI_RESET_PATH;
-        case Endpoint::CRYPTO_INFO: return CRYPTO_INFO_PATH;
-        case Endpoint::NAME_INFO: return NAME_INFO_PATH;
-        case Endpoint::WIFI_STATUS: return WIFI_STATUS_PATH;
-        case Endpoint::WIFI_SCAN: return WIFI_SCAN_PATH;
-        case Endpoint::BLE_STOP: return BLE_STOP_PATH;
-        case Endpoint::CRYPTO_SIGN: return CRYPTO_SIGN_PATH;
-        default: return "";
+const Endpoint& EndpointMapper::toEndpoint(const String& path, const String& verb) {
+    // Create an instance of EndpointMapper to use the non-static begin() and end() methods
+    Endpoint::Verb eVerb = stringToVerb(verb);
+    
+    for (const Endpoint& endpoint : endpointMapper) {
+    // Use endpoint here
+        if (path == endpoint.path && endpoint.verb == eVerb) return endpoint;
     }
+    return unknownEndpoint;
 }
 
-EndpointVerb EndpointMapper::stringToMethod(const String& method) {
-    if (method == "GET") return EndpointVerb::GET;
-    if (method == "POST") return EndpointVerb::POST;
-    return EndpointVerb::UNKNOWN;
+Endpoint::Verb EndpointMapper::stringToVerb(const String& verb) {
+    if (verb == "GET") return Endpoint::Verb::GET;
+    if (verb == "POST") return Endpoint::Verb::POST;
+    if (verb == "DELETE") return Endpoint::Verb::DELETE;
+    return Endpoint::Verb::UNKNOWN;
 }
 
-String EndpointMapper::methodToString(EndpointVerb method) {
-    switch (method) {
-        case EndpointVerb::GET: return "GET";
-        case EndpointVerb::POST: return "POST";
+String EndpointMapper::verbToString(Endpoint::Verb verb) {
+    switch (verb) {
+        case Endpoint::Verb::GET: return "GET";
+        case Endpoint::Verb::POST: return "POST";
+        case Endpoint::Verb::DELETE: return "DELETE";
         default: return "UNKNOWN";
     }
 }
 
 EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
+    // Special case for BLE_STOP which doesn't have a direct handler
+    if (request.endpoint.type == Endpoint::Type::BLE_STOP) {
+        EndpointResponse response;
+        response.statusCode = 404;
+        response.contentType = "application/json";
+        response.data = "{\"status\":\"error\",\"message\":\"Endpoint not found\"}";
+        
+        #if defined(USE_BLE_SETUP)
+            extern unsigned long bleShutdownTime;
+            // Schedule BLE shutdown in 10 seconds
+            bleShutdownTime = millis() + 10000;
+            response.statusCode = 200;
+            response.data = "{\"status\":\"success\",\"message\":\"BLE shutdown scheduled\"}";
+        #else
+            response.statusCode = 400;
+            response.data = "{\"status\":\"error\",\"message\":\"BLE not enabled\"}";
+        #endif
+        
+        return response;
+    }
+    
+    // If the endpoint has a handler function, call it directly
+    if (request.endpoint.handler != nullptr) {
+        return request.endpoint.handler(request);
+    }
+    
+    // Default error response for unknown endpoints
     EndpointResponse response;
     response.statusCode = 404;
     response.contentType = "application/json";
     response.data = "{\"status\":\"error\",\"message\":\"Endpoint not found\"}";
-
-    // Route based on endpoint and method
-    switch (request.endpoint) {
-        case Endpoint::WIFI_CONFIG:
-            if (request.method == EndpointVerb::POST) {
-                return handleWiFiConfig(request);
-            } else if (request.method == EndpointVerb::GET) {
-                return handleWiFiStatus(request);
-            }
-            break;
-            
-        case Endpoint::SYSTEM_INFO:
-            if (request.method == EndpointVerb::GET) {
-                return handleSystemInfo(request);
-            }
-            break;
-            
-        case Endpoint::WIFI_RESET:
-            if (request.method == EndpointVerb::DELETE) {
-                return handleWiFiReset(request);
-            }
-            break;
-            
-        case Endpoint::CRYPTO_INFO:
-            if (request.method == EndpointVerb::GET) {
-                return handleCryptoInfo(request);
-            }
-            break;
-            
-        case Endpoint::NAME_INFO:
-            if (request.method == EndpointVerb::GET) {
-                return handleNameInfo(request);
-            }
-            break;
-            
-        case Endpoint::WIFI_STATUS:
-            if (request.method == EndpointVerb::GET) {
-                return handleWiFiStatus(request);
-            }
-            break;
-            
-        case Endpoint::WIFI_SCAN:
-            if (request.method == EndpointVerb::GET) {
-                return handleWiFiScan(request);
-            }
-            break;
-            
-        case Endpoint::BLE_STOP:
-            if (request.method == EndpointVerb::POST) {
-                #if defined(USE_BLE_SETUP)
-                    extern unsigned long bleShutdownTime;
-                    // Schedule BLE shutdown in 10 seconds
-                    bleShutdownTime = millis() + 10000;
-                    response.statusCode = 200;
-                    response.data = "{\"status\":\"success\",\"message\":\"BLE shutdown scheduled\"}";
-                    return response;
-                #else
-                    response.statusCode = 400;
-                    response.data = "{\"status\":\"error\",\"message\":\"BLE not enabled\"}";
-                    return response;
-                #endif
-            }
-            break;
-            
-        case Endpoint::CRYPTO_SIGN:
-            if (request.method == EndpointVerb::POST) {
-                return handleCryptoSign(request);
-            }
-            break;
-            
-        case Endpoint::OTA_UPDATE:
-            if (request.method == EndpointVerb::POST) {
-                return OTAHandler::handleOTAUpdate(request);
-            }
-            break;
-            
-        default:
-            break;
-    }
-
-    response.statusCode = 405;
-    response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
     return response;
 }
 
@@ -159,4 +106,9 @@ void EndpointMapper::printPaths() {
     Serial.println(WIFI_SCAN_PATH);
     Serial.println(BLE_STOP_PATH);
     Serial.println(CRYPTO_SIGN_PATH);
-} 
+}
+
+// Define the global instance
+EndpointMapper endpointMapper;
+
+

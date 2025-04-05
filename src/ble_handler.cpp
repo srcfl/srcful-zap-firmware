@@ -227,9 +227,7 @@ void BLEHandler::handleRequest(const String& request) {
 void BLEHandler::handleRequestInternal(const String& method, const String& path, 
                                      const String& content, int offset) {
     // Create endpoint request
-    EndpointRequest request;
-    request.method = EndpointMapper::stringToMethod(method);
-    request.endpoint = EndpointMapper::pathToEndpoint(path);
+    EndpointRequest request(EndpointMapper::toEndpoint(path, method));
     request.content = content;
     request.offset = offset;
 
