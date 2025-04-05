@@ -5,6 +5,7 @@
 
 # Sensitive configuration
 src/config.h
+src/config.cpp
 
 # IDE
 .vscode
