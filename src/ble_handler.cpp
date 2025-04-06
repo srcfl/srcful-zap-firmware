@@ -37,6 +37,9 @@ void BLEHandler::init() {
     // Initialize NimBLE
     NimBLEDevice::init("Sourceful Zippy Zap");
     
+    // Set the MTU size to maximum supported (517 bytes)
+    NimBLEDevice::setMTU(512);
+    
     // Create server
     pServer = NimBLEDevice::createServer();
     
@@ -285,6 +288,8 @@ void BLEHandler::handleRequestInternal(const String& method, const String& path,
 
 void SrcfulBLEServerCallbacks::onConnect(NimBLEServer* pServer) {
     Serial.println("BLE client connected");
+    // Log the actual MTU size being used
+    Serial.printf("Current MTU size: %d\n", NimBLEDevice::getMTU());
 }
 
 void SrcfulBLEServerCallbacks::onDisconnect(NimBLEServer* pServer) {

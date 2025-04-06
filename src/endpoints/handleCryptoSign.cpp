@@ -41,8 +41,8 @@ EndpointResponse handleCryptoSign(const EndpointRequest& request) {
     }
     
     // Generate nonce (random string)
-    // String nonce = String(random(100000, 999999));
-    String nonce = "313589";    // hard coded to avoid nonce fragmentation in ble case
+    String nonce = String(random(100000, 999999));
+    // String nonce = "313589";    // hard coded to avoid nonce fragmentation in ble case
     
     
     // Get timestamp - use provided timestamp or generate one
