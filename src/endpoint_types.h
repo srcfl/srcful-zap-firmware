@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Arduino.h>
 
 // Forward declarations
 struct EndpointResponse;

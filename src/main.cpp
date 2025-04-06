@@ -1,8 +1,6 @@
 #include "endpoint_types.h"
 #include <WiFi.h>
-#include <WebServer.h>
 #include <ESPmDNS.h>
-#include <ArduinoJson.h>
 #include "html.h"
 #include "crypto.h"
 #include <HTTPClient.h>
@@ -39,7 +37,6 @@ unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no 
 void setupAP();
 bool connectToWiFi(const String& ssid, const String& password, bool updateGlobals = true);
 void runSigningTest();
-String getId();
 void scanWiFiNetworks();
 void setupSSL();
 void sendJWT();  // Add JWT sending function declaration
@@ -79,8 +76,6 @@ void setup() {
         }
     #endif
     
-    // Setup SSL with optimized memory settings
-    setupSSL();
     
     // Perform initial WiFi scan
     Serial.println("Starting WiFi scan...");
@@ -303,7 +298,7 @@ void runSigningTest() {
   Serial.println("\n=== Running Signing Test ===");
   
   // Original JWT test
-  String deviceId = getId();
+  String deviceId = crypto_getId();
   const char* testHeader = R"({"alg":"ES256K","typ":"JWT"})";
   String testPayloadStr = "{\"sub\":\"" + deviceId + "\",\"name\":\"John Doe\",\"iat\":1516239022}";
   
@@ -340,24 +335,7 @@ void runSigningTest() {
   Serial.println("=== Signing Tests Complete ===\n");
 }
 
-String getId() {
-  uint64_t chipId = ESP.getEfuseMac();
-  char serial[17];
-  snprintf(serial, sizeof(serial), "%016llx", chipId);
-  
-  String id = "zap-" + String(serial);
-  
-  // Ensure exactly 18 characters
-  if (id.length() > 18) {
-    // Truncate to 18 chars if longer
-    id = id.substring(0, 18);
-  } else while (id.length() < 18) {
-    // Pad with 'e' if shorter
-    id += 'e';
-  }
-  
-  return id;
-}
+
 
 void scanWiFiNetworks() {
   Serial.println("Scanning WiFi networks...");
@@ -402,11 +380,8 @@ void scanWiFiNetworks() {
   }
 }
 
-void setupSSL() {
-    // Nothing needed here - HTTPClient handles SSL internally
-}// Add JWT sending function
 void sendJWT() {
-    String deviceId = getId();
+    String deviceId = crypto_getId();
     
     // Create JWT using P1 data
     String jwt = createP1JWT(PRIVATE_KEY_HEX, deviceId);

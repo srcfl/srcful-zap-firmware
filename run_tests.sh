@@ -3,7 +3,7 @@
 
 # Now run the tests
 echo "Starting tests..."
-pio test -e esp32-c3-test -vvv
+pio test -e esp32-c3-test -v
 
 # Keep the monitor running after tests complete
 echo "Tests completed. Monitor is still running to capture output."

@@ -9,7 +9,6 @@ String base64url_encode(const char* data, size_t length);
 class Crypto {
 public:
     static bool generateKeyPair(uint8_t* privateKey, uint8_t* publicKey);
-    static bool computeSharedSecret(const uint8_t* privateKey, const uint8_t* publicKey, uint8_t* sharedSecret);
     static bool verifySignature(const uint8_t* publicKey, const uint8_t* message, size_t messageLen, const uint8_t* signature);
     static bool signMessage(const uint8_t* privateKey, const uint8_t* message, size_t messageLen, uint8_t* signature);
 };
@@ -26,3 +25,4 @@ String crypto_create_signature_hex(const char* data, const char* private_key_hex
 String crypto_create_signature_der_hex(const char* data, const char* private_key_hex);
 
 
+String crypto_getId();

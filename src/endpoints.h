@@ -1,8 +1,7 @@
 #pragma once
 
-#include <Arduino.h>
 #include "endpoint_types.h"
-#include <ArduinoJson.h>
+
 
 // Response structure that can be used by both BLE and HTTP handlers
 struct EndpointResponse {

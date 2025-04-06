@@ -10,29 +10,6 @@
 
 static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len);
 
-// Use NimBLE's ECC implementation
-static const uint8_t CURVE_P[32] = {
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE
-};
-
-static const uint8_t CURVE_N[32] = {
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
-    0xBA, 0xAE, 0xDC, 0xE6, 0xAF, 0x48, 0xA0, 0x3B,
-    0xBF, 0xD2, 0x5E, 0x8C, 0xD0, 0x36, 0x41, 0x41
-};
-
-// Fix the array size issue
-static const uint8_t CURVE_G[32] = {
-    0x16, 0x6E, 0x2D, 0x35, 0x4A, 0x3D, 0x26, 0xDD,
-    0x1D, 0x8F, 0x7E, 0x2C, 0xE9, 0x3D, 0x64, 0x7D,
-    0x5A, 0x47, 0x63, 0x30, 0x37, 0x0C, 0x6B, 0x8A,
-    0x9E, 0x4E, 0x9D, 0x6F, 0xFE, 0xDD, 0x28, 0x10
-};
-
 // Helper functions
 static bool hex_string_to_bytes(const char* hex_string, uint8_t* bytes, size_t length) {
     if (strlen(hex_string) != length * 2) {
@@ -105,28 +82,7 @@ bool Crypto::generateKeyPair(uint8_t* privateKey, uint8_t* publicKey) {
         return true;
     }
     
-    // For any other private key, generate a deterministic but different public key
-    // This is not cryptographically secure, but it will allow us to test the BLE functionality
-    
-    // First 32 bytes: XOR of private key and base point
-    for (int i = 0; i < 32; i++) {
-        publicKey[i] = privateKey[i] ^ CURVE_G[i];
-    }
-    
-    // Second 32 bytes: XOR of private key and curve order
-    for (int i = 0; i < 32; i++) {
-        publicKey[i + 32] = privateKey[i] ^ CURVE_N[i];
-    }
-    
-    return true;
-}
-
-bool Crypto::computeSharedSecret(const uint8_t* privateKey, const uint8_t* publicKey, uint8_t* sharedSecret) {
-    // Simple implementation - in a real app, use proper ECC
-    for (int i = 0; i < 32; i++) {
-        sharedSecret[i] = privateKey[i] ^ publicKey[i];
-    }
-    return true;
+    return false;
 }
 
 bool Crypto::signMessage(const uint8_t* privateKey, const uint8_t* message, size_t messageLen, uint8_t* signature) {
@@ -367,3 +323,22 @@ static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t 
     *der_len = p - der;
     return 1;
 } 
+
+String crypto_getId() {
+  uint64_t chipId = ESP.getEfuseMac();
+  char serial[17];
+  snprintf(serial, sizeof(serial), "%016llx", chipId);
+  
+  String id = "zap-" + String(serial);
+  
+  // Ensure exactly 18 characters
+  if (id.length() > 18) {
+    // Truncate to 18 chars if longer
+    id = id.substring(0, 18);
+  } else while (id.length() < 18) {
+    // Pad with 'e' if shorter
+    id += 'e';
+  }
+  
+  return id;
+}

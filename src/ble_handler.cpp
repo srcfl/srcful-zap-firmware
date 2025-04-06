@@ -273,6 +273,8 @@ void BLEHandler::handleRequestInternal(const String& method, const String& path,
     request.offset = offset;
     
     EndpointResponse response = EndpointMapper::route(request);
+
+    Serial.println(method + " " + path + " " + " Response: " + response.data);
     
     if (response.statusCode == 200) {
         sendResponse(path, method, response.data, offset);
