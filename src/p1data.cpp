@@ -1,5 +1,6 @@
 #include "p1data.h"
-#include <ArduinoJson.h>
+#include "json_light/json_light.h"
+#include <vector>
 
 void initNTP() {
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // 0, 0 = UTC, no daylight offset
@@ -22,24 +23,29 @@ unsigned long long getCurrentTimestamp() {
 
 String createP1JWT(const char* privateKey, const String& deviceId) {
     // Create the header
-    StaticJsonDocument<512> header;
-    header["alg"] = "ES256";
-    header["typ"] = "JWT";
-    header["device"] = deviceId;
-    header["opr"] = "production";
-    header["model"] = "p1homewizard";
-    header["dtype"] = "p1_telnet_json";
-    header["sn"] = "LGF5E360";
+    JsonBuilder header;
+    header.beginObject()
+        .add("alg", "ES256")
+        .add("typ", "JWT")
+        .add("device", deviceId.c_str())
+        .add("opr", "production")
+        .add("model", "p1homewizard")
+        .add("dtype", "p1_telnet_json")
+        .add("sn", "LGF5E360");
 
-    String headerStr;
-    serializeJson(header, headerStr);
+    String headerStr = header.end();
 
     // Create the payload
-    StaticJsonDocument<2048> payload;
+    JsonBuilder payload;
     String timestamp = String(getCurrentTimestamp());
     
-    JsonObject data = payload.createNestedObject(timestamp);
-    data["serial_number"] = "LGF5E360";
+    // Start the payload object
+    payload.beginObject();
+    
+    // Create a nested object for the timestamp
+    JsonBuilder dataObj;
+    dataObj.beginObject()
+        .add("serial_number", "LGF5E360");
     
     // Calculate simulated values using sine waves
     float timeInSeconds = millis() / 1000.0;
@@ -83,81 +89,34 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     static float lastEnergy = 10968.132;
     lastEnergy += totalPower * (10.0 / 3600.0); // Add energy for 10-second interval in kWh
 
-    char buffer[64];
-    JsonArray rows = data.createNestedArray("rows");
-
+    // Use a vector of Strings instead of an array of C-style strings
+    std::vector<String> rows;
+    
     // Format timestamp
     time_t now;
     time(&now);
     struct tm timeinfo;
     gmtime_r(&now, &timeinfo);
+    char buffer[64];
     snprintf(buffer, sizeof(buffer), "0-0:1.0.0(%02d%02d%02d%02d%02d%02dW)",
              timeinfo.tm_year % 100, timeinfo.tm_mon + 1, timeinfo.tm_mday,
              timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-    rows.add(buffer);
+    rows.push_back(String(buffer));
 
     // Energy readings
     snprintf(buffer, sizeof(buffer), "1-0:1.8.0(%08.3f*kWh)", lastEnergy);
-    rows.add(buffer);
-    rows.add("1-0:2.8.0(00000000.000*kWh)");
-    rows.add("1-0:3.8.0(00000005.151*kVArh)");
-    rows.add("1-0:4.8.0(00002109.781*kVArh)");
-
-    // Power readings
-    snprintf(buffer, sizeof(buffer), "1-0:1.7.0(%07.3f*kW)", totalPower);
-    rows.add(buffer);
-    rows.add("1-0:2.7.0(0000.000*kW)");
-    rows.add("1-0:3.7.0(0000.000*kVAr)");
-    snprintf(buffer, sizeof(buffer), "1-0:4.7.0(%07.3f*kVAr)", totalPower * 0.1); // 10% reactive power
-    rows.add(buffer);
-
-    // Per phase power
-    snprintf(buffer, sizeof(buffer), "1-0:21.7.0(%07.3f*kW)", powerL1);
-    rows.add(buffer);
-    rows.add("1-0:22.7.0(0000.000*kW)");
-    snprintf(buffer, sizeof(buffer), "1-0:41.7.0(%07.3f*kW)", powerL2);
-    rows.add(buffer);
-    rows.add("1-0:42.7.0(0000.000*kW)");
-    snprintf(buffer, sizeof(buffer), "1-0:61.7.0(%07.3f*kW)", powerL3);
-    rows.add(buffer);
-    rows.add("1-0:62.7.0(0000.000*kW)");
-
-    // Voltage readings
-    snprintf(buffer, sizeof(buffer), "1-0:32.7.0(%05.1f*V)", voltageL1);
-    rows.add(buffer);
-    snprintf(buffer, sizeof(buffer), "1-0:52.7.0(%05.1f*V)", voltageL2);
-    rows.add(buffer);
-    snprintf(buffer, sizeof(buffer), "1-0:72.7.0(%05.1f*V)", voltageL3);
-    rows.add(buffer);
-
-    // Current readings
-    snprintf(buffer, sizeof(buffer), "1-0:31.7.0(%04.1f*A)", currentL1);
-    rows.add(buffer);
-    snprintf(buffer, sizeof(buffer), "1-0:51.7.0(%04.1f*A)", currentL2);
-    rows.add(buffer);
-    snprintf(buffer, sizeof(buffer), "1-0:71.7.0(%04.1f*A)", currentL3);
-    rows.add(buffer);
-
-    // Calculate checksum (simple XOR of all characters in the rows)
-    String allRows;
-    for(size_t i = 0; i < rows.size() - 1; i++) {
-        allRows += rows[i].as<String>() + "\n";
-    }
-    uint8_t checksum = 0;
-    for(size_t i = 0; i < allRows.length(); i++) {
-        checksum ^= allRows[i];
-    }
+    rows.push_back(String(buffer));
     
-    // Add checksum line
-    char checksumLine[8];
-    snprintf(checksumLine, sizeof(checksumLine), "!%02X", checksum);
-    rows.add(checksumLine);
+    // Add the rows to the data object
+    dataObj.addArray("rows", rows);
     
-    data["checksum"] = String(checksumLine).substring(1);
-
-    String payloadStr;
-    serializeJson(payload, payloadStr);
-
-    // Create and return the JWT
-    return crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), privateKey);
+    // Add the data object to the payload with the timestamp as the key
+    // This is a bit tricky with our simple JSON builder, so we'll do it manually
+    String dataStr = dataObj.end();
+    String payloadStr = "{\"" + timestamp + "\":" + dataStr + "}";
+    
+    // Use the crypto_create_jwt function from the crypto module
+    String jwt = crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), privateKey);
+    
+    return jwt;
 } 

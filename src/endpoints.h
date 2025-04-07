@@ -1,8 +1,7 @@
 #pragma once
 
-#include <Arduino.h>
 #include "endpoint_types.h"
-#include <ArduinoJson.h>
+
 
 // Response structure that can be used by both BLE and HTTP handlers
 struct EndpointResponse {
@@ -13,8 +12,8 @@ struct EndpointResponse {
 
 // Request structure that normalizes input from both BLE and HTTP
 struct EndpointRequest {
-    HttpMethod method;
-    Endpoint endpoint;
+    EndpointRequest(const Endpoint& endpoint) : endpoint(endpoint) {}
+    const Endpoint& endpoint;
     String content;
     int offset;
 };
@@ -27,4 +26,6 @@ EndpointResponse handleCryptoInfo(const EndpointRequest& request);
 EndpointResponse handleNameInfo(const EndpointRequest& request);
 EndpointResponse handleWiFiStatus(const EndpointRequest& request);
 EndpointResponse handleWiFiScan(const EndpointRequest& request);
-EndpointResponse handleCryptoSign(const EndpointRequest& request); 
+EndpointResponse handleCryptoSign(const EndpointRequest& request);
+EndpointResponse handleInitializeForm(const EndpointRequest& request);
+EndpointResponse handleInitialize(const EndpointRequest& request); 

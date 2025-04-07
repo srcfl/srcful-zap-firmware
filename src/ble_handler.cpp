@@ -1,15 +1,14 @@
 #include "endpoint_types.h"
 #include "ble_handler.h"
+#include "ble_constants.h"  // Include this to use the UUIDs defined in ble_constants.cpp
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <esp_system.h>
-#include <esp_bt.h>              // For esp_bt_controller functions
-#include <esp_bt_main.h>         // For esp_bluedroid functions
-#include <esp_gap_ble_api.h>     // For BLE GAP functionality
-#include <ArduinoJson.h>
+#include "json_light/json_light.h"
 #include "crypto.h"
 #include "endpoint_mapper.h"
-
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 
 // Define Queue properties
 #define REQUEST_QUEUE_LENGTH 5
@@ -35,55 +34,37 @@ BLEHandler::BLEHandler() {
 }
 
 void BLEHandler::init() {
-    // Initialize BLE with reduced features and increase stack size for better handling
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    bt_cfg.controller_task_stack_size = 4096;
+    // Initialize NimBLE
+    NimBLEDevice::init("Sourceful Zippy Zap");
     
-    esp_bt_controller_init(&bt_cfg);
-    esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    esp_bluedroid_init();
-    esp_bluedroid_enable();
-    
-    BLEDevice::init("Sourceful Zippy Zap");
-    btStart();
-    esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);  // Release classic BT memory
+    // Set the MTU size to maximum supported (517 bytes)
+    NimBLEDevice::setMTU(512);
     
     // Create server
-    pServer = BLEDevice::createServer();
+    pServer = NimBLEDevice::createServer();
     
     // Add server connection callbacks to detect disconnections
-    pServerCallbacks = new SrcfulBLEServerCallbacks();
+    pServerCallbacks = new SrcfulBLEServerCallbacks(this);
     pServer->setCallbacks(pServerCallbacks);
     
     // Create service with extended attribute table size for iOS
-    pService = pServer->createService(BLEUUID(SRCFUL_SERVICE_UUID), 40);
+    pService = pServer->createService(SRCFUL_SERVICE_UUID);
     
     // Create characteristics with notification support
-    // Use WRITE_NR (no response) for request characteristic as iOS prefers this
     pRequestChar = pService->createCharacteristic(
         SRCFUL_REQUEST_CHAR_UUID,
-        BLECharacteristic::PROPERTY_WRITE | 
-        BLECharacteristic::PROPERTY_WRITE_NR |  // Add no-response write for iOS
-        BLECharacteristic::PROPERTY_NOTIFY
+        NIMBLE_PROPERTY::WRITE |
+        NIMBLE_PROPERTY::WRITE_NR |
+        NIMBLE_PROPERTY::NOTIFY
     );
     
     // For response char, ensure both NOTIFY and INDICATE are available for iOS
     pResponseChar = pService->createCharacteristic(
         SRCFUL_RESPONSE_CHAR_UUID,
-        BLECharacteristic::PROPERTY_READ | 
-        BLECharacteristic::PROPERTY_NOTIFY | 
-        BLECharacteristic::PROPERTY_INDICATE
+        NIMBLE_PROPERTY::READ |
+        NIMBLE_PROPERTY::NOTIFY |
+        NIMBLE_PROPERTY::INDICATE
     );
-    
-    // Create BLE Descriptors for notifications - crucial for iOS
-    BLE2902* pRequestDescriptor = new BLE2902();
-    pRequestDescriptor->setNotifications(true);
-    pRequestChar->addDescriptor(pRequestDescriptor);
-    
-    BLE2902* pResponseDescriptor = new BLE2902();
-    pResponseDescriptor->setNotifications(true);
-    pResponseDescriptor->setIndications(true);  // Add indication support
-    pResponseChar->addDescriptor(pResponseDescriptor);
     
     // Set callbacks
     pRequestCallback = new BLERequestCallback(this);
@@ -95,7 +76,7 @@ void BLEHandler::init() {
     pService->start();
 
     // Improved advertising configuration for iOS compatibility
-    BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+    NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SRCFUL_SERVICE_UUID);
     pAdvertising->setScanResponse(true);
     
@@ -108,34 +89,25 @@ void BLEHandler::init() {
     pAdvertising->setMinInterval(0x20);   // 20ms
     pAdvertising->setMaxInterval(0x30);   // 30ms
     
-    // Set appearance and device name - helps with iOS discovery
-    esp_ble_gap_set_device_name("Sourceful Zippy Zap");
-    
     // Start advertising
-    BLEDevice::startAdvertising();
+    NimBLEDevice::startAdvertising();
     isAdvertising = true;
-    Serial.println("BLE service started and advertising with iOS-optimized settings");
+    Serial.println("NimBLE service started and advertising with iOS-optimized settings");
 }
 
 void BLEHandler::stop() {
     if (pServer != nullptr) {
-        pServer->getAdvertising()->stop();
+        NimBLEDevice::stopAdvertising();
         isAdvertising = false;
-        BLEDevice::deinit(true);  // true = release memory
-        Serial.println("BLE stopped and resources released");
+        NimBLEDevice::deinit(true);
+        Serial.println("NimBLE stopped and resources released");
     }
-    // Optional: Delete queue if BLEHandler instance is being destroyed or permanently stopped
-    // if (_requestQueue != nullptr) {
-    //     vQueueDelete(_requestQueue);
-    //     _requestQueue = nullptr;
-    //     Serial.println("BLE request queue deleted.");
-    // }
 }
 
 void BLEHandler::checkAdvertising() {
     if (!isAdvertising) {
-        Serial.println("BLE advertising stopped - restarting");
-        BLEDevice::startAdvertising();
+        Serial.println("NimBLE advertising stopped - restarting");
+        NimBLEDevice::startAdvertising();
         isAdvertising = true;
     }
 }
@@ -197,47 +169,72 @@ bool BLEHandler::sendResponse(const String& location, const String& method,
                             const String& data, int offset) {
     String response = constructResponse(location, method, data, offset);
     pResponseChar->setValue((uint8_t*)response.c_str(), response.length());
-    pResponseChar->notify();  // Add notification
+    pResponseChar->notify();
     return true;
 }
 
-// handleRequest processes a single request string
+void BLERequestCallback::onWrite(NimBLECharacteristic* pCharacteristic) {
+    std::string value = pCharacteristic->getValue();
+    if (value.length() > 0) {
+        handler->enqueueRequest(String(value.c_str()));
+    }
+}
+
+void BLEResponseCallback::onRead(NimBLECharacteristic* pCharacteristic) {
+    // Handle read if needed
+}
+
+void BLEHandler::enqueueRequest(const String& requestStr) {
+    if (_requestQueue == nullptr) return;
+    
+    // Allocate memory for the string
+    char* buffer = (char*)malloc(requestStr.length() + 1);
+    if (buffer == nullptr) {
+        Serial.println("Failed to allocate memory for BLE request");
+        return;
+    }
+    
+    // Copy the string to the allocated memory
+    strcpy(buffer, requestStr.c_str());
+    
+    // Send the pointer to the queue
+    if (xQueueSend(_requestQueue, &buffer, pdMS_TO_TICKS(100)) != pdPASS) {
+        Serial.println("Failed to send request to queue");
+        free(buffer);
+    }
+}
+
+void BLEHandler::handlePendingRequest() {
+    if (_requestQueue == nullptr) return;
+
+    // Receive the pointer to the data
+    char* buffer = nullptr;
+    if (xQueueReceive(_requestQueue, &buffer, pdMS_TO_TICKS(REQUEST_QUEUE_RECEIVE_TIMEOUT_MS)) == pdPASS) {
+        if (buffer != nullptr) {
+            Serial.printf("Dequeued request (%d bytes)\n", strlen(buffer));
+
+            // Create a String object from the buffer
+            String receivedRequest(buffer);
+
+            // Process the request
+            handleRequest(receivedRequest);
+
+            // Free the buffer that was allocated in enqueueRequest
+            free(buffer);
+        }
+    }
+}
+
 void BLEHandler::handleRequest(const String& request) {
     String method, path, content;
     int offset = 0;
-    // Reserve some space to potentially reduce reallocations during parsing
-    method.reserve(10);
-    path.reserve(64);
-    // Content reservation depends heavily on expected payload size
-
+    
     if (!parseRequest(request, method, path, content, offset)) {
-        Serial.println("Failed to parse request.");
-        // Send error response - use FPSTR to avoid String allocation for the error message itself
-        sendResponse(path, method, FPSTR(ERROR_INVALID_REQUEST), 0);
+        Serial.println("Failed to parse request");
         return;
     }
-
-    Serial.printf("Parsed Request: Method='%s', Path='%s', Offset=%d, Content Length=%d\n",
-                  method.c_str(), path.c_str(), offset, content.length());
-    // Serial.println("Content: " + content); // Optional: Print content
-
+    
     handleRequestInternal(method, path, content, offset);
-}
-
-void BLEHandler::handleRequestInternal(const String& method, const String& path, 
-                                     const String& content, int offset) {
-    // Create endpoint request
-    EndpointRequest request;
-    request.method = EndpointMapper::stringToMethod(method);
-    request.endpoint = EndpointMapper::pathToEndpoint(path);
-    request.content = content;
-    request.offset = offset;
-
-    // Route request through endpoint mapper
-    EndpointResponse response = EndpointMapper::route(request);
-
-    // Send response using BLE protocol format
-    sendResponse(path, method, response.data, offset);
 }
 
 bool BLEHandler::parseRequest(const String& request, String& method, String& path, 
@@ -272,86 +269,31 @@ bool BLEHandler::parseRequest(const String& request, String& method, String& pat
     return true;
 }
 
-void BLEHandler::handlePendingRequest() {
-    if (_requestQueue == nullptr) return;
-
-    // Receive the pointer to the data
-    char* buffer = nullptr;
-    if (xQueueReceive(_requestQueue, &buffer, pdMS_TO_TICKS(REQUEST_QUEUE_RECEIVE_TIMEOUT_MS)) == pdPASS) {
-        if (buffer != nullptr) {
-            Serial.printf("Dequeued request (%d bytes)\n", strlen(buffer));
-
-            // Create a String object from the buffer
-            String receivedRequest(buffer);
-
-            // Process the request
-            handleRequest(receivedRequest);
-
-            // Free the buffer that was allocated in enqueueRequest
-            free(buffer);
-        }
-    }
-}
-
-void BLEHandler::enqueueRequest(const String& requestStr) {
-    if (_requestQueue == nullptr) {
-        Serial.println("Error: Request queue is null in enqueueRequest.");
-        return;
-    }
-
-    // Create a buffer to store the raw data
-    char* buffer = (char*)malloc(requestStr.length() + 1);
-    if (buffer == nullptr) {
-        Serial.println("Error: Failed to allocate buffer for BLE request");
-        return;
-    }
-
-    // Copy the string data to the buffer
-    strcpy(buffer, requestStr.c_str());
-
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    BaseType_t xResult = xQueueSendFromISR(_requestQueue, &buffer, &xHigherPriorityTaskWoken);
-
-    if (xResult != pdPASS) {
-        Serial.println("Error: Failed to enqueue BLE request (Queue full?). Request lost.");
-        free(buffer);  // Free the buffer if enqueue failed
-    }
-    // Note: We don't free the buffer here if enqueue succeeded because the receiving task will free it
+void BLEHandler::handleRequestInternal(const String& method, const String& path, 
+                                     const String& content, int offset) {
+    EndpointRequest request(EndpointMapper::toEndpoint(path, method));
+    request.content = content;
+    request.offset = offset;
     
-    // Yield if necessary
-    if (xHigherPriorityTaskWoken) {
-        portYIELD_FROM_ISR();
+    EndpointResponse response = EndpointMapper::route(request);
+
+    Serial.println(method + " " + path + " " + " Response: " + response.data);
+    
+    if (response.statusCode == 200) {
+        sendResponse(path, method, response.data, offset);
+    } else {
+        sendResponse(path, method, response.data, 0);
     }
 }
 
-void BLERequestCallback::onWrite(BLECharacteristic* pCharacteristic) {
-    // Ensure handler is valid
-    if (handler == nullptr) {
-         Serial.println("Error: BLEHandler is null in onWrite callback!");
-         return;
-     }
-
-    std::string value = pCharacteristic->getValue();
-    if (!value.empty()) {
-        // Limit logged output size if necessary
-        Serial.printf("Received BLE write request (%d bytes)\n", value.length());
-
-        // Create an Arduino String object from the received data.
-        String requestStr = String(value.c_str());
-
-        // Use the public handler method to enqueue the request
-        handler->enqueueRequest(requestStr);
-
-         // IMPORTANT: 'requestStr' goes out of scope here. The handler's 
-         // enqueueRequest method handles the copy needed for the queue.
-    }
+void SrcfulBLEServerCallbacks::onConnect(NimBLEServer* pServer) {
+    Serial.println("BLE client connected");
+    // Log the actual MTU size being used
+    Serial.printf("Current MTU size: %d\n", NimBLEDevice::getMTU());
 }
 
-void BLEResponseCallback::onRead(BLECharacteristic* pCharacteristic) {
-    Serial.println("BLE read request received");
-    // Typically, reads fetch the current value set by setValue,
-    // which should contain the last response sent.
-    // No specific action usually needed here unless implementing custom read logic.
-    // String currentValue = pCharacteristic->getValue().c_str();
-    // Serial.println("Current Response Char Value: " + currentValue);
-} 
+void SrcfulBLEServerCallbacks::onDisconnect(NimBLEServer* pServer) {
+    Serial.println("BLE client disconnected");
+    // Restart advertising when disconnected to allow new connections
+    NimBLEDevice::startAdvertising();
+}

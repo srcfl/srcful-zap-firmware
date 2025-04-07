@@ -1,38 +1,36 @@
 #include "ota_handler.h"
 #include "firmware_version.h"
-#include <ArduinoJson.h>
+#include "json_light/json_light.h"
 #include <Update.h>
 #include <HTTPClient.h>
+#include <algorithm>
 
 EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.method != HttpMethod::POST) {
+    if (request.endpoint.verb != Endpoint::Verb::POST) {
         response.statusCode = 405;
         response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
         return response;
     }
 
     // Parse the request body
-    StaticJsonDocument<256> doc;
-    DeserializationError error = deserializeJson(doc, request.content);
+    JsonParser parser(request.content.c_str());
+    char url[256] = {0};
+    char version[64] = {0};
+    bool hasUrl = parser.getString("url", url, sizeof(url));
+    bool hasVersion = parser.getString("version", version, sizeof(version));
     
-    if (error) {
-        response.statusCode = 400;
-        response.data = "{\"status\":\"error\",\"message\":\"Invalid JSON\"}";
-        return response;
-    }
-    
-    if (!doc.containsKey("url")) {
+    if (!hasUrl) {
         response.statusCode = 400;
         response.data = "{\"status\":\"error\",\"message\":\"Missing firmware URL\"}";
         return response;
     }
 
     // Check version if provided
-    if (doc.containsKey("version")) {
-        String newVersion = doc["version"].as<String>();
+    if (hasVersion) {
+        String newVersion = String(version);
         String currentVersion = getFirmwareVersion();
         
         // Simple string comparison for now
@@ -46,7 +44,7 @@ EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
         Serial.println("New version: " + newVersion);
     }
     
-    String firmwareUrl = doc["url"].as<String>();
+    String firmwareUrl = String(url);
     
     Serial.println("Free heap before update: " + String(ESP.getFreeHeap()));
     Serial.println("Starting OTA update from: " + firmwareUrl);
@@ -97,74 +95,43 @@ EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
             Serial.println("Connection lost");
             http.end();
             response.statusCode = 500;
-            response.data = "{\"status\":\"error\",\"message\":\"Connection lost\"}";
+            response.data = "{\"status\":\"error\",\"message\":\"Connection lost during update\"}";
             return response;
         }
         
         size_t available = stream->available();
         if (available) {
-            size_t bytes = stream->readBytes(buff, min(available, sizeof(buff)));
-            if (bytes == 0) {
-                Serial.println("Failed to read data");
-                http.end();
-                response.statusCode = 500;
-                response.data = "{\"status\":\"error\",\"message\":\"Failed to read data\"}";
-                return response;
-            }
+            size_t bytesToRead = min(available, sizeof(buff));
+            size_t bytesRead = stream->readBytes(buff, bytesToRead);
             
-            if (Update.write(buff, bytes) != bytes) {
-                Serial.println("Failed to write update data");
-                http.end();
-                response.statusCode = 500;
-                response.data = "{\"status\":\"error\",\"message\":\"Failed to write update data\"}";
-                return response;
-            }
-            
-            written += bytes;
-            Serial.printf("Written %d bytes (%.1f%%) - Free heap: %d\n", 
-                written, 
-                (written * 100.0) / contentLength,
-                ESP.getFreeHeap());
-            
-            // Add a small delay between chunks
-            delay(10);
-            
-            // Check for errors after each chunk
-            if (Update.hasError()) {
-                Serial.println("Update error: " + String(Update.getError()));
-                http.end();
-                response.statusCode = 500;
-                response.data = "{\"status\":\"error\",\"message\":\"Update error: " + String(Update.getError()) + "\"}";
-                return response;
+            if (bytesRead > 0) {
+                if (Update.write(buff, bytesRead) != bytesRead) {
+                    Serial.println("Failed to write update data");
+                    http.end();
+                    response.statusCode = 500;
+                    response.data = "{\"status\":\"error\",\"message\":\"Failed to write update data\"}";
+                    return response;
+                }
+                written += bytesRead;
+                updateProgress(written, contentLength);
             }
         }
         delay(1);
     }
     
-    // Close the HTTP connection before finalizing the update
-    http.end();
-    
-    // Finalize the update
-    if (!Update.end(true)) { // true means we want to reboot after update
-        Serial.println("Update failed to finalize: " + String(Update.getError()));
+    if (Update.end()) {
+        Serial.println("Update complete");
+        http.end();
+        response.statusCode = 200;
+        response.data = "{\"status\":\"success\",\"message\":\"Update complete\"}";
+        return response;
+    } else {
+        Serial.println("Update failed: " + String(Update.getError()));
+        http.end();
         response.statusCode = 500;
-        response.data = "{\"status\":\"error\",\"message\":\"Update failed to finalize\"}";
+        response.data = "{\"status\":\"error\",\"message\":\"Update failed: " + String(Update.getError()) + "\"}";
         return response;
     }
-    
-    Serial.println("Update complete, preparing to reboot...");
-    
-    // Send success response
-    response.statusCode = 200;
-    response.data = "{\"status\":\"success\",\"message\":\"Update successful, device will restart\"}";
-    
-    // Give time for the response to be sent
-    delay(2000);
-    
-    // Reboot the device
-    ESP.restart();
-    
-    return response;
 }
 
 bool OTAHandler::verifyFirmware(const uint8_t* data, size_t len) {

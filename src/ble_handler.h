@@ -1,79 +1,72 @@
 #pragma once
 
 #include <Arduino.h>
+#include <NimBLEDevice.h>
 #include "endpoint_types.h"
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
-#include <string>
-#include <ArduinoJson.h>
-#include "ble_constants.h"
+#include "ble_constants.h"  // Include this to use the UUIDs defined in ble_constants.cpp
 
-// Include FreeRTOS queue headers
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
+// Forward declaration
+class BLEHandler;
 
-class BLERequestCallback;
-class BLEResponseCallback;
-
-// Custom server callbacks to handle connection events
-class SrcfulBLEServerCallbacks: public BLEServerCallbacks {
-public:
-    void onConnect(BLEServer* pServer) override {
-        Serial.println("BLE client connected");
-    }
-    
-    void onDisconnect(BLEServer* pServer) override {
-        Serial.println("BLE client disconnected");
-        // Restart advertising when disconnected to allow new connections
-        BLEDevice::startAdvertising();
-    }
+// Custom server callbacks to detect disconnections
+class SrcfulBLEServerCallbacks: public NimBLEServerCallbacks {
+    private:
+        BLEHandler* handler;
+    public:
+        SrcfulBLEServerCallbacks(BLEHandler* h) : handler(h) {}
+        void onConnect(NimBLEServer* pServer);
+        void onDisconnect(NimBLEServer* pServer);
 };
 
+// Custom characteristic callbacks for request handling
+class BLERequestCallback: public NimBLECharacteristicCallbacks {
+    private:
+        BLEHandler* handler;
+    public:
+        BLERequestCallback(BLEHandler* h) : handler(h) {}
+        void onWrite(NimBLECharacteristic* pCharacteristic);
+};
+
+// Custom characteristic callbacks for response handling
+class BLEResponseCallback: public NimBLECharacteristicCallbacks {
+    private:
+        BLEHandler* handler;
+    public:
+        BLEResponseCallback(BLEHandler* h) : handler(h) {}
+        void onRead(NimBLECharacteristic* pCharacteristic);
+};
+
+// Main BLE handler class
 class BLEHandler {
-public:
-    BLEHandler();
-    void init();
-    void stop();
-    bool sendResponse(const String& location, const String& method, const String& data, int offset = 0);
-    void handleRequest(const String& request);
-    void checkAdvertising();
-    void handlePendingRequest();
-    void enqueueRequest(const String& requestStr);
-
-private:
-    BLEServer* pServer;
-    BLEService* pService;
-    BLECharacteristic* pRequestChar;
-    BLECharacteristic* pResponseChar;
-    BLERequestCallback* pRequestCallback;
-    BLEResponseCallback* pResponseCallback;
-    SrcfulBLEServerCallbacks* pServerCallbacks;
-    bool isAdvertising;
-    QueueHandle_t _requestQueue = nullptr;
-    
-    String constructResponse(const String& location, const String& method, 
-                           const String& data, int offset);
-    bool parseRequest(const String& request, String& method, String& path, 
-                     String& content, int& offset);
-    void handleRequestInternal(const String& method, const String& path, 
-                             const String& content, int offset);
-
-};
-
-class BLERequestCallback : public BLECharacteristicCallbacks {
-public:
-    BLERequestCallback(BLEHandler* handler) : handler(handler) {}
-    void onWrite(BLECharacteristic* pCharacteristic);
-private:
-    BLEHandler* handler;
-};
-
-class BLEResponseCallback : public BLECharacteristicCallbacks {
-public:
-    BLEResponseCallback(BLEHandler* handler) : handler(handler) {}
-    void onRead(BLECharacteristic* pCharacteristic);
-private:
-    BLEHandler* handler;
+    private:
+        NimBLEServer* pServer;
+        NimBLEService* pService;
+        NimBLECharacteristic* pRequestChar;
+        NimBLECharacteristic* pResponseChar;
+        SrcfulBLEServerCallbacks* pServerCallbacks;
+        BLERequestCallback* pRequestCallback;
+        BLEResponseCallback* pResponseCallback;
+        bool isAdvertising;
+        QueueHandle_t _requestQueue;
+        
+        // Private helper methods
+        bool parseRequest(const String& request, String& method, String& path, String& content, int& offset);
+        void handleRequestInternal(const String& method, const String& path, const String& content, int offset);
+        String constructResponse(const String& location, const String& method, const String& data, int offset);
+        
+    public:
+        BLEHandler();
+        void init();
+        void stop();
+        void checkAdvertising();
+        bool sendResponse(const String& location, const String& method, const String& data, int offset);
+        void handleRequest(const String& request);
+        void handlePendingRequest();
+        void enqueueRequest(const String& requestStr);
+        void processRequest(const String& request);
+        
+        // Friend classes to allow callbacks to access private methods
+        friend class SrcfulBLEServerCallbacks;
+        friend class BLERequestCallback;
+        friend class BLEResponseCallback;
 }; 
