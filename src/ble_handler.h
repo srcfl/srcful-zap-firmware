@@ -63,6 +63,7 @@ class BLEHandler {
         void handleRequest(const String& request);
         void handlePendingRequest();
         void enqueueRequest(const String& requestStr);
+        void processRequest(const String& request);
         
         // Friend classes to allow callbacks to access private methods
         friend class SrcfulBLEServerCallbacks;

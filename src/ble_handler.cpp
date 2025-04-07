@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <esp_system.h>
-#include <ArduinoJson.h>
+#include "json_light/json_light.h"
 #include "crypto.h"
 #include "endpoint_mapper.h"
 #include <freertos/FreeRTOS.h>
@@ -296,4 +296,4 @@ void SrcfulBLEServerCallbacks::onDisconnect(NimBLEServer* pServer) {
     Serial.println("BLE client disconnected");
     // Restart advertising when disconnected to allow new connections
     NimBLEDevice::startAdvertising();
-} 
+}

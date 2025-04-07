@@ -90,21 +90,3 @@ String fetchGatewayName(const String& serialNumber) {
     }
     return "";
 }
-
-bool initializeGateway(const String& idAndWallet, const String& signature, bool dryRun, String& responseData) {
-    String mutation = String(R"(
-      mutation {
-        gatewayInception {
-          initialize(gatewayInitialization:{)") + 
-          (dryRun ? "dryRun:true, " : "") +
-          "idAndWallet:\"" + idAndWallet + "\", " +
-          "signature:\"" + signature + "\"}) {" + R"(
-            initialized
-          }
-        }
-      }
-    )";
-    
-    extern const char* API_URL;
-    return makeGraphQLRequest(mutation, responseData, API_URL);
-} 

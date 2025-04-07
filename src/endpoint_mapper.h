@@ -19,6 +19,8 @@ public:
     static const char* BLE_STOP_PATH;
     static const char* CRYPTO_SIGN_PATH;
     static const char* OTA_UPDATE_PATH;
+    static const char* INITIALIZE_FORM_PATH;
+    static const char* INITIALIZE_PATH;
     
     // Iterator support
     class Iterator {
