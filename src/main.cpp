@@ -1,4 +1,4 @@
-#include "endpoint_types.h"
+#include "endpoints/endpoint_types.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include "html.h"
@@ -6,7 +6,7 @@
 #include <HTTPClient.h>
 #include <esp_system.h>
 #include "p1data.h"
-#include "endpoint_mapper.h"
+#include "endpoints/endpoint_mapper.h"
 #include <WiFiClientSecure.h>
 #include "esp_heap_caps.h"
 #include "graphql.h"

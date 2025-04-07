@@ -1,5 +1,5 @@
 #include "server_task.h"
-#include "endpoint_mapper.h"
+#include "endpoints/endpoint_mapper.h"
 
 // Constructor
 ServerTask::ServerTask(int port, uint32_t stackSize, UBaseType_t priority)

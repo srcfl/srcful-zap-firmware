@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
-#include "endpoint_types.h"
+#include "endpoints/endpoint_types.h"
 #include "ble_constants.h"  // Include this to use the UUIDs defined in ble_constants.cpp
 
 // Forward declaration

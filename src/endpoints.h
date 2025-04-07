@@ -1,6 +1,6 @@
 #pragma once
 
-#include "endpoint_types.h"
+#include "endpoints/endpoint_types.h"
 
 
 // Response structure that can be used by both BLE and HTTP handlers

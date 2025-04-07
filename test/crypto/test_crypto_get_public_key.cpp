@@ -1,9 +1,11 @@
 #include <unity.h>
 #include <Arduino.h>
+#include <string.h>
+#include <stdio.h>
+#include "../src/endpoints/endpoint_types.h"
 #include "config.h"
 #include "crypto.h"
 #include "endpoints.h"
-#include "endpoint_types.h"
 
 
 // Test the handleCryptoSign endpoint

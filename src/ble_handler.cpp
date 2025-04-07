@@ -1,12 +1,12 @@
-#include "endpoint_types.h"
 #include "ble_handler.h"
+#include "endpoints/endpoint_types.h"
 #include "ble_constants.h"  // Include this to use the UUIDs defined in ble_constants.cpp
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <esp_system.h>
 #include "json_light/json_light.h"
 #include "crypto.h"
-#include "endpoint_mapper.h"
+#include "endpoints/endpoint_mapper.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 

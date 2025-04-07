@@ -1,10 +1,11 @@
 #pragma once
 
 #include <Arduino.h>
+#include <Update.h>
+#include <WiFi.h>
 #include <HTTPClient.h>
-#include <HTTPUpdate.h>
 #include <WiFiClientSecure.h>
-#include "endpoint_types.h"
+#include "endpoints/endpoint_types.h"
 #include "endpoints.h"
 
 class OTAHandler {

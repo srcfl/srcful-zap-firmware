@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "json_light/json_light.h"
-#include "endpoint_types.h"
+#include "endpoints/endpoint_types.h"
 #include "endpoints.h"
 #include <WiFi.h>
 #include <esp_system.h>
