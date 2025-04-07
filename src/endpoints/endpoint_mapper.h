@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include "endpoint_types.h"
-#include "../endpoints.h"
+#include "endpoints.h"
 #include <array>
 
 class EndpointMapper {

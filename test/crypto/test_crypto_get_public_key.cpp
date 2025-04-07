@@ -5,7 +5,6 @@
 #include "../src/endpoints/endpoint_types.h"
 #include "config.h"
 #include "crypto.h"
-#include "endpoints.h"
 
 
 // Test the handleCryptoSign endpoint

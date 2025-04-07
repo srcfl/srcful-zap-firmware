@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Arduino.h>
+
 // Forward declarations
 struct EndpointResponse;
 struct EndpointRequest;
@@ -38,4 +40,19 @@ class Endpoint {
     
     Endpoint(Type type, Verb verb, const char* path, EndpointResponse (*handler)(const EndpointRequest&)) 
         : type(type), verb(verb), path(path), handler(handler) {}
-}; 
+};
+
+// Response structure that can be used by both BLE and HTTP handlers
+struct EndpointResponse {
+    int statusCode;      // HTTP-style status code (200, 400, etc.)
+    String contentType;  // Content type of the response
+    String data;        // Response data
+};
+
+// Request structure that normalizes input from both BLE and HTTP
+struct EndpointRequest {
+    EndpointRequest(const Endpoint& endpoint) : endpoint(endpoint) {}
+    const Endpoint& endpoint;
+    String content;
+    int offset;
+};

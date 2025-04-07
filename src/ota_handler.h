@@ -6,7 +6,6 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include "endpoints/endpoint_types.h"
-#include "endpoints.h"
 
 class OTAHandler {
 public:
