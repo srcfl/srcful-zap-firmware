@@ -64,23 +64,78 @@ String base64url_encode(const char* data, size_t length) {
 
 // Crypto class implementation
 bool Crypto::generateKeyPair(uint8_t* privateKey, uint8_t* publicKey) {
-    // For this specific case, we need to generate a deterministic public key
-    // that matches the expected public key for the given private key
+    // Use mbedtls to derive the public key from the private key
     
-    // The expected public key for the private key 4cc43b88635b9eaf81655ed51e062fab4a46296d72f01fc6fd853b08f0c2383a
-    // is 3e70c4705ff5945bfea058aaa68128e6f7d54fd7e08c640f4791668f8267a6e8c36ee19214698f1956e948bf339492fb11e0dc5a79a76dd0c235b431ee5aa782
+    // Initialize mbedtls structures
+    mbedtls_ecp_keypair keypair;
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+    int ret;
     
-    // Check if the private key matches the expected one
-    const char* expectedPrivateKeyHex = "4cc43b88635b9eaf81655ed51e062fab4a46296d72f01fc6fd853b08f0c2383a";
-    uint8_t expectedPrivateKey[32];
-    hex_string_to_bytes(expectedPrivateKeyHex, expectedPrivateKey, 32);
+    // Initialize the structures
+    mbedtls_ecp_keypair_init(&keypair);
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    size_t olen = 64;  // Initialize with the buffer size
+
+    // Debug: Print the public key point coordinates
+    char buf[1024];
+    size_t len = 0;
     
-    if (memcmp(privateKey, expectedPrivateKey, 32) == 0) {
-        // If the private key matches, use the expected public key
-        const char* expectedPublicKeyHex = "3e70c4705ff5945bfea058aaa68128e6f7d54fd7e08c640f4791668f8267a6e8c36ee19214698f1956e948bf339492fb11e0dc5a79a76dd0c235b431ee5aa782";
-        hex_string_to_bytes(expectedPublicKeyHex, publicKey, 64);
-        return true;
+    // Set up the entropy source and random number generator
+    const char *pers = "ecdsa_keygen";
+    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *)pers, strlen(pers));
+    if (ret != 0) {
+        Serial.println("Failed to seed random number generator");
+        goto cleanup;
     }
+    
+    // Set up the ECP group (SECP256R1 curve)
+    ret = mbedtls_ecp_group_load(&keypair.grp, MBEDTLS_ECP_DP_SECP256R1);
+    if (ret != 0) {
+        Serial.println("Failed to load ECP group");
+        goto cleanup;
+    }
+    
+    // Import the private key
+    ret = mbedtls_mpi_read_binary(&keypair.d, privateKey, 32);
+    if (ret != 0) {
+        Serial.println("Failed to import private key");
+        goto cleanup;
+    }
+    
+    // Derive the public key from the private key
+    ret = mbedtls_ecp_mul(&keypair.grp, &keypair.Q, &keypair.d, &keypair.grp.G, mbedtls_ctr_drbg_random, &ctr_drbg);
+    if (ret != 0) {
+        Serial.println("Failed to derive public key");
+        goto cleanup;
+    }
+    
+    // Export X coordinate
+    ret = mbedtls_mpi_write_binary(&keypair.Q.X, publicKey, 32);
+    if (ret != 0) {
+        Serial.println("Failed to export X coordinate");
+        goto cleanup;
+    }
+    
+    // Export Y coordinate
+    ret = mbedtls_mpi_write_binary(&keypair.Q.Y, publicKey + 32, 32);
+    if (ret != 0) {
+        Serial.println("Failed to export Y coordinate");
+        goto cleanup;
+    }
+    
+    // Clean up
+    mbedtls_ecp_keypair_free(&keypair);
+    mbedtls_entropy_free(&entropy);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
+    
+    return true;
+    
+cleanup:
+    mbedtls_ecp_keypair_free(&keypair);
+    mbedtls_entropy_free(&entropy);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
     
     return false;
 }
@@ -173,32 +228,17 @@ cleanup:
 // Legacy function implementations
 String crypto_get_public_key(const char* private_key_hex) {
     uint8_t privateKey[32];
-    uint8_t publicKey[64];  // Changed to 64 bytes
-    
-    Serial.print("Private key hex: ");
-    Serial.println(private_key_hex);
+    uint8_t publicKey[64];
     
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
         Serial.println("Failed to convert private key hex to bytes");
         return "";
     }
     
-    Serial.print("Private key bytes: ");
-    for (int i = 0; i < 32; i++) {
-        Serial.printf("%02x", privateKey[i]);
-    }
-    Serial.println();
-    
     if (!Crypto::generateKeyPair(privateKey, publicKey)) {
         Serial.println("Failed to generate key pair");
         return "";
     }
-    
-    Serial.print("Public key bytes: ");
-    for (int i = 0; i < 64; i++) {
-        Serial.printf("%02x", publicKey[i]);
-    }
-    Serial.println();
     
     char hex_result[129];  // Changed to 129 to accommodate 64 bytes (128 hex chars + null terminator)
     bytes_to_hex_string(publicKey, 64, hex_result);

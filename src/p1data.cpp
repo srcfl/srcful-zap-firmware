@@ -1,5 +1,6 @@
 #include "p1data.h"
 #include "json_light/json_light.h"
+#include <vector>
 
 void initNTP() {
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // 0, 0 = UTC, no daylight offset
@@ -88,9 +89,8 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     static float lastEnergy = 10968.132;
     lastEnergy += totalPower * (10.0 / 3600.0); // Add energy for 10-second interval in kWh
 
-    // Create an array for rows
-    const char* rows[20]; // Assuming max 20 rows
-    int rowCount = 0;
+    // Use a vector of Strings instead of an array of C-style strings
+    std::vector<String> rows;
     
     // Format timestamp
     time_t now;
@@ -101,14 +101,14 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     snprintf(buffer, sizeof(buffer), "0-0:1.0.0(%02d%02d%02d%02d%02d%02dW)",
              timeinfo.tm_year % 100, timeinfo.tm_mon + 1, timeinfo.tm_mday,
              timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-    rows[rowCount++] = strdup(buffer);
+    rows.push_back(String(buffer));
 
     // Energy readings
     snprintf(buffer, sizeof(buffer), "1-0:1.8.0(%08.3f*kWh)", lastEnergy);
-    rows[rowCount++] = strdup(buffer);
+    rows.push_back(String(buffer));
     
     // Add the rows to the data object
-    dataObj.addArray("rows", rows, rowCount);
+    dataObj.addArray("rows", rows);
     
     // Add the data object to the payload with the timestamp as the key
     // This is a bit tricky with our simple JSON builder, so we'll do it manually
@@ -117,11 +117,6 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     
     // Use the crypto_create_jwt function from the crypto module
     String jwt = crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), privateKey);
-    
-    // Free the allocated memory
-    for (int i = 0; i < rowCount; i++) {
-        free((void*)rows[i]);
-    }
     
     return jwt;
 } 

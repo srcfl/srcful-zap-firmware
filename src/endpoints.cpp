@@ -188,21 +188,10 @@ EndpointResponse handleWiFiStatus(const EndpointRequest& request) {
     
     JsonBuilder json;
     json.beginObject();
-    
-    // Create an array for SSIDs
-    const char* ssids[20]; // Assuming max 20 networks
-    int ssidCount = 0;
-    
-    // Get the cached scan results
-    extern std::vector<String> lastScanResults;
-    for (const String& ssid : lastScanResults) {
-        if (ssidCount < 20) {
-            ssids[ssidCount++] = ssid.c_str();
-        }
-    }
-    
+       
     // Add the SSIDs to the JSON
-    json.addArray("ssids", ssids, ssidCount);
+    extern std::vector<String> lastScanResults;
+    json.addArray("ssids", lastScanResults);
     
     // Add connected network info if connected
     if (WiFi.status() == WL_CONNECTED) {
@@ -238,14 +227,7 @@ EndpointResponse handleWiFiScan(const EndpointRequest& request) {
     
     // Get the cached scan results
     extern std::vector<String> lastScanResults;
-    for (const String& ssid : lastScanResults) {
-        if (ssidCount < 20) {
-            ssids[ssidCount++] = ssid.c_str();
-        }
-    }
-    
-    // Add the SSIDs to the JSON
-    json.addArray("ssids", ssids, ssidCount);
+    json.addArray("ssids", lastScanResults);
     
     // Add connected network info if connected
     if (WiFi.status() == WL_CONNECTED) {

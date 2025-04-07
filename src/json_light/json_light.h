@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-
+#include <vector>
 class JsonBuilder {
 private:
     String buffer;
@@ -51,7 +51,7 @@ public:
         return *this;
     }
 
-    
+
     JsonBuilder& add(const char* key, bool value) {
         if (!firstItem) buffer += ',';
         buffer += '"';
@@ -62,8 +62,23 @@ public:
         return *this;
     }
     
-    // Add an array
-    JsonBuilder& addArray(const char* key, const char** values, size_t count) {
+    // Add an array of string values
+    JsonBuilder& addArray(const char* key, const std::vector<String>& values) {
+        if (!firstItem) buffer += ',';
+        buffer += '"';
+        buffer += key;
+        buffer += "\":[\"";
+        for (size_t i = 0; i < values.size(); i++) {
+            if (i > 0) buffer += "\",\"";
+            buffer += values[i];
+        }
+        buffer += "\"]";
+        firstItem = false;
+        return *this;
+    }
+    
+    // Add an array of C-style strings
+    JsonBuilder& addArray(const char* key, const char* const* values, size_t count) {
         if (!firstItem) buffer += ',';
         buffer += '"';
         buffer += key;
