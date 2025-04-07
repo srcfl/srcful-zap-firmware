@@ -1,12 +1,10 @@
 #include "webserver.h"
 #include "html.h"
+#include "wifi/wifi_manager.h"
 
 // External variables needed by the endpoints
 extern bool isProvisioned;
-extern std::vector<String> lastScanResults;
-extern unsigned long lastScanTime;
-extern const unsigned long SCAN_CACHE_TIME;
-extern void scanWiFiNetworks();
+extern WifiManager wifiManager;
 
 WebServerHandler::WebServerHandler(int port) : server(port) {
 }
@@ -42,13 +40,13 @@ void WebServerHandler::setupEndpoints() {
         if (!isProvisioned) {
             #if defined(USE_SOFTAP_SETUP)
                 // Check if we need a fresh scan
-                if (millis() - lastScanTime >= SCAN_CACHE_TIME) {
-                    scanWiFiNetworks();
+                if (millis() - wifiManager.getLastScanTime() >= 10000) { // 10 seconds cache time
+                    wifiManager.scanWiFiNetworks();
                 }
                 
                 // Create the network options HTML
                 String networkOptions = "";
-                for (const String& ssid : lastScanResults) {
+                for (const String& ssid : wifiManager.getLastScanResults()) {
                     networkOptions += "          <option value=\"" + ssid + "\">" + ssid + "</option>\n";
                 }
                 
@@ -98,10 +96,6 @@ void WebServerHandler::setupEndpoints() {
     //     request.method = Endpoint::Verb::GET;
     //     request.endpoint = Endpoint::SYSTEM_INFO;
     //     request.content = "";
-    //     request.offset = 0;
-
-    //     EndpointResponse response = EndpointMapper::route(request);
-    //     server.send(response.statusCode, response.contentType, response.data);
     // });
 
     // server.on("/api/wifi", HTTP_DELETE, [this]() {

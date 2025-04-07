@@ -8,9 +8,10 @@
 #include "graphql.h"
 #include "html.h"
 #include "firmware_version.h"
+#include "wifi/wifi_manager.h"
 
-// External function declarations
-extern bool connectToWiFi(const String& ssid, const String& password, bool updateGlobals = true);
+// External variable declarations
+extern WifiManager wifiManager;
 
 EndpointResponse handleWiFiConfig(const EndpointRequest& request) {
     EndpointResponse response;
@@ -48,7 +49,7 @@ EndpointResponse handleWiFiConfig(const EndpointRequest& request) {
         
         // Try to connect with new credentials
         Serial.println("Attempting to connect to WiFi...");
-        if (connectToWiFi(ssidStr, password)) {
+        if (wifiManager.connectToWiFi(ssidStr, password)) {
             response.statusCode = 200;
             response.data = "{\"status\":\"success\",\"message\":\"WiFi credentials updated and connected\"}";
         } else {
@@ -85,11 +86,11 @@ EndpointResponse handleSystemInfo(const EndpointRequest& request) {
     String publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
     json.add("publicKey", publicKey.c_str());
     
-    if (WiFi.status() == WL_CONNECTED) {
+    if (wifiManager.isConnected()) {
         json.add("wifiStatus", "connected")
-            .add("localIP", WiFi.localIP().toString().c_str())
-            .add("ssid", WiFi.SSID().c_str())
-            .add("rssi", WiFi.RSSI());
+            .add("localIP", wifiManager.getLocalIP().c_str())
+            .add("ssid", wifiManager.getConfiguredSSID().c_str())
+            .add("rssi", WiFi.RSSI()); // Still need direct WiFi access for RSSI
     } else {
         json.add("wifiStatus", "disconnected");
     }
@@ -112,9 +113,8 @@ EndpointResponse handleWiFiReset(const EndpointRequest& request) {
     // Disconnect from WiFi
     WiFi.disconnect();
     
-    // Setup AP mode
-    extern void setupAP();
-    setupAP();
+    // Setup AP mode - no need for this
+    // wifiManager.setupAP(AP_SSID, AP_PASSWORD);
     
     response.statusCode = 200;
     response.data = "{\"status\":\"success\",\"message\":\"WiFi reset, AP mode activated\"}";
@@ -190,12 +190,11 @@ EndpointResponse handleWiFiStatus(const EndpointRequest& request) {
     json.beginObject();
        
     // Add the SSIDs to the JSON
-    extern std::vector<String> lastScanResults;
-    json.addArray("ssids", lastScanResults);
+    json.addArray("ssids", wifiManager.getLastScanResults());
     
     // Add connected network info if connected
-    if (WiFi.status() == WL_CONNECTED) {
-        json.add("connected", WiFi.SSID().c_str());
+    if (wifiManager.isConnected()) {
+        json.add("connected", wifiManager.getConfiguredSSID().c_str());
     } else {
         json.add("connected", nullptr);  // JSON null if not connected
     }
@@ -226,12 +225,11 @@ EndpointResponse handleWiFiScan(const EndpointRequest& request) {
     int ssidCount = 0;
     
     // Get the cached scan results
-    extern std::vector<String> lastScanResults;
-    json.addArray("ssids", lastScanResults);
+    json.addArray("ssids", wifiManager.getLastScanResults());
     
     // Add connected network info if connected
-    if (WiFi.status() == WL_CONNECTED) {
-        json.add("connected", WiFi.SSID().c_str());
+    if (wifiManager.isConnected()) {
+        json.add("connected", wifiManager.getConfiguredSSID().c_str());
     } else {
         json.add("connected", nullptr);  // JSON null if not connected
     }

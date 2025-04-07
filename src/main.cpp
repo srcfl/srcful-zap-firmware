@@ -12,19 +12,18 @@
 #include "graphql.h"
 #include "config.h"
 #include "server/server_task.h"
+#include "wifi/wifi_manager.h"
 
 #define LED_PIN 7
 
 // Global variables
 ServerTask serverTask(80); // Create a server task instance
+WifiManager wifiManager; // Create a WiFi manager instance
 bool isProvisioned = false;
 String configuredSSID = "";
 String configuredPassword = "";
 unsigned long lastJWTTime = 0;
 const unsigned long JWT_INTERVAL = 10000; // 10 seconds in milliseconds
-std::vector<String> lastScanResults;
-unsigned long lastScanTime = 0;
-const unsigned long SCAN_CACHE_TIME = 10000; // Cache scan results for 10 seconds
 unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no shutdown scheduled)
 
 #if defined(USE_BLE_SETUP)
@@ -34,10 +33,7 @@ unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no 
 #endif
 
 // Function declarations
-void setupAP();
-bool connectToWiFi(const String& ssid, const String& password, bool updateGlobals = true);
 void runSigningTest();
-void scanWiFiNetworks();
 void setupSSL();
 void sendJWT();  // Add JWT sending function declaration
 
@@ -68,7 +64,7 @@ void setup() {
         // Connect to WiFi directly
         Serial.println("Connecting to WiFi...");
         WiFi.mode(WIFI_STA);
-        if (connectToWiFi(WIFI_SSID, WIFI_PSK)) {
+        if (wifiManager.connectToWiFi(WIFI_SSID, WIFI_PSK)) {
             digitalWrite(LED_PIN, HIGH); // Solid LED when connected
         } else {
             Serial.println("WiFi connection failed");
@@ -79,7 +75,7 @@ void setup() {
     
     // Perform initial WiFi scan
     Serial.println("Starting WiFi scan...");
-    scanWiFiNetworks();
+    wifiManager.scanWiFiNetworks();
     Serial.println("WiFi scan completed");
     
     // Verify public key
@@ -113,7 +109,7 @@ void setup() {
     // Continue with normal setup
     #if defined(USE_SOFTAP_SETUP)
         Serial.println("Setting up AP mode...");
-        setupAP();
+        wifiManager.setupAP(AP_SSID, AP_PASSWORD);
     #endif
     
     #if defined(USE_BLE_SETUP)
@@ -132,7 +128,7 @@ void setup() {
     #endif
     
     Serial.println("Setting up MDNS...");
-    if (MDNS.begin(MDNS_NAME)) {
+    if (wifiManager.setupMDNS(MDNS_NAME)) {
         Serial.println("MDNS responder started");
     } else {
         Serial.println("Error setting up MDNS responder!");
@@ -155,11 +151,11 @@ void loop() {
     // Check WiFi status every 5 seconds
     if (millis() - lastCheck > 5000) {
         lastCheck = millis();
-        if (WiFi.status() == WL_CONNECTED) {
+        if (wifiManager.isConnected()) {
             if (!wasConnected) {
                 Serial.println("WiFi connected");
                 Serial.print("IP address: ");
-                Serial.println(WiFi.localIP());
+                Serial.println(wifiManager.getLocalIP());
                 wasConnected = true;
             }
 
@@ -193,7 +189,7 @@ void loop() {
         Serial.print("Free heap: ");
         Serial.println(ESP.getFreeHeap());
         Serial.print("WiFi status: ");
-        Serial.println(WiFi.status());
+        Serial.println(wifiManager.getStatus());
     }
 
     // handle ble tasks
@@ -212,7 +208,7 @@ void loop() {
     #endif
 
     // Check if the server task is running
-    if (WiFi.status() == WL_CONNECTED) {
+    if (wifiManager.isConnected()) {
         digitalWrite(LED_PIN, LOW); // Solid LED when connected
         
         // Check if the server task is running, restart if needed
@@ -223,75 +219,6 @@ void loop() {
     }
     
     yield();
-}
-
-void setupAP() {
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(AP_SSID, AP_PASSWORD);
-  
-  IPAddress IP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(IP);
-}
-
-bool connectToWiFi(const String& ssid, const String& password, bool updateGlobals) {
-    if (ssid.length() > 0 && password.length() > 0) {
-        Serial.println("Connecting to WiFi...");
-        Serial.print("SSID: ");
-        Serial.println(ssid);
-        Serial.print("Password length: ");
-        Serial.println(password.length());
-        
-        // First disconnect and wait a bit
-        WiFi.disconnect(true);  // true = disconnect and clear settings
-        delay(1000);  // Give it time to complete
-        
-        // Set mode and wait
-        WiFi.mode(WIFI_STA);
-        delay(100);
-        
-        // Start connection
-        WiFi.begin(ssid.c_str(), password.c_str());
-        
-        // Wait for connection with longer timeout
-        int attempts = 0;
-        while (WiFi.status() != WL_CONNECTED && attempts < 30) {  // Increased timeout to 15 seconds
-            delay(500);
-            Serial.print(".");
-            attempts++;
-        }
-        Serial.println();
-        
-        if (WiFi.status() == WL_CONNECTED) {
-            Serial.println("WiFi connected");
-            Serial.print("IP address: ");
-            Serial.println(WiFi.localIP());
-            
-            // Initialize NTP time synchronization
-            Serial.println("Initializing NTP...");
-            initNTP();
-            Serial.println("NTP initialized");
-            
-            // Configure low power WiFi
-            WiFi.setSleep(true);  // Enable modem sleep
-            
-            // Update global variables if requested
-            if (updateGlobals) {
-                configuredSSID = ssid;
-                configuredPassword = password;
-                isProvisioned = true;
-            }
-            
-            return true;
-        } else {
-            Serial.println("WiFi connection failed");
-            WiFi.disconnect(true);  // Clean disconnect on failure
-            return false;
-        }
-    } else {
-        Serial.println("No WiFi credentials provided");
-        return false;
-    }
 }
 
 void runSigningTest() {
@@ -333,51 +260,6 @@ void runSigningTest() {
   Serial.println(b64urlSignature);
   
   Serial.println("=== Signing Tests Complete ===\n");
-}
-
-
-
-void scanWiFiNetworks() {
-  Serial.println("Scanning WiFi networks...");
-  
-  // Set WiFi to station mode to perform scan
-  WiFi.mode(WIFI_STA);
-  
-  int n = WiFi.scanNetworks();
-  Serial.println("Scan completed");
-  
-  lastScanResults.clear();
-  
-  if (n == 0) {
-    Serial.println("No networks found");
-  } else {
-    Serial.print(n);
-    Serial.println(" networks found");
-    
-    // Store unique SSIDs (some networks might broadcast on multiple channels)
-    std::vector<String> uniqueSSIDs;
-    for (int i = 0; i < n; ++i) {
-      String ssid = WiFi.SSID(i);
-      if (std::find(uniqueSSIDs.begin(), uniqueSSIDs.end(), ssid) == uniqueSSIDs.end()) {
-        uniqueSSIDs.push_back(ssid);
-      }
-    }
-    
-    // Sort alphabetically
-    std::sort(uniqueSSIDs.begin(), uniqueSSIDs.end());
-    
-    // Store in global vector
-    lastScanResults = uniqueSSIDs;
-  }
-  
-  lastScanTime = millis();
-  
-  // Return to original mode if we were in AP mode
-  if (isProvisioned) {
-    WiFi.mode(WIFI_STA);
-  } else {
-    setupAP();
-  }
 }
 
 void sendJWT() {
