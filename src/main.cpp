@@ -13,12 +13,14 @@
 #include "config.h"
 #include "server/server_task.h"
 #include "wifi/wifi_manager.h"
+#include "wifi/wifi_status_task.h"
 
 #define LED_PIN 7
 
 // Global variables
 ServerTask serverTask(80); // Create a server task instance
 WifiManager wifiManager; // Create a WiFi manager instance
+WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 bool isProvisioned = false;
 String configuredSSID = "";
 String configuredPassword = "";
@@ -33,9 +35,7 @@ unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no 
 #endif
 
 // Function declarations
-void runSigningTest();
 void setupSSL();
-void sendJWT();  // Add JWT sending function declaration
 
 // Add hardcoded WiFi credentials
 
@@ -79,9 +79,6 @@ void setup() {
     Serial.println("WiFi scan completed");
     
     // Run signing test
-    Serial.println("Running signing test...");
-    runSigningTest();
-    Serial.println("Signing test completed");
     
     // Continue with normal setup
     #if defined(USE_SOFTAP_SETUP)
@@ -111,6 +108,15 @@ void setup() {
         Serial.println("Error setting up MDNS responder!");
     }
     
+    // Configure and start the WiFi status task
+    wifiStatusTask.setWifiManager(&wifiManager);
+    wifiStatusTask.setLedPin(LED_PIN);
+    wifiStatusTask.setJwtInterval(JWT_INTERVAL);
+    wifiStatusTask.setLastJWTTime(lastJWTTime);
+    wifiStatusTask.setBleShutdownTime(bleShutdownTime);
+    wifiStatusTask.setBleActive(isBleActive);
+    wifiStatusTask.begin();
+    
     // Start the server task
     Serial.println("Starting server task...");
     serverTask.begin();
@@ -122,68 +128,6 @@ void setup() {
 }
 
 void loop() {
-    static unsigned long lastCheck = 0;
-    static bool wasConnected = false;
-    
-    // Check WiFi status every 5 seconds
-    if (millis() - lastCheck > 5000) {
-        lastCheck = millis();
-        if (wifiManager.isConnected()) {
-            if (!wasConnected) {
-                Serial.println("WiFi connected");
-                Serial.print("IP address: ");
-                Serial.println(wifiManager.getLocalIP());
-                wasConnected = true;
-            }
-
-            // Send JWT if conditions are met
-            #if defined(USE_BLE_SETUP)
-            if (!isBleActive && (millis() - lastJWTTime >= JWT_INTERVAL)) {
-                sendJWT();
-                lastJWTTime = millis();
-            }
-            #else
-            if (millis() - lastJWTTime >= JWT_INTERVAL) {
-                sendJWT();
-                lastJWTTime = millis();
-            }
-            #endif
-
-        } else {
-            if (wasConnected) {
-                Serial.println("WiFi connection lost!");
-                wasConnected = false;
-            }
-            #if defined(DIRECT_CONNECT)
-                // Only try to reconnect automatically in direct connect mode
-                digitalWrite(LED_PIN, millis() % 1000 < 500); // Blink LED when disconnected
-                WiFi.begin(WIFI_SSID, WIFI_PSK);
-                Serial.println("WiFi disconnected, attempting to reconnect...");
-            #endif
-        }
-        
-        // Print some debug info
-        Serial.print("Free heap: ");
-        Serial.println(ESP.getFreeHeap());
-        Serial.print("WiFi status: ");
-        Serial.println(wifiManager.getStatus());
-    }
-
-    // handle ble tasks
-    #if defined(USE_BLE_SETUP)
-        static unsigned long lastBLECheck = 0;
-        if (millis() - lastBLECheck > 1000) {
-            lastBLECheck = millis();
-            bleHandler.handlePendingRequest();
-        }
-        if (bleShutdownTime > 0 && millis() >= bleShutdownTime) {
-            Serial.println("Executing scheduled BLE shutdown");
-            bleHandler.stop();
-            isBleActive = false;
-            bleShutdownTime = 0;  // Reset the timer
-        }
-    #endif
-
     // Check if the server task is running
     if (wifiManager.isConnected()) {
         digitalWrite(LED_PIN, LOW); // Solid LED when connected
@@ -196,49 +140,5 @@ void loop() {
     }
     
     yield();
-}
-
-void sendJWT() {
-    String deviceId = crypto_getId();
-    
-    // Create JWT using P1 data
-    String jwt = createP1JWT(PRIVATE_KEY_HEX, deviceId);
-    if (jwt.length() > 0) {
-        Serial.println("P1 JWT created successfully");
-        Serial.println("JWT: " + jwt);  // Add JWT logging
-        
-        // Create HTTP client and configure it
-        HTTPClient http;
-        http.setTimeout(10000);  // 10 second timeout
-        
-        Serial.print("Sending JWT to: ");
-        Serial.println(DATA_URL);
-        
-        // Start the request
-        if (http.begin(DATA_URL)) {
-            // Add headers
-            http.addHeader("Content-Type", "text/plain");
-            
-            // Send POST request with JWT as body
-            int httpResponseCode = http.POST(jwt);
-            
-            if (httpResponseCode > 0) {
-                Serial.print("HTTP Response code: ");
-                Serial.println(httpResponseCode);
-                String response = http.getString();
-                Serial.println("Response: " + response);
-            } else {
-                Serial.print("Error code: ");
-                Serial.println(httpResponseCode);
-            }
-            
-            // Clean up
-            http.end();
-        } else {
-            Serial.println("Failed to connect to server");
-        }
-    } else {
-        Serial.println("Failed to create P1 JWT");
-    }
 }
 
