@@ -18,15 +18,15 @@ public:
     void scanWiFiNetworks();
     
     // Status methods
-    bool isConnected() const;
+    virtual bool isConnected() const;
     String getLocalIP() const;
     int getStatus() const;
     
     // Getters for stored data
     bool isProvisioned() const { return _isProvisioned; }
-    String getConfiguredSSID() const { return _configuredSSID; }
+    virtual String getConfiguredSSID() const { return _configuredSSID; }
     String getConfiguredPassword() const { return _configuredPassword; }
-    const std::vector<String>& getLastScanResults() const { return _lastScanResults; }
+    virtual const std::vector<String>& getLastScanResults() const { return _lastScanResults; }
     unsigned long getLastScanTime() const { return _lastScanTime; }
     
     // Setters

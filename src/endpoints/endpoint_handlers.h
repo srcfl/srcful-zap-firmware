@@ -35,12 +35,6 @@ public:
     EndpointResponse handle(const String& contents) override;
 };
 
-// WiFi Scan Handler
-class WiFiScanHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const String& contents) override;
-};
-
 // Initialize Handler
 class InitializeHandler : public EndpointFunction {
 public:

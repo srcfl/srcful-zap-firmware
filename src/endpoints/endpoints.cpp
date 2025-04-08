@@ -14,13 +14,13 @@
 // External variable declarations
 extern WifiManager wifiManager;
 
-WiFiConfigHandler g_wifiConfigHandler;
+WiFiConfigHandler g_wifiConfigHandler(wifiManager);
 SystemInfoHandler g_systemInfoHandler;
-WiFiResetHandler g_wifiResetHandler;
+WiFiResetHandler g_wifiResetHandler(wifiManager);
 CryptoInfoHandler g_cryptoInfoHandler;
 NameInfoHandler g_nameInfoHandler;
-WiFiStatusHandler g_wifiStatusHandler;
-WiFiScanHandler g_wifiScanHandler;
+WiFiStatusHandler g_wifiStatusHandler(wifiManager);
+WiFiScanHandler g_wifiScanHandler(wifiManager);
 InitializeHandler g_initializeHandler;
 CryptoSignHandler g_cryptoSignHandler;
 OTAUpdateHandler g_otaUpdateHandler;

@@ -3,24 +3,41 @@
 #include "wifi/wifi_manager.h"
 
 
-extern WifiManager wifiManager;
+class WifiHandler {
+    protected:
+        WifiManager& wifiManager;
+    public:
+        WifiHandler(WifiManager& wifiManager) : wifiManager(wifiManager) {}
+};
 
 
 // WiFi Config Handler
-class WiFiConfigHandler : public EndpointFunction {
+class WiFiConfigHandler : public EndpointFunction, protected WifiHandler {
     public:
+        WiFiConfigHandler(WifiManager& wifiManager) : WifiHandler(wifiManager) {}
         EndpointResponse handle(const String& contents) override;
-    };
+};
 
-
-    // WiFi Reset Handler
-class WiFiResetHandler : public EndpointFunction {
+// WiFi Reset Handler
+class WiFiResetHandler : public EndpointFunction, protected WifiHandler {
     public:
+        WiFiResetHandler(WifiManager& wifiManager) : WifiHandler(wifiManager) {}
         EndpointResponse handle(const String& contents) override;
-    };
+};
+
 
 // WiFi Status Handler
-class WiFiStatusHandler : public EndpointFunction {
+class WiFiStatusHandler : public EndpointFunction, protected WifiHandler {
     public:
+        WiFiStatusHandler(WifiManager& wifiManager) : WifiHandler(wifiManager) {}
         EndpointResponse handle(const String& contents) override;
-    };
+
+};
+
+
+class WiFiScanHandler : public EndpointFunction, protected WifiHandler {
+    public:
+        WiFiScanHandler(WifiManager& wifiManager) : WifiHandler(wifiManager) {}
+        EndpointResponse handle(const String& contents) override;
+
+};

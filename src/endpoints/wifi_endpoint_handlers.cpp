@@ -81,6 +81,7 @@ EndpointResponse WiFiStatusHandler::handle(const String& contents) {
         json.add("connected", nullptr);  // JSON null if not connected
     }
     
+    response.statusCode = 200;
     response.data = json.end();
     return response;
 }

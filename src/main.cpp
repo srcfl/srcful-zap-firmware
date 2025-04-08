@@ -78,29 +78,6 @@ void setup() {
     wifiManager.scanWiFiNetworks();
     Serial.println("WiFi scan completed");
     
-    // Verify public key
-    Serial.println("Verifying public key...");
-    String publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
-    if (publicKey.length() == 0) {
-        Serial.println("Failed to generate public key!");
-        return;
-    }
-    
-    Serial.print("Generated public key: ");
-    Serial.println(publicKey);
-    Serial.print("Expected public key: ");
-    Serial.println(EXPECTED_PUBLIC_KEY_HEX);
-    
-    // Temporarily skip public key verification to get BLE working
-    Serial.println("Skipping public key verification for now");
-    /*
-    if (publicKey != String(EXPECTED_PUBLIC_KEY_HEX)) {
-        Serial.println("WARNING: Generated public key does not match expected public key!");
-        return;
-    }
-    */
-    Serial.println("Key pair verified successfully");
-    
     // Run signing test
     Serial.println("Running signing test...");
     runSigningTest();
@@ -219,47 +196,6 @@ void loop() {
     }
     
     yield();
-}
-
-void runSigningTest() {
-  Serial.println("\n=== Running Signing Test ===");
-  
-  // Original JWT test
-  String deviceId = crypto_getId();
-  const char* testHeader = R"({"alg":"ES256K","typ":"JWT"})";
-  String testPayloadStr = "{\"sub\":\"" + deviceId + "\",\"name\":\"John Doe\",\"iat\":1516239022}";
-  
-  Serial.println("Creating test JWT...");
-  Serial.print("Header: ");
-  Serial.println(testHeader);
-  Serial.print("Payload: ");
-  Serial.println(testPayloadStr);
-  
-  String jwt = crypto_create_jwt(testHeader, testPayloadStr.c_str(), PRIVATE_KEY_HEX);
-  
-  if (jwt.length() == 0) {
-    Serial.println("TEST FAILED: JWT creation failed!");
-    return;
-  }
-  
-  Serial.println("\nFinal JWT:");
-  Serial.println(jwt);
-  
-  // Add specific test case
-  Serial.println("\n=== Running Specific Signature Test ===");
-  const char* testMessage = "zap_000098f89ec964:Bygcy876b3bsjMvvhZxghvs3EyR5y6a7vpvAp5D62n2w";
-  Serial.print("Test message: ");
-  Serial.println(testMessage);
-  
-  String hexSignature = crypto_create_signature_hex(testMessage, PRIVATE_KEY_HEX);
-  Serial.print("Hex signature: ");
-  Serial.println(hexSignature);
-  
-  String b64urlSignature = crypto_create_signature_base64url(testMessage, PRIVATE_KEY_HEX);
-  Serial.print("Base64URL signature: ");
-  Serial.println(b64urlSignature);
-  
-  Serial.println("=== Signing Tests Complete ===\n");
 }
 
 void sendJWT() {
