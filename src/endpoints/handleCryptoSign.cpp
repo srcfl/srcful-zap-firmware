@@ -7,18 +7,14 @@
 #include "../json_light/json_light.h"
 
 
-EndpointResponse handleCryptoSign(const EndpointRequest& request) {
+
+// Crypto Sign Handler Implementation
+EndpointResponse CryptoSignHandler::handle(const String& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.endpoint.verb != Endpoint::Verb::POST) {
-        response.statusCode = 405;
-        response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
-        return response;
-    }
-
     // Parse the incoming JSON request
-    JsonParser parser(request.content.c_str());
+    JsonParser parser(contents.c_str());
     char message[512] = {0};
     char timestamp[64] = {0};
     bool hasMessage = parser.getString("message", message, sizeof(message));
@@ -79,4 +75,4 @@ EndpointResponse handleCryptoSign(const EndpointRequest& request) {
     response.data = responseString;
     response.statusCode = 200;
     return response;
-} 
+}

@@ -6,7 +6,10 @@
 struct EndpointResponse;
 struct EndpointRequest;
 
-// Define HTTP methods as an enum
+class EndpointFunction {
+    public:
+        virtual EndpointResponse handle(const String& contents) = 0;
+};
 
 // Define all possible endpoints as an enum
 class Endpoint {
@@ -36,9 +39,9 @@ class Endpoint {
     const Verb verb;
     const char* path;
     // Function pointer to the handler for this endpoint
-    EndpointResponse (*handler)(const EndpointRequest&);
+    EndpointFunction &handler;
     
-    Endpoint(Type type, Verb verb, const char* path, EndpointResponse (*handler)(const EndpointRequest&)) 
+    Endpoint(Type type, Verb verb, const char* path, EndpointFunction &handler) 
         : type(type), verb(verb), path(path), handler(handler) {}
 };
 

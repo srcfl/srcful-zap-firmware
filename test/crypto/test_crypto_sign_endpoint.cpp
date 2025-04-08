@@ -2,23 +2,21 @@
 #include <Arduino.h>
 #include <string.h>
 #include <stdio.h>
-#include "../src/endpoints/endpoint_types.h"
 #include "config.h"
 #include "crypto.h"
-#include "endpoints.h"
+#include "../src/endpoints/endpoints.h"
 
 
 // Test the handleCryptoSign endpoint
 void test_handle_crypto_sign_endpoint(void) {
     // Create a test endpoint
-    Endpoint endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, "/api/crypto/sign", nullptr);
-    
+    CryptoSignHandler cryptoSignHandler;
+
     // Create a test request with a message
-    EndpointRequest request(endpoint);
-    request.content = "{\"message\":\"Bygcy876b3bsjMvvhZxghvs3EyR5y6a7vpvAp5D62n2w\",\"timestamp\":\"2025-04-06T08:33:00Z\"}";
+    String contents = "{\"message\":\"Bygcy876b3bsjMvvhZxghvs3EyR5y6a7vpvAp5D62n2w\",\"timestamp\":\"2025-04-06T08:33:00Z\"}";
     
     // Call the endpoint handler
-    EndpointResponse response = handleCryptoSign(request);
+    EndpointResponse response = cryptoSignHandler.handle(contents);
     
     // Print the response contents
     Serial.println("==== Crypto Sign Endpoint Test ====");

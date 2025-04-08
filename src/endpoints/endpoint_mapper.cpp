@@ -2,6 +2,7 @@
 #include "endpoint_types.h"
 // #include "../ble_handler.h"
 #include "../ota_handler.h"
+#include "endpoint_handlers.h"
 
 // Define path constants
 const char* EndpointMapper::WIFI_CONFIG_PATH = "/api/wifi";
@@ -15,27 +16,30 @@ const char* EndpointMapper::BLE_STOP_PATH = "/api/ble/stop";
 const char* EndpointMapper::CRYPTO_SIGN_PATH = "/api/crypto/sign";
 const char* EndpointMapper::OTA_UPDATE_PATH = "/api/ota/update";
 
+
+NameInfoHandler g_nullHandler;
+
 const Endpoint endpoints[] = {
-    Endpoint(Endpoint::WIFI_CONFIG, Endpoint::Verb::POST, EndpointMapper::WIFI_CONFIG_PATH, handleWiFiConfig),
-    Endpoint(Endpoint::SYSTEM_INFO, Endpoint::Verb::GET, EndpointMapper::SYSTEM_INFO_PATH, handleSystemInfo),
-    Endpoint(Endpoint::WIFI_RESET, Endpoint::Verb::DELETE, EndpointMapper::WIFI_RESET_PATH, handleWiFiReset),
-    Endpoint(Endpoint::CRYPTO_INFO, Endpoint::Verb::GET, EndpointMapper::CRYPTO_INFO_PATH, handleCryptoInfo),
-    Endpoint(Endpoint::NAME_INFO, Endpoint::Verb::GET, EndpointMapper::NAME_INFO_PATH, handleNameInfo),
-    Endpoint(Endpoint::WIFI_STATUS, Endpoint::Verb::GET, EndpointMapper::WIFI_STATUS_PATH, handleWiFiStatus),
-    Endpoint(Endpoint::WIFI_SCAN, Endpoint::Verb::GET, EndpointMapper::WIFI_SCAN_PATH, handleWiFiScan),
-    Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, nullptr), // Special case handled in route
-    Endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, EndpointMapper::CRYPTO_SIGN_PATH, handleCryptoSign),
-    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, OTAHandler::handleOTAUpdate)
+    Endpoint(Endpoint::WIFI_CONFIG, Endpoint::Verb::POST, EndpointMapper::WIFI_CONFIG_PATH, g_wifiConfigHandler),
+    Endpoint(Endpoint::SYSTEM_INFO, Endpoint::Verb::GET, EndpointMapper::SYSTEM_INFO_PATH, g_systemInfoHandler),
+    Endpoint(Endpoint::WIFI_RESET, Endpoint::Verb::DELETE, EndpointMapper::WIFI_RESET_PATH, g_wifiResetHandler),
+    Endpoint(Endpoint::CRYPTO_INFO, Endpoint::Verb::GET, EndpointMapper::CRYPTO_INFO_PATH, g_cryptoInfoHandler),
+    Endpoint(Endpoint::NAME_INFO, Endpoint::Verb::GET, EndpointMapper::NAME_INFO_PATH, g_nameInfoHandler),
+    Endpoint(Endpoint::WIFI_STATUS, Endpoint::Verb::GET, EndpointMapper::WIFI_STATUS_PATH, g_wifiStatusHandler),
+    Endpoint(Endpoint::WIFI_SCAN, Endpoint::Verb::GET, EndpointMapper::WIFI_SCAN_PATH, g_wifiScanHandler),
+    Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_nullHandler), // Special case handled in route
+    Endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, EndpointMapper::CRYPTO_SIGN_PATH, g_cryptoSignHandler),
+    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_nullHandler)    // for now
 };
 
 EndpointMapper::Iterator EndpointMapper::begin() const { return EndpointMapper::Iterator(endpoints); }
 EndpointMapper::Iterator EndpointMapper::end() const { return EndpointMapper::Iterator(endpoints + sizeof(endpoints) / sizeof(endpoints[0])); }
 
-const Endpoint unknownEndpoint = Endpoint(Endpoint::UNKNOWN, Endpoint::Verb::UNKNOWN, "", nullptr);
 
 const Endpoint& EndpointMapper::toEndpoint(const String& path, const String& verb) {
     // Create an instance of EndpointMapper to use the non-static begin() and end() methods
     Endpoint::Verb eVerb = stringToVerb(verb);
+    static const Endpoint unknownEndpoint = Endpoint(Endpoint::UNKNOWN, Endpoint::Verb::UNKNOWN, "", g_nullHandler);
     
     for (const Endpoint& endpoint : endpointMapper) {
     // Use endpoint here
@@ -83,8 +87,8 @@ EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
     }
     
     // If the endpoint has a handler function, call it directly
-    if (request.endpoint.handler != nullptr) {
-        return request.endpoint.handler(request);
+    if (&request.endpoint.handler != &g_nullHandler) {
+        return request.endpoint.handler.handle(request.content);
     }
     
     // Default error response for unknown endpoints

@@ -9,9 +9,23 @@
 #include "html.h"
 #include "firmware_version.h"
 #include "wifi/wifi_manager.h"
+#include "endpoint_handlers.h"
 
 // External variable declarations
 extern WifiManager wifiManager;
+
+WiFiConfigHandler g_wifiConfigHandler;
+SystemInfoHandler g_systemInfoHandler;
+WiFiResetHandler g_wifiResetHandler;
+CryptoInfoHandler g_cryptoInfoHandler;
+NameInfoHandler g_nameInfoHandler;
+WiFiStatusHandler g_wifiStatusHandler;
+WiFiScanHandler g_wifiScanHandler;
+InitializeHandler g_initializeHandler;
+CryptoSignHandler g_cryptoSignHandler;
+OTAUpdateHandler g_otaUpdateHandler;
+BLEStopHandler g_bleStopHandler;
+
 
 EndpointResponse handleWiFiConfig(const EndpointRequest& request) {
     EndpointResponse response;
