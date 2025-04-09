@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <HTTPClient.h>
+
 #include "wifi/wifi_manager.h"
 #include "p1data.h"
 
@@ -24,7 +26,7 @@ public:
     
 private:
     static void taskFunction(void* parameter);
-    void sendJWT();
+    void sendJWT(HTTPClient &client);
     
     TaskHandle_t taskHandle;
     uint32_t stackSize;

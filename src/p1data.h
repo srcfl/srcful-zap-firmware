@@ -8,10 +8,4 @@
 // Function to create the P1 meter JWT
 String createP1JWT(const char* privateKey, const String& deviceId);
 
-// Function to get current timestamp in milliseconds
-unsigned long getCurrentTimestamp();
-
-// Function to initialize NTP
-void initNTP();
-
 #endif 

@@ -2,10 +2,6 @@
 #include "html.h"
 #include "wifi/wifi_manager.h"
 
-// External variables needed by the endpoints
-extern bool isProvisioned;
-extern WifiManager wifiManager;
-
 WebServerHandler::WebServerHandler(int port) : server(port) {
 }
 
@@ -37,32 +33,10 @@ void WebServerHandler::setupEndpoints() {
     Serial.println("Registering root (/) endpoint...");
     server.on("/", HTTP_GET, [this]() {
         Serial.println("Handling root request");
-        if (!isProvisioned) {
-            #if defined(USE_SOFTAP_SETUP)
-                // Check if we need a fresh scan
-                if (millis() - wifiManager.getLastScanTime() >= 10000) { // 10 seconds cache time
-                    wifiManager.scanWiFiNetworks();
-                }
-                
-                // Create the network options HTML
-                String networkOptions = "";
-                for (const String& ssid : wifiManager.getLastScanResults()) {
-                    networkOptions += "          <option value=\"" + ssid + "\">" + ssid + "</option>\n";
-                }
-                
-                String html = String(WIFI_SETUP_HTML);
-                html.replace("MDNS_NAME", MDNS_NAME);
-                html.replace("NETWORK_OPTIONS", networkOptions);
-                server.send(200, "text/html", html);
-            #elif defined(USE_BLE_SETUP)
-                // BLE setup page
-                server.send(200, "text/html", "Please use BLE to configure device");
-            #endif
-        } else {
-            // If already provisioned, redirect to system info
-            server.sendHeader("Location", "/api/system/info", true);
-            server.send(302, "text/plain", "");
-        }
+        
+        // If already provisioned, redirect to system info
+        server.sendHeader("Location", "/api/system/info", true);
+        server.send(302, "text/plain", "");
     });
 
     // loop through all endpoints and register them

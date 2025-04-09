@@ -1,5 +1,4 @@
 #include "data_sender_task.h"
-#include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include "p1data.h"
 #include "crypto.h"
@@ -61,6 +60,10 @@ bool DataSenderTask::isBleActive() const {
 void DataSenderTask::taskFunction(void* parameter) {
     DataSenderTask* task = static_cast<DataSenderTask*>(parameter);
     static unsigned long lastCheck = 0;
+
+    // Create HTTP client and configure it
+    HTTPClient dataClient;
+    dataClient.setTimeout(10000);  // 10 second timeout
     
     while (task->shouldRun) {
         // Check WiFi status every 5 seconds
@@ -81,7 +84,7 @@ void DataSenderTask::taskFunction(void* parameter) {
                     Serial.print(task->jwtInterval);
                     Serial.println(" ms)");
                     
-                    task->sendJWT();
+                    task->sendJWT(dataClient);
                     task->lastJWTTime = millis();
                 }
             } else {
@@ -101,7 +104,7 @@ void DataSenderTask::taskFunction(void* parameter) {
     vTaskDelete(NULL);
 }
 
-void DataSenderTask::sendJWT() {
+void DataSenderTask::sendJWT(HTTPClient &client) {
     String deviceId = crypto_getId();
     
     Serial.println("Data sender task: Creating JWT...");
@@ -114,25 +117,23 @@ void DataSenderTask::sendJWT() {
         Serial.println(jwt.length());
         Serial.println(jwt);
         
-        // Create HTTP client and configure it
-        HTTPClient http;
-        http.setTimeout(10000);  // 10 second timeout
+        
         
         Serial.print("Data sender task: Sending JWT to: ");
         Serial.println(DATA_URL);
         
         // Start the request
-        if (http.begin(DATA_URL)) {
+        if (client.begin(DATA_URL)) {
             // Add headers
-            http.addHeader("Content-Type", "text/plain");
+            client.addHeader("Content-Type", "text/plain");
             
             // Send POST request with JWT as body
-            int httpResponseCode = http.POST(jwt);
+            int httpResponseCode = client.POST(jwt);
             
             if (httpResponseCode > 0) {
                 Serial.print("Data sender task: HTTP Response code: ");
                 Serial.println(httpResponseCode);
-                String response = http.getString();
+                String response = client.getString();
                 Serial.print("Data sender task: Response: ");
                 Serial.println(response);
             } else {
@@ -141,7 +142,7 @@ void DataSenderTask::sendJWT() {
             }
             
             // Clean up
-            http.end();
+            client.end();
         } else {
             Serial.println("Data sender task: Failed to connect to server");
         }

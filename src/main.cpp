@@ -23,22 +23,18 @@ ServerTask serverTask(80); // Create a server task instance
 WifiManager wifiManager; // Create a WiFi manager instance
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 DataSenderTask dataSenderTask; // Create a data sender task instance
-bool isProvisioned = false;
+
 String configuredSSID = "";
 String configuredPassword = "";
-unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no shutdown scheduled)
 
 #if defined(USE_BLE_SETUP)
     #include "ble_handler.h"
-    BLEHandler bleHandler;  // Remove parentheses to make it an object, not a function
+    BLEHandler bleHandler; 
     unsigned long lastBLECheck = 0;  // Track last BLE check time
 #endif
 
 // Function declarations
 void setupSSL();
-
-// Add hardcoded WiFi credentials
-
 
 void setup() {
     pinMode(LED_PIN, OUTPUT);
@@ -152,16 +148,7 @@ void loop() {
     if (bleHandler.shouldHardStop(3000)) {
         bleHandler.hardStop();
     }
-    
-    // Check if BLE should be shut down
-    if (bleShutdownTime > 0 && millis() >= bleShutdownTime) {
-        Serial.println("Executing scheduled BLE shutdown");
-        bleHandler.stop();
-        bleShutdownTime = 0;  // Reset the timer
-        
-        // Update the BLE state in the tasks
-        dataSenderTask.setBleActive(false);
-    }
+
     #endif
     
     yield();
