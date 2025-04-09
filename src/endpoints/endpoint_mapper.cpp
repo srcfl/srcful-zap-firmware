@@ -27,7 +27,9 @@ const Endpoint endpoints[] = {
     Endpoint(Endpoint::NAME_INFO, Endpoint::Verb::GET, EndpointMapper::NAME_INFO_PATH, g_nameInfoHandler),
     Endpoint(Endpoint::WIFI_STATUS, Endpoint::Verb::GET, EndpointMapper::WIFI_STATUS_PATH, g_wifiStatusHandler),
     Endpoint(Endpoint::WIFI_SCAN, Endpoint::Verb::GET, EndpointMapper::WIFI_SCAN_PATH, g_wifiScanHandler),
-    Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_nullHandler), // Special case handled in route
+#if defined(USE_BLE_SETUP)
+    Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_bleStopHandler), // Special case handled in route
+#endif
     Endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, EndpointMapper::CRYPTO_SIGN_PATH, g_cryptoSignHandler),
     Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_nullHandler)    // for now
 };
@@ -65,27 +67,7 @@ String EndpointMapper::verbToString(Endpoint::Verb verb) {
 }
 
 EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
-    // Special case for BLE_STOP which doesn't have a direct handler
-    if (request.endpoint.type == Endpoint::Type::BLE_STOP) {
-        EndpointResponse response;
-        response.statusCode = 404;
-        response.contentType = "application/json";
-        response.data = "{\"status\":\"error\",\"message\":\"Endpoint not found\"}";
-        
-        #if defined(USE_BLE_SETUP)
-            // Don't automatically shut down BLE
-            // extern unsigned long bleShutdownTime;
-            // bleShutdownTime = millis() + 10000;
-            response.statusCode = 200;
-            response.data = "{\"status\":\"success\",\"message\":\"BLE will continue advertising\"}";
-        #else
-            response.statusCode = 400;
-            response.data = "{\"status\":\"error\",\"message\":\"BLE not enabled\"}";
-        #endif
-        
-        return response;
-    }
-    
+  
     // If the endpoint has a handler function, call it directly
     if (&request.endpoint.handler != &g_nullHandler) {
         return request.endpoint.handler.handle(request.content);

@@ -58,6 +58,9 @@ class BLEHandler {
         BLEHandler();
         void init();
         void stop();
+        bool shouldHardStop(unsigned long timeout) const;
+        void hardStop();
+        bool isActive();
         void checkAdvertising();
         bool sendResponse(const String& location, const String& method, const String& data, int offset);
         void handleRequest(const String& request);
@@ -69,4 +72,7 @@ class BLEHandler {
         friend class SrcfulBLEServerCallbacks;
         friend class BLERequestCallback;
         friend class BLEResponseCallback;
+
+    private:
+        unsigned long stopTimer = 0;
 }; 

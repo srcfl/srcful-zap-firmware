@@ -93,15 +93,29 @@ void BLEHandler::init() {
     NimBLEDevice::startAdvertising();
     isAdvertising = true;
     Serial.println("NimBLE service started and advertising with iOS-optimized settings");
+    stopTimer = 0;
 }
 
-void BLEHandler::stop() {
+void BLEHandler::hardStop() {
     if (pServer != nullptr) {
         NimBLEDevice::stopAdvertising();
         isAdvertising = false;
         NimBLEDevice::deinit(true);
         Serial.println("NimBLE stopped and resources released");
+        stopTimer = 0;
     }
+}
+
+void BLEHandler::stop() {
+    stopTimer = millis();
+}
+
+bool BLEHandler::shouldHardStop(unsigned long timeout) const {
+    return stopTimer > 0 && millis() - stopTimer > timeout;
+}
+
+bool BLEHandler::isActive() {
+    return isAdvertising;
 }
 
 void BLEHandler::checkAdvertising() {

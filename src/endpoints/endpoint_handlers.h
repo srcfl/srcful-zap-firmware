@@ -10,6 +10,8 @@
 #include <esp_system.h>
 #include "json_light/json_light.h"
 
+#include "../ble_handler.h"
+
 // Forward declarations
 extern const char* PRIVATE_KEY_HEX;
 extern const char* AP_SSID;
@@ -55,7 +57,10 @@ public:
 
 // BLE Stop Handler
 class BLEStopHandler : public EndpointFunction {
-public:
+    private:
+        BLEHandler & bleHandler;
+    public:
+    BLEStopHandler(BLEHandler & bleHandler) : bleHandler(bleHandler) {}
     EndpointResponse handle(const String& contents) override;
 };
 

@@ -146,11 +146,10 @@ EndpointResponse BLEStopHandler::handle(const String& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    
-    
     // Stop BLE
     // This would typically call a BLE stop function
     // For now, just return success
+    bleHandler.stop();
     response.statusCode = 200;
     response.data = "{\"status\":\"success\",\"message\":\"BLE stopped\"}";
     

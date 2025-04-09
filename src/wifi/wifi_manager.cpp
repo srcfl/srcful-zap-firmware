@@ -19,6 +19,19 @@ void WifiManager::setupAP(const char* ssid, const char* password) {
     Serial.println(IP);
 }
 
+void WifiManager::initNTP() {
+    configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // 0, 0 = UTC, no daylight offset
+    
+    Serial.print("Waiting for NTP time sync: ");
+    time_t now = time(nullptr);
+    while (now < 8 * 3600 * 2) {
+        delay(500);
+        Serial.print(".");
+        now = time(nullptr);
+    }
+    Serial.println();
+}
+
 bool WifiManager::connectToWiFi(const String& ssid, const String& password, bool updateGlobals) {
     if (ssid.length() > 0 && password.length() > 0) {
         Serial.println("Connecting to WiFi...");
@@ -54,9 +67,9 @@ bool WifiManager::connectToWiFi(const String& ssid, const String& password, bool
             
             // Initialize NTP time synchronization
             Serial.println("Initializing NTP...");
-            // Note: initNTP() is not moved here as it might have dependencies
-            // that should be handled separately
-            Serial.println("NTP initialized");
+            initNTP();
+            Serial.print("NTP initialized, Epoch:");
+            Serial.println(time(nullptr));
             
             // Configure low power WiFi
             WiFi.setSleep(true);  // Enable modem sleep

@@ -38,6 +38,9 @@ public:
     bool setupMDNS(const char* hostname);
 
 private:
+
+    void initNTP();
+
     // Member variables
     bool _isProvisioned;
     String _configuredSSID;

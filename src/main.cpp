@@ -14,6 +14,7 @@
 #include "server/server_task.h"
 #include "wifi/wifi_manager.h"
 #include "wifi/wifi_status_task.h"
+#include "data_sender/data_sender_task.h"
 
 #define LED_PIN 7
 
@@ -21,17 +22,16 @@
 ServerTask serverTask(80); // Create a server task instance
 WifiManager wifiManager; // Create a WiFi manager instance
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
+DataSenderTask dataSenderTask; // Create a data sender task instance
 bool isProvisioned = false;
 String configuredSSID = "";
 String configuredPassword = "";
-unsigned long lastJWTTime = 0;
-const unsigned long JWT_INTERVAL = 10000; // 10 seconds in milliseconds
 unsigned long bleShutdownTime = 0; // Time when BLE should be shut down (0 = no shutdown scheduled)
 
 #if defined(USE_BLE_SETUP)
     #include "ble_handler.h"
     BLEHandler bleHandler;  // Remove parentheses to make it an object, not a function
-    bool isBleActive = false;  // Track BLE state
+    unsigned long lastBLECheck = 0;  // Track last BLE check time
 #endif
 
 // Function declarations
@@ -89,7 +89,6 @@ void setup() {
     #if defined(USE_BLE_SETUP)
         Serial.println("Setting up BLE...");
         bleHandler.init();
-        isBleActive = true;  // Set BLE active flag
     #endif
     
     #if defined(DIRECT_CONNECT)
@@ -111,11 +110,12 @@ void setup() {
     // Configure and start the WiFi status task
     wifiStatusTask.setWifiManager(&wifiManager);
     wifiStatusTask.setLedPin(LED_PIN);
-    wifiStatusTask.setJwtInterval(JWT_INTERVAL);
-    wifiStatusTask.setLastJWTTime(lastJWTTime);
-    wifiStatusTask.setBleShutdownTime(bleShutdownTime);
-    wifiStatusTask.setBleActive(isBleActive);
     wifiStatusTask.begin();
+    
+    // Configure and start the data sender task
+    dataSenderTask.begin(&wifiManager);
+    dataSenderTask.setInterval(10000); // 10 seconds
+    dataSenderTask.setBleActive(true);
     
     // Start the server task
     Serial.println("Starting server task...");
@@ -138,6 +138,31 @@ void loop() {
             serverTask.begin();
         }
     }
+    
+    #if defined(USE_BLE_SETUP)
+    // Update BLE state in data sender task
+    dataSenderTask.setBleActive(bleHandler.isActive());
+    
+    // Handle BLE request queue in the main loop
+    if (millis() - lastBLECheck > 1000) {
+        lastBLECheck = millis();
+        bleHandler.handlePendingRequest();
+    }
+
+    if (bleHandler.shouldHardStop(3000)) {
+        bleHandler.hardStop();
+    }
+    
+    // Check if BLE should be shut down
+    if (bleShutdownTime > 0 && millis() >= bleShutdownTime) {
+        Serial.println("Executing scheduled BLE shutdown");
+        bleHandler.stop();
+        bleShutdownTime = 0;  // Reset the timer
+        
+        // Update the BLE state in the tasks
+        dataSenderTask.setBleActive(false);
+    }
+    #endif
     
     yield();
 }

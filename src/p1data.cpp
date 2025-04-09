@@ -2,25 +2,6 @@
 #include "json_light/json_light.h"
 #include <vector>
 
-void initNTP() {
-    configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // 0, 0 = UTC, no daylight offset
-    
-    Serial.print("Waiting for NTP time sync: ");
-    time_t now = time(nullptr);
-    while (now < 8 * 3600 * 2) {
-        delay(500);
-        Serial.print(".");
-        now = time(nullptr);
-    }
-    Serial.println();
-}
-
-unsigned long long getCurrentTimestamp() {
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    return (unsigned long long)tv.tv_sec * 1000LL + (unsigned long long)tv.tv_usec / 1000LL;
-}
-
 String createP1JWT(const char* privateKey, const String& deviceId) {
     // Create the header
     JsonBuilder header;
@@ -37,7 +18,8 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
 
     // Create the payload
     JsonBuilder payload;
-    String timestamp = String(getCurrentTimestamp());
+    String timestampStr = String(time(nullptr));
+    timestampStr += "000"; // Append '000' to the timestamp as in milliseconds
     
     // Start the payload object
     payload.beginObject();
@@ -51,14 +33,14 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     float timeInSeconds = millis() / 1000.0;
     
     // Power simulation: Base load + daily cycle + random variation
-    float basePower = 1.5; // 1.5 kW base load
+    float basePower = 0.25; // 0.25 kW base load
     
     // Phase 1: ~1 hour cycle
-    float phase1Cycle = sin(2 * PI * timeInSeconds / 3600) * 0.8; // ±0.8 kW variation
+    float phase1Cycle = sin(2 * PI * timeInSeconds / 3600) * 0.1; // ±0.1 kW variation
     // Phase 2: ~45 minutes cycle with offset
-    float phase2Cycle = sin(2 * PI * timeInSeconds / 2700 + PI/3) * 0.6; // ±0.6 kW variation
+    float phase2Cycle = sin(2 * PI * timeInSeconds / 2700 + PI/3) * 0.15; // ±0.15 kW variation
     // Phase 3: ~1.5 hour cycle with offset
-    float phase3Cycle = sin(2 * PI * timeInSeconds / 5400 + 2*PI/3) * 0.7; // ±0.7 kW variation
+    float phase3Cycle = sin(2 * PI * timeInSeconds / 5400 + 2*PI/3) * 0.05; // ±0.05 kW variation
     
     // Calculate individual phase powers
     float powerL1 = basePower/3 + phase1Cycle;
@@ -73,9 +55,15 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     // Total power for other calculations
     float totalPower = powerL1 + powerL2 + powerL3;
 
+    // Reactive power simulation
+    float reactivePowerL1 = powerL1 * 0.1; // 10% of active power
+    float reactivePowerL2 = powerL2 * 0.15; // 15% of active power
+    float reactivePowerL3 = powerL3 * 0.05; // 5% of active power
+    float totalReactivePower = reactivePowerL1 + reactivePowerL2 + reactivePowerL3;
+
     // Voltage simulation: 230V + sine wave variation
-    float baseVoltage = 230.0;
-    float voltageVariation = sin(2 * PI * timeInSeconds / 10) * 5.0; // ±5V variation every 10 seconds
+    float baseVoltage = 233.0;
+    float voltageVariation = sin(2 * PI * timeInSeconds / 10) * 2.0; // ±2V variation every 10 seconds
     float voltageL1 = baseVoltage + voltageVariation;
     float voltageL2 = baseVoltage + voltageVariation * cos(2 * PI / 3);
     float voltageL3 = baseVoltage + voltageVariation * cos(4 * PI / 3);
@@ -88,6 +76,12 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     // Calculate cumulative energy
     static float lastEnergy = 10968.132;
     lastEnergy += totalPower * (10.0 / 3600.0); // Add energy for 10-second interval in kWh
+    
+    // Calculate cumulative reactive energy
+    static float lastReactiveEnergy1 = 5.151;
+    static float lastReactiveEnergy2 = 2109.781;
+    lastReactiveEnergy1 += reactivePowerL1 * (10.0 / 3600.0);
+    lastReactiveEnergy2 += (reactivePowerL2 + reactivePowerL3) * (10.0 / 3600.0);
 
     // Use a vector of Strings instead of an array of C-style strings
     std::vector<String> rows;
@@ -107,13 +101,94 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     snprintf(buffer, sizeof(buffer), "1-0:1.8.0(%08.3f*kWh)", lastEnergy);
     rows.push_back(String(buffer));
     
+    // Imported energy (always 0 in this simulation)
+    snprintf(buffer, sizeof(buffer), "1-0:2.8.0(00000000.000*kWh)");
+    rows.push_back(String(buffer));
+    
+    // Reactive energy
+    snprintf(buffer, sizeof(buffer), "1-0:3.8.0(%08.3f*kVArh)", lastReactiveEnergy1);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:4.8.0(%08.3f*kVArh)", lastReactiveEnergy2);
+    rows.push_back(String(buffer));
+    
+    // Total power readings
+    snprintf(buffer, sizeof(buffer), "1-0:1.7.0(%07.3f*kW)", totalPower);
+    rows.push_back(String(buffer));
+    
+    // Imported power (always 0 in this simulation)
+    snprintf(buffer, sizeof(buffer), "1-0:2.7.0(0000.000*kW)");
+    rows.push_back(String(buffer));
+    
+    // Reactive power
+    snprintf(buffer, sizeof(buffer), "1-0:3.7.0(%07.3f*kVAr)", reactivePowerL1);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:4.7.0(%07.3f*kVAr)", reactivePowerL2 + reactivePowerL3);
+    rows.push_back(String(buffer));
+    
+    // Phase 1 power readings
+    snprintf(buffer, sizeof(buffer), "1-0:21.7.0(%07.3f*kW)", powerL1);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:22.7.0(0000.000*kW)");
+    rows.push_back(String(buffer));
+    
+    // Phase 2 power readings
+    snprintf(buffer, sizeof(buffer), "1-0:41.7.0(%07.3f*kW)", powerL2);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:42.7.0(0000.000*kW)");
+    rows.push_back(String(buffer));
+    
+    // Phase 3 power readings
+    snprintf(buffer, sizeof(buffer), "1-0:61.7.0(%07.3f*kW)", powerL3);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:62.7.0(0000.000*kW)");
+    rows.push_back(String(buffer));
+    
+    // Phase 1 reactive power readings
+    snprintf(buffer, sizeof(buffer), "1-0:23.7.0(0000.000*kVAr)");
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:24.7.0(0000.000*kVAr)");
+    rows.push_back(String(buffer));
+    
+    // Phase 2 reactive power readings
+    snprintf(buffer, sizeof(buffer), "1-0:43.7.0(0000.000*kVAr)");
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:44.7.0(%07.3f*kVAr)", reactivePowerL2);
+    rows.push_back(String(buffer));
+    
+    // Phase 3 reactive power readings
+    snprintf(buffer, sizeof(buffer), "1-0:63.7.0(0000.000*kVAr)");
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:64.7.0(%07.3f*kVAr)", reactivePowerL3);
+    rows.push_back(String(buffer));
+    
+    // Add voltage readings
+    snprintf(buffer, sizeof(buffer), "1-0:32.7.0(%05.1f*V)", voltageL1);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:52.7.0(%05.1f*V)", voltageL2);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:72.7.0(%05.1f*V)", voltageL3);
+    rows.push_back(String(buffer));
+    
+    // Add current readings
+    snprintf(buffer, sizeof(buffer), "1-0:31.7.0(%05.1f*A)", currentL1);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:51.7.0(%05.1f*A)", currentL2);
+    rows.push_back(String(buffer));
+    snprintf(buffer, sizeof(buffer), "1-0:71.7.0(%05.1f*A)", currentL3);
+    rows.push_back(String(buffer));
+    
+    // Calculate checksum (simple implementation)
+    String checksum = "0E78"; // Fixed checksum for now
+    
     // Add the rows to the data object
     dataObj.addArray("rows", rows);
     
+    // Add checksum
+    dataObj.add("checksum", checksum.c_str());
+    
     // Add the data object to the payload with the timestamp as the key
-    // This is a bit tricky with our simple JSON builder, so we'll do it manually
     String dataStr = dataObj.end();
-    String payloadStr = "{\"" + timestamp + "\":" + dataStr + "}";
+    String payloadStr = "{\"" + timestampStr + "\":" + dataStr + "}";
     
     // Use the crypto_create_jwt function from the crypto module
     String jwt = crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), privateKey);

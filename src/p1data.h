@@ -9,7 +9,7 @@
 String createP1JWT(const char* privateKey, const String& deviceId);
 
 // Function to get current timestamp in milliseconds
-unsigned long long getCurrentTimestamp();
+unsigned long getCurrentTimestamp();
 
 // Function to initialize NTP
 void initNTP();

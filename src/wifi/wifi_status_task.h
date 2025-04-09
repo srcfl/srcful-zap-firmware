@@ -28,33 +28,9 @@ public:
     // Set the LED pin
     void setLedPin(int pin) { ledPin = pin; }
     
-    // Set the JWT interval
-    void setJwtInterval(unsigned long interval) { jwtInterval = interval; }
-    
-    // Set the BLE shutdown time
-    void setBleShutdownTime(unsigned long time) { bleShutdownTime = time; }
-    
-    // Get the BLE shutdown time
-    unsigned long getBleShutdownTime() const { return bleShutdownTime; }
-    
-    // Set the BLE active flag
-    void setBleActive(bool active) { isBleActive = active; }
-    
-    // Get the BLE active flag
-    bool getBleActive() const { return isBleActive; }
-    
-    // Set the last JWT time
-    void setLastJWTTime(unsigned long time) { lastJWTTime = time; }
-    
-    // Get the last JWT time
-    unsigned long getLastJWTTime() const { return lastJWTTime; }
-    
 private:
     // The actual task function
     static void taskFunction(void* parameter);
-    
-    // Send JWT function
-    void sendJWT();
     
     // Task handle
     TaskHandle_t taskHandle;
@@ -72,11 +48,4 @@ private:
     // LED pin
     int ledPin;
     
-    // JWT related variables
-    unsigned long lastJWTTime;
-    unsigned long jwtInterval;
-    
-    // BLE related variables
-    unsigned long bleShutdownTime;
-    bool isBleActive;
 }; 
