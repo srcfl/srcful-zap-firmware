@@ -15,6 +15,7 @@
 #include "wifi/wifi_manager.h"
 #include "wifi/wifi_status_task.h"
 #include "data_sender/data_sender_task.h"
+#include "data_sender/data_reader_task.h"  // Add the new DataReaderTask
 
 #define LED_PIN 7
 
@@ -23,6 +24,7 @@ ServerTask serverTask(80); // Create a server task instance
 WifiManager wifiManager; // Create a WiFi manager instance
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 DataSenderTask dataSenderTask; // Create a data sender task instance
+DataReaderTask dataReaderTask; // Create a data reader task instance
 
 String configuredSSID = "";
 String configuredPassword = "";
@@ -42,8 +44,6 @@ void setup() {
     delay(500);
     digitalWrite(LED_PIN, HIGH);
 
-
-
     Serial.begin(115200);
 
     Serial.printf("Total heap: %d\n", ESP.getHeapSize());
@@ -53,8 +53,6 @@ void setup() {
     
     // Initialize SSL early
     initSSL();
-    
-
     
     #if defined(DIRECT_CONNECT)
         // Connect to WiFi directly
@@ -68,13 +66,10 @@ void setup() {
         }
     #endif
     
-    
     // Perform initial WiFi scan
     Serial.println("Starting WiFi scan...");
     wifiManager.scanWiFiNetworks();
     Serial.println("WiFi scan completed");
-    
-    // Run signing test
     
     // Continue with normal setup
     #if defined(USE_SOFTAP_SETUP)
@@ -110,8 +105,12 @@ void setup() {
     
     // Configure and start the data sender task
     dataSenderTask.begin(&wifiManager);
-    dataSenderTask.setInterval(10000); // 10 seconds
+    dataSenderTask.setInterval(5000); // 5 seconds interval for checking the queue
     dataSenderTask.setBleActive(true);
+    
+    // Configure and start the data reader task
+    dataReaderTask.setInterval(10000); // 10 seconds interval for generating data
+    dataReaderTask.begin(dataSenderTask.getQueueHandle()); // Share the queue between tasks
     
     // Start the server task
     Serial.println("Starting server task...");

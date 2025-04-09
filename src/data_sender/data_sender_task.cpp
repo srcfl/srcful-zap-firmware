@@ -6,11 +6,24 @@
 
 DataSenderTask::DataSenderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
-      wifiManager(nullptr), lastJWTTime(0), jwtInterval(10000), bleActive(false) {
+      wifiManager(nullptr), lastCheckTime(0), checkInterval(5000), bleActive(false) {
+    
+    // Create the queue for P1 data packages (store up to 3 packages)
+    p1DataQueue = xQueueCreate(3, sizeof(P1DataPackage));
+    if (p1DataQueue == nullptr) {
+        Serial.println("Data sender task: Failed to create queue");
+    }
 }
 
 DataSenderTask::~DataSenderTask() {
     stop();
+    http.end(); // Clean up the HTTP client connection
+    
+    // Delete queue if it exists
+    if (p1DataQueue != nullptr) {
+        vQueueDelete(p1DataQueue);
+        p1DataQueue = nullptr;
+    }
 }
 
 void DataSenderTask::begin(WifiManager* wifiManager) {
@@ -20,6 +33,10 @@ void DataSenderTask::begin(WifiManager* wifiManager) {
     
     this->wifiManager = wifiManager;
     shouldRun = true;
+    
+    // Configure HTTP client once
+    http.setTimeout(10000);  // 10 second timeout
+    
     xTaskCreatePinnedToCore(
         taskFunction,
         "DataSenderTask",
@@ -46,7 +63,7 @@ void DataSenderTask::stop() {
 }
 
 void DataSenderTask::setInterval(uint32_t interval) {
-    jwtInterval = interval;
+    checkInterval = interval;
 }
 
 void DataSenderTask::setBleActive(bool active) {
@@ -57,35 +74,36 @@ bool DataSenderTask::isBleActive() const {
     return bleActive;
 }
 
+QueueHandle_t DataSenderTask::getQueueHandle() {
+    return p1DataQueue;
+}
+
 void DataSenderTask::taskFunction(void* parameter) {
     DataSenderTask* task = static_cast<DataSenderTask*>(parameter);
-    static unsigned long lastCheck = 0;
-
-    // Create HTTP client and configure it
-    HTTPClient dataClient;
-    dataClient.setTimeout(10000);  // 10 second timeout
     
     while (task->shouldRun) {
-        // Check WiFi status every 5 seconds
-        if (millis() - lastCheck > 5000) {
-            lastCheck = millis();
+        // Check WiFi status periodically
+        if (millis() - task->lastCheckTime > task->checkInterval) {
+            task->lastCheckTime = millis();
             
             if (task->wifiManager && task->wifiManager->isConnected() && !task->bleActive) {
-                // Send JWT if conditions are met
-                if (millis() - task->lastJWTTime >= task->jwtInterval) {
-                    Serial.println("Data sender task: Conditions met for sending data");
-                    Serial.print("WiFi connected: ");
-                    Serial.println(task->wifiManager->isConnected());
-                    Serial.print("BLE active: ");
-                    Serial.println(task->bleActive);
-                    Serial.print("Time since last send: ");
-                    Serial.print(millis() - task->lastJWTTime);
-                    Serial.print(" ms (interval: ");
-                    Serial.print(task->jwtInterval);
-                    Serial.println(" ms)");
+                // Check if there are packages in the queue
+                if (uxQueueMessagesWaiting(task->p1DataQueue) > 0) {
+                    Serial.println("Data sender task: Found data in queue to send");
                     
-                    task->sendJWT(dataClient);
-                    task->lastJWTTime = millis();
+                    // Get the oldest package from the queue (FIFO behavior)
+                    P1DataPackage package;
+                    if (xQueueReceive(task->p1DataQueue, &package, 0) == pdTRUE) {
+                        Serial.println("Data sender task: Retrieved package from queue");
+                        
+                        // Convert char array back to String for sending
+                        String jwtStr(package.jwt);
+                        
+                        // Send the JWT from the package
+                        task->sendJWT(jwtStr);
+                    }
+                } else {
+                    Serial.println("Data sender task: No data in queue to send");
                 }
             } else {
                 if (task->wifiManager && task->wifiManager->isConnected()) {
@@ -104,49 +122,44 @@ void DataSenderTask::taskFunction(void* parameter) {
     vTaskDelete(NULL);
 }
 
-void DataSenderTask::sendJWT(HTTPClient &client) {
-    String deviceId = crypto_getId();
-    
-    Serial.println("Data sender task: Creating JWT...");
-    
-    // Create JWT using P1 data
-    String jwt = createP1JWT(PRIVATE_KEY_HEX, deviceId);
-    if (jwt.length() > 0) {
-        Serial.println("Data sender task: P1 JWT created successfully");
-        Serial.print("Data sender task: JWT length: ");
-        Serial.println(jwt.length());
-        Serial.println(jwt);
-        
-        
-        
-        Serial.print("Data sender task: Sending JWT to: ");
-        Serial.println(DATA_URL);
-        
-        // Start the request
-        if (client.begin(DATA_URL)) {
-            // Add headers
-            client.addHeader("Content-Type", "text/plain");
-            
-            // Send POST request with JWT as body
-            int httpResponseCode = client.POST(jwt);
-            
-            if (httpResponseCode > 0) {
-                Serial.print("Data sender task: HTTP Response code: ");
-                Serial.println(httpResponseCode);
-                String response = client.getString();
-                Serial.print("Data sender task: Response: ");
-                Serial.println(response);
-            } else {
-                Serial.print("Data sender task: Error code: ");
-                Serial.println(httpResponseCode);
-            }
-            
-            // Clean up
-            client.end();
-        } else {
-            Serial.println("Data sender task: Failed to connect to server");
-        }
-    } else {
-        Serial.println("Data sender task: Failed to create P1 JWT");
+void DataSenderTask::sendJWT(const String& jwt) {
+    if (jwt.length() == 0) {
+        Serial.println("Data sender task: Empty JWT, not sending");
+        return;
     }
-} 
+    
+    Serial.println("Data sender task: Sending JWT...");
+    Serial.print("Data sender task: JWT length: ");
+    Serial.println(jwt.length());
+    
+    Serial.print("Data sender task: Sending JWT to: ");
+    Serial.println(DATA_URL);
+    
+    // Close any previous connections and start a new one
+    http.end();
+    
+    // Start the request
+    if (http.begin(DATA_URL)) {
+        // Add headers
+        http.addHeader("Content-Type", "text/plain");
+        
+        // Send POST request with JWT as body
+        int httpResponseCode = http.POST(jwt);
+        
+        if (httpResponseCode > 0) {
+            Serial.print("Data sender task: HTTP Response code: ");
+            Serial.println(httpResponseCode);
+            String response = http.getString();
+            Serial.print("Data sender task: Response: ");
+            Serial.println(response);
+        } else {
+            Serial.print("Data sender task: Error code: ");
+            Serial.println(httpResponseCode);
+        }
+        
+        // Note: Don't call http.end() here to reuse the connection
+        // The connection will be closed when needed or in the destructor
+    } else {
+        Serial.println("Data sender task: Failed to connect to server");
+    }
+}
