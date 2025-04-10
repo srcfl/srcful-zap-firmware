@@ -1,13 +1,45 @@
 #include "wifi_manager.h"
 #include "config.h"
 
+// Define static constants for NVS storage
+const char* WifiManager::PREF_NAMESPACE = "wificonfig";
+const char* WifiManager::KEY_SSID = "ssid";
+const char* WifiManager::KEY_PASSWORD = "password";
+const char* WifiManager::KEY_PROVISIONED = "provisioned";
+
 WifiManager::WifiManager() 
     : _isProvisioned(false), 
       _lastScanTime(0) {
+    
+    Serial.println("Initializing WiFi Manager...");
+    
+    // Try to load credentials at initialization
+    // Begin with the namespace but don't end it - we'll keep it open throughout the lifecycle
+    if (_preferences.begin(PREF_NAMESPACE, true)) {
+        _isProvisioned = _preferences.getBool(KEY_PROVISIONED, false);
+        
+        if (_isProvisioned) {
+            _configuredSSID = _preferences.getString(KEY_SSID, "");
+            _configuredPassword = _preferences.getString(KEY_PASSWORD, "");
+            
+            Serial.println("WiFi credentials loaded from NVS");
+            Serial.print("SSID: ");
+            Serial.println(_configuredSSID);
+            Serial.print("Password length: ");
+            Serial.println(_configuredPassword.length());
+        } else {
+            Serial.println("No saved WiFi credentials found");
+        }
+        
+        _preferences.end(); // Close after reading initial values
+    } else {
+        Serial.println("Failed to open preferences namespace");
+    }
 }
 
 WifiManager::~WifiManager() {
-    // Cleanup if needed
+    // Nothing special needed for cleanup
+    // Preferences automatically closes when goes out of scope
 }
 
 void WifiManager::setupAP(const char* ssid, const char* password) {
@@ -79,6 +111,9 @@ bool WifiManager::connectToWiFi(const String& ssid, const String& password, bool
                 _configuredSSID = ssid;
                 _configuredPassword = password;
                 _isProvisioned = true;
+                
+                // Save to persistent storage
+                saveCredentials();
             }
             
             return true;
@@ -156,4 +191,142 @@ bool WifiManager::setupMDNS(const char* hostname) {
         Serial.println("Error setting up MDNS responder!");
         return false;
     }
-} 
+}
+
+bool WifiManager::loadCredentials() {
+    Serial.println("Loading WiFi credentials from NVS...");
+    
+    if (!_preferences.begin(PREF_NAMESPACE, true)) { // true = read-only
+        Serial.println("Failed to open NVS namespace");
+        return false;
+    }
+    
+    // Read values from NVS
+    _isProvisioned = _preferences.getBool(KEY_PROVISIONED, false);
+    Serial.print("Loaded isProvisioned: ");
+    Serial.println(_isProvisioned ? "true" : "false");
+    
+    if (_isProvisioned) {
+        _configuredSSID = _preferences.getString(KEY_SSID, "");
+        _configuredPassword = _preferences.getString(KEY_PASSWORD, "");
+        
+        Serial.println("Credentials loaded successfully");
+        Serial.print("SSID: ");
+        Serial.println(_configuredSSID);
+        Serial.print("Password length: ");
+        Serial.println(_configuredPassword.length());
+        
+        // Additional debug info about what was actually read
+        Serial.print("Raw SSID from NVS: '");
+        Serial.print(_preferences.getString(KEY_SSID, "<not found>"));
+        Serial.println("'");
+        
+        // Check if the namespace contains the expected keys
+        Serial.print("NVS contains SSID key: ");
+        Serial.println(_preferences.isKey(KEY_SSID) ? "yes" : "no");
+        Serial.print("NVS contains PASSWORD key: ");
+        Serial.println(_preferences.isKey(KEY_PASSWORD) ? "yes" : "no");
+    } else {
+        Serial.println("No saved credentials found (_isProvisioned flag is false)");
+    }
+    
+    _preferences.end();
+    return _isProvisioned;
+}
+
+bool WifiManager::saveCredentials() {
+    Serial.println("Saving WiFi credentials to NVS...");
+    
+    if (!_preferences.begin(PREF_NAMESPACE, false)) { // false = read-write
+        Serial.println("Failed to open NVS namespace");
+        return false;
+    }
+    
+    // Print current values being saved
+    Serial.print("Saving isProvisioned: ");
+    Serial.println(_isProvisioned ? "true" : "false");
+    
+    if (_isProvisioned) {
+        Serial.print("Saving SSID: '");
+        Serial.print(_configuredSSID);
+        Serial.println("'");
+        Serial.print("Saving Password (length): ");
+        Serial.println(_configuredPassword.length());
+    }
+    
+    // Save values to NVS
+    bool provResult = _preferences.putBool(KEY_PROVISIONED, _isProvisioned);
+    Serial.print("Result of saving isProvisioned: ");
+    Serial.println(provResult ? "success" : "failure");
+    
+    bool ssidResult = false;
+    bool pwdResult = false;
+    
+    if (_isProvisioned) {
+        ssidResult = _preferences.putString(KEY_SSID, _configuredSSID);
+        pwdResult = _preferences.putString(KEY_PASSWORD, _configuredPassword);
+        
+        Serial.print("Result of saving SSID: ");
+        Serial.println(ssidResult ? "success" : "failure");
+        Serial.print("Result of saving password: ");
+        Serial.println(pwdResult ? "success" : "failure");
+        
+        // Verify the data was saved correctly
+        Serial.print("Verifying saved SSID: '");
+        Serial.print(_preferences.getString(KEY_SSID, "<not found>"));
+        Serial.println("'");
+        Serial.print("Verifying saved password length: ");
+        Serial.println(_preferences.getString(KEY_PASSWORD, "").length());
+    }
+    
+    _preferences.end();
+    
+    if (!_isProvisioned || (ssidResult && pwdResult && provResult)) {
+        Serial.println("Credentials saved successfully");
+        return true;
+    } else {
+        Serial.println("Failed to save one or more credential values");
+        return false;
+    }
+}
+
+bool WifiManager::clearCredentials() {
+    Serial.println("Clearing saved WiFi credentials...");
+    
+    if (!_preferences.begin(PREF_NAMESPACE, false)) { // false = read-write
+        Serial.println("Failed to open NVS namespace");
+        return false;
+    }
+    
+    // Clear all saved values
+    _preferences.clear();
+    _preferences.end();
+    
+    // Also clear in-memory values
+    _isProvisioned = false;
+    _configuredSSID = "";
+    _configuredPassword = "";
+    
+    Serial.println("Credentials cleared successfully");
+    return true;
+}
+
+bool WifiManager::autoConnect() {
+    Serial.println("Attempting to auto-connect to WiFi...");
+    
+    // Force reload credentials from NVS to ensure we have the latest
+    loadCredentials();
+    
+    // Try to connect using saved credentials
+    if (_isProvisioned && _configuredSSID.length() > 0) {
+        Serial.print("Found saved credentials for SSID: ");
+        Serial.println(_configuredSSID);
+        Serial.print("Password length: ");
+        Serial.println(_configuredPassword.length());
+        
+        return connectToWiFi(_configuredSSID, _configuredPassword, false);
+    }
+    
+    Serial.println("No saved credentials to auto-connect");
+    return false;
+}

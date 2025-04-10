@@ -50,6 +50,8 @@ EndpointResponse WiFiResetHandler::handle(const String& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
+    // Clear saved credentials from persistent storage
+    wifiManager.clearCredentials();
     
     // Disconnect from WiFi
     WiFi.disconnect();
@@ -58,7 +60,7 @@ EndpointResponse WiFiResetHandler::handle(const String& contents) {
     wifiManager.setupAP(AP_SSID, AP_PASSWORD);
     
     response.statusCode = 200;
-    response.data = "{\"status\":\"success\",\"message\":\"WiFi reset, AP mode activated\"}";
+    response.data = "{\"status\":\"success\",\"message\":\"WiFi reset, credentials cleared, AP mode activated\"}";
     return response;
 }
 

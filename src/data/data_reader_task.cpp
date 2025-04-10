@@ -75,7 +75,7 @@ void DataReaderTask::taskFunction(void* parameter) {
             String jwt = task->generateP1JWT();
             
             if (jwt.length() > 0 && task->p1DataQueue != nullptr) {
-                // Create a data package with char array
+                // Create a data package with char array, this is ok as the xQueueSendToBack function will copy the data
                 DataPackage package;
                 
                 // Clear the data buffer first

@@ -44,7 +44,11 @@ void setup() {
     delay(500);
     digitalWrite(LED_PIN, HIGH);
 
+
+
     Serial.begin(115200);
+    delay(1000);
+    Serial.println("Starting setup...");
 
     Serial.printf("Total heap: %d\n", ESP.getHeapSize());
     Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
@@ -64,6 +68,25 @@ void setup() {
             Serial.println("WiFi connection failed");
             digitalWrite(LED_PIN, LOW);
         }
+    #else
+        // Try to connect using saved credentials first
+        if (!wifiManager.autoConnect()) {
+            Serial.println("No saved credentials or connection failed");
+            
+            // Fall back to regular setup modes if auto-connect fails
+            #if defined(USE_SOFTAP_SETUP)
+                Serial.println("Setting up AP mode...");
+                wifiManager.setupAP(AP_SSID, AP_PASSWORD);
+            #endif
+            
+            #if defined(USE_BLE_SETUP)
+                Serial.println("Setting up BLE...");
+                bleHandler.init();
+            #endif
+        } else {
+            Serial.println("Successfully connected with saved credentials");
+            digitalWrite(LED_PIN, HIGH); // Solid LED when connected
+        }
     #endif
     
     // Perform initial WiFi scan
@@ -71,21 +94,6 @@ void setup() {
     wifiManager.scanWiFiNetworks();
     Serial.println("WiFi scan completed");
     
-    // Continue with normal setup
-    #if defined(USE_SOFTAP_SETUP)
-        Serial.println("Setting up AP mode...");
-        wifiManager.setupAP(AP_SSID, AP_PASSWORD);
-    #endif
-    
-    #if defined(USE_BLE_SETUP)
-        Serial.println("Setting up BLE...");
-        bleHandler.init();
-    #endif
-    
-    #if defined(DIRECT_CONNECT)
-        Serial.println("Using direct connection mode");
-    #endif
-
     #if !defined(USE_SOFTAP_SETUP) && !defined(USE_BLE_SETUP) && !defined(DIRECT_CONNECT)
         Serial.println("ERROR: No connection mode defined!");
         #error "Must define either USE_SOFTAP_SETUP, USE_BLE_SETUP, or DIRECT_CONNECT"

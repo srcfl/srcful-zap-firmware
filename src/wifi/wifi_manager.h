@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <Arduino.h>
+#include <Preferences.h>  // Add Preferences library for NVS access
 
 class WifiManager {
 public:
@@ -36,9 +37,16 @@ public:
     
     // MDNS setup
     bool setupMDNS(const char* hostname);
+    
+    // Persistence methods
+    bool loadCredentials();  // Load credentials from NVS
+    bool saveCredentials();  // Save credentials to NVS
+    bool clearCredentials(); // Clear saved credentials
+    
+    // Automatic connection using saved credentials
+    bool autoConnect();
 
 private:
-
     void initNTP();
 
     // Member variables
@@ -47,7 +55,14 @@ private:
     String _configuredPassword;
     std::vector<String> _lastScanResults;
     unsigned long _lastScanTime;
+    Preferences _preferences;  // Preferences instance for NVS operations
     static const unsigned long SCAN_CACHE_TIME = 10000; // Cache scan results for 10 seconds
+    
+    // Constants for NVS storage
+    static const char* PREF_NAMESPACE;
+    static const char* KEY_SSID;
+    static const char* KEY_PASSWORD;
+    static const char* KEY_PROVISIONED;
 };
 
-#endif // WIFI_MANAGER_H 
+#endif // WIFI_MANAGER_H
