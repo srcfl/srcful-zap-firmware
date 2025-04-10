@@ -7,6 +7,7 @@ private:
     String buffer;
     bool firstItem;
     bool inObject;
+    std::vector<bool> objectStack; // Stack to track firstItem state for nested objects
     
 public:
     JsonBuilder() : firstItem(true), inObject(false) {}
@@ -14,8 +15,32 @@ public:
     // Start a new object
     JsonBuilder& beginObject() {
         buffer += '{';
+        objectStack.push_back(firstItem); // Save current state
         firstItem = true;
         inObject = true;
+        return *this;
+    }
+    
+    // Start a nested object with a key
+    JsonBuilder& beginObject(const char* key) {
+        if (!firstItem) buffer += ',';
+        buffer += '"';
+        buffer += key;
+        buffer += "\":{";
+        objectStack.push_back(firstItem); // Save current state
+        firstItem = true;
+        inObject = true;
+        return *this;
+    }
+    
+    // End the current object
+    JsonBuilder& endObject() {
+        buffer += '}';
+        if (!objectStack.empty()) {
+            firstItem = objectStack.back(); // Restore previous state
+            objectStack.pop_back();
+            firstItem = false; // After closing an object, we've added an item to the parent
+        }
         return *this;
     }
     
@@ -92,20 +117,22 @@ public:
         return *this;
     }
     
-    // End the object and get the result
+    // End all objects and get the result
     String end() {
-        if (inObject) {
+        while (inObject && !objectStack.empty()) {
             buffer += '}';
-            inObject = false;
+            objectStack.pop_back();
         }
+        inObject = false;
         return buffer;
     }
     
-    // Clear the buffer
+    // Clear the buffer and reset state
     void clear() {
         buffer = "";
         firstItem = true;
         inObject = false;
+        objectStack.clear();
     }
 };
 
@@ -274,4 +301,4 @@ public:
     void reset() {
         pos = 0;
     }
-}; 
+};

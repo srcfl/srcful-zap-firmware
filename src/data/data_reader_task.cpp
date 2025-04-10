@@ -75,23 +75,23 @@ void DataReaderTask::taskFunction(void* parameter) {
             String jwt = task->generateP1JWT();
             
             if (jwt.length() > 0 && task->p1DataQueue != nullptr) {
-                // Create a P1 data package with char array
-                P1DataPackage package;
+                // Create a data package with char array
+                DataPackage package;
                 
-                // Clear the jwt buffer first
-                memset(package.jwt, 0, MAX_JWT_SIZE);
+                // Clear the data buffer first
+                memset(package.data, 0, MAX_DATA_SIZE);
                 
                 // Check if the JWT fits in our buffer
-                if (jwt.length() < MAX_JWT_SIZE - 1) {
+                if (jwt.length() < MAX_DATA_SIZE - 1) {
                     // Copy the JWT string to the char array
-                    strncpy(package.jwt, jwt.c_str(), jwt.length());
+                    strncpy(package.data, jwt.c_str(), jwt.length());
                     package.timestamp = millis();
                     
                     // Send to queue (FIFO mode)
                     // If queue is full, overwrite the oldest item
                     if (uxQueueSpacesAvailable(task->p1DataQueue) == 0) {
                         // Queue is full, remove the oldest item first
-                        P1DataPackage oldPackage;
+                        DataPackage oldPackage;
                         xQueueReceive(task->p1DataQueue, &oldPackage, 0);
                         Serial.println("Data reader task: Queue full, removed oldest item");
                     }
@@ -99,9 +99,9 @@ void DataReaderTask::taskFunction(void* parameter) {
                     // Add the new package to the back (FIFO behavior)
                     BaseType_t result = xQueueSendToBack(task->p1DataQueue, &package, pdMS_TO_TICKS(100));
                     if (result == pdPASS) {
-                        Serial.println("Data reader task: Added P1 data package to queue");
+                        Serial.println("Data reader task: Added data package to queue");
                     } else {
-                        Serial.println("Data reader task: Failed to add P1 data package to queue");
+                        Serial.println("Data reader task: Failed to add data package to queue");
                     }
                 } else {
                     Serial.println("Data reader task: JWT too large for buffer");

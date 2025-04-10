@@ -18,6 +18,7 @@ public:
     static const char* BLE_STOP_PATH;
     static const char* CRYPTO_SIGN_PATH;
     static const char* OTA_UPDATE_PATH;
+    static const char* OTA_STATUS_PATH;
     static const char* INITIALIZE_FORM_PATH;
     static const char* INITIALIZE_PATH;
     
@@ -61,4 +62,4 @@ public:
 };
 
 // Global instance of EndpointMapper
-extern EndpointMapper endpointMapper; 
+extern EndpointMapper endpointMapper;

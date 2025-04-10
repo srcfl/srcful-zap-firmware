@@ -1,5 +1,7 @@
 #include <unity.h>
 #include "json_light/json_light.h"
+#include <vector>
+#include <string>
 
 void setUp(void) {
     // Setup code if needed
@@ -83,6 +85,50 @@ void test_json_parser_reset() {
     TEST_ASSERT_TRUE(parser.getInt("code", code));
 }
 
+void test_json_builder_simple_object() {
+    JsonBuilder builder;
+    builder.beginObject()
+        .add("key1", "value1")
+        .add("key2", 123)
+        .add("key3", true);
+    
+    String json = builder.end();
+    TEST_ASSERT_EQUAL_STRING("{\"key1\":\"value1\",\"key2\":123,\"key3\":true}", json.c_str());
+}
+
+void test_json_builder_nested_objects() {
+    JsonBuilder builder;
+    builder.beginObject()
+        .add("name", "Device")
+        .beginObject("config")
+            .add("enabled", true)
+            .add("interval", 5000)
+            .beginObject("network")
+                .add("ssid", "TestNetwork")
+                .add("security", "WPA2")
+            .endObject()
+        .endObject()
+        .add("version", "1.0");
+    
+    String json = builder.end();
+    TEST_ASSERT_EQUAL_STRING(
+        "{\"name\":\"Device\",\"config\":{\"enabled\":true,\"interval\":5000,\"network\":{\"ssid\":\"TestNetwork\",\"security\":\"WPA2\"}},\"version\":\"1.0\"}", 
+        json.c_str()
+    );
+}
+
+void test_json_builder_array() {
+    JsonBuilder builder;
+    std::vector<String> items = {"item1", "item2", "item3"};
+    
+    builder.beginObject()
+        .add("title", "Test Array")
+        .addArray("items", items);
+    
+    String json = builder.end();
+    TEST_ASSERT_EQUAL_STRING("{\"title\":\"Test Array\",\"items\":[\"item1\",\"item2\",\"item3\"]}", json.c_str());
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     
@@ -90,6 +136,9 @@ int main(int argc, char **argv) {
     RUN_TEST(test_json_parser);
     RUN_TEST(test_json_array);
     RUN_TEST(test_json_parser_reset);
+    RUN_TEST(test_json_builder_simple_object);
+    RUN_TEST(test_json_builder_nested_objects);
+    RUN_TEST(test_json_builder_array);
     
     return UNITY_END();
-} 
+}

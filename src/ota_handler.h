@@ -1,17 +1,20 @@
 #pragma once
 
 #include <Arduino.h>
-#include <Update.h>
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include "endpoints/endpoint_types.h"
+#include "ota/ota_task.h"
 
 class OTAHandler {
 public:
-    static EndpointResponse handleOTAUpdate(const EndpointRequest& request);
+    OTAHandler();
+    ~OTAHandler();
+    
+    void begin();
+    void stop();
+    
+    EndpointResponse handleOTAUpdate(const EndpointRequest& request);
+    EndpointResponse handleOTAStatus(const EndpointRequest& request);
     
 private:
-    static bool verifyFirmware(const uint8_t* data, size_t len);
-    static void updateProgress(size_t current, size_t total);
-}; 
+    OTATask otaTask;
+};

@@ -15,7 +15,10 @@ const char* EndpointMapper::WIFI_SCAN_PATH = "/api/wifi/scan";
 const char* EndpointMapper::BLE_STOP_PATH = "/api/ble/stop";
 const char* EndpointMapper::CRYPTO_SIGN_PATH = "/api/crypto/sign";
 const char* EndpointMapper::OTA_UPDATE_PATH = "/api/ota/update";
+const char* EndpointMapper::OTA_STATUS_PATH = "/api/ota/status";
 
+// Global instance of OTA handler
+OTAHandler g_otaHandler;
 
 NameInfoHandler g_nullHandler;
 
@@ -31,12 +34,12 @@ const Endpoint endpoints[] = {
     Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_bleStopHandler), // Special case handled in route
 #endif
     Endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, EndpointMapper::CRYPTO_SIGN_PATH, g_cryptoSignHandler),
-    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_nullHandler)    // for now
+    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_nullHandler),   // Will be handled by route()
+    Endpoint(Endpoint::OTA_STATUS, Endpoint::Verb::GET, EndpointMapper::OTA_STATUS_PATH, g_nullHandler)     // Will be handled by route()
 };
 
 EndpointMapper::Iterator EndpointMapper::begin() const { return EndpointMapper::Iterator(endpoints); }
 EndpointMapper::Iterator EndpointMapper::end() const { return EndpointMapper::Iterator(endpoints + sizeof(endpoints) / sizeof(endpoints[0])); }
-
 
 const Endpoint& EndpointMapper::toEndpoint(const String& path, const String& verb) {
     // Create an instance of EndpointMapper to use the non-static begin() and end() methods
@@ -67,7 +70,13 @@ String EndpointMapper::verbToString(Endpoint::Verb verb) {
 }
 
 EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
-  
+    // Handle special cases for endpoints without a dedicated handler class
+    if (request.endpoint.type == Endpoint::OTA_UPDATE) {
+        return g_otaHandler.handleOTAUpdate(request);
+    } else if (request.endpoint.type == Endpoint::OTA_STATUS) {
+        return g_otaHandler.handleOTAStatus(request);
+    }
+    
     // If the endpoint has a handler function, call it directly
     if (&request.endpoint.handler != &g_nullHandler) {
         return request.endpoint.handler.handle(request.content);
@@ -92,7 +101,9 @@ void EndpointMapper::printPaths() {
     Serial.println(WIFI_SCAN_PATH);
     Serial.println(BLE_STOP_PATH);
     Serial.println(CRYPTO_SIGN_PATH);
+    Serial.println(OTA_UPDATE_PATH);
+    Serial.println(OTA_STATUS_PATH);
 }
 
 // Define the global instance
-EndpointMapper endpointMapper; 
+EndpointMapper endpointMapper;

@@ -1,7 +1,6 @@
 #include "wifi_status_task.h"
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
-#include "p1data.h" // Include for createP1JWT function
 
 #if defined(USE_BLE_SETUP)
     #include "ble_handler.h"
@@ -89,4 +88,4 @@ void WifiStatusTask::taskFunction(void* parameter) {
     
     // Task cleanup
     vTaskDelete(NULL);
-} 
+}

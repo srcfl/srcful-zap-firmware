@@ -1,15 +1,16 @@
+// filepath: /home/h0bb3/projects/github/srcful-zap-firmware/src/data/data_sender_task.cpp
 #include "data_sender_task.h"
 #include <WiFiClientSecure.h>
 #include "p1data.h"
-#include "crypto.h"
-#include "config.h"
+#include "../crypto.h"
+#include "../config.h"
 
 DataSenderTask::DataSenderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
       wifiManager(nullptr), lastCheckTime(0), checkInterval(5000), bleActive(false) {
     
-    // Create the queue for P1 data packages (store up to 3 packages)
-    p1DataQueue = xQueueCreate(3, sizeof(P1DataPackage));
+    // Create the queue for data packages (store up to 3 packages)
+    p1DataQueue = xQueueCreate(3, sizeof(DataPackage));
     if (p1DataQueue == nullptr) {
         Serial.println("Data sender task: Failed to create queue");
     }
@@ -92,15 +93,15 @@ void DataSenderTask::taskFunction(void* parameter) {
                     Serial.println("Data sender task: Found data in queue to send");
                     
                     // Get the oldest package from the queue (FIFO behavior)
-                    P1DataPackage package;
+                    DataPackage package;
                     if (xQueueReceive(task->p1DataQueue, &package, 0) == pdTRUE) {
                         Serial.println("Data sender task: Retrieved package from queue");
                         
                         // Convert char array back to String for sending
-                        String jwtStr(package.jwt);
+                        String dataStr(package.data);
                         
-                        // Send the JWT from the package
-                        task->sendJWT(jwtStr);
+                        // Send the data from the package
+                        task->sendJWT(dataStr);
                     }
                 } else {
                     Serial.println("Data sender task: No data in queue to send");

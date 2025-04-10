@@ -1,4 +1,4 @@
-// filepath: /home/h0bb3/projects/github/srcful-zap-firmware/src/data_sender/data_reader_task.h
+// filepath: /home/h0bb3/projects/github/srcful-zap-firmware/src/data/data_reader_task.h
 #ifndef DATA_READER_TASK_H
 #define DATA_READER_TASK_H
 
@@ -7,18 +7,10 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 
-#include "p1data.h"
-#include "crypto.h"
-#include "config.h"
-
-// Maximum JWT size (adjust as needed)
-#define MAX_JWT_SIZE 2048
-
-// Define a struct for the P1 data package using char arrays instead of Strings
-typedef struct {
-    char jwt[MAX_JWT_SIZE];
-    unsigned long timestamp;
-} P1DataPackage;
+#include "p1data.h" // Local include since p1data is now in the data directory
+#include "../crypto.h"
+#include "../config.h"
+#include "data_package.h"  // Include the new data package header
 
 class DataReaderTask {
 public:

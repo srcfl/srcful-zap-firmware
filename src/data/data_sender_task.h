@@ -8,7 +8,7 @@
 #include <HTTPClient.h>
 
 #include "wifi/wifi_manager.h"
-#include "data_reader_task.h"  // Include to get P1DataPackage definition
+#include "data_package.h"  // Local include for data package header
 
 class DataSenderTask {
 public:

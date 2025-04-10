@@ -1,5 +1,5 @@
 #include "p1data.h"
-#include "json_light/json_light.h"
+#include "../json_light/json_light.h"
 #include <vector>
 
 String createP1JWT(const char* privateKey, const String& deviceId) {
@@ -194,4 +194,4 @@ String createP1JWT(const char* privateKey, const String& deviceId) {
     String jwt = crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), privateKey);
     
     return jwt;
-} 
+}

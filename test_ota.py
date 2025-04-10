@@ -16,7 +16,7 @@ def get_local_ip():
     return IP
 
 # Replace with your ESP32's IP address
-ESP32_IP = "192.168.1.206"  # Change this to your ESP32's IP
+ESP32_IP = "192.168.1.66"  # Change this to your ESP32's IP
 
 # Get local IP and construct firmware URL
 LOCAL_IP = get_local_ip()
@@ -28,7 +28,7 @@ print(f"Firmware URL: {FIRMWARE_URL}")
 # Create the OTA update request
 payload = {
     "url": FIRMWARE_URL,
-    "version": "1.0.2"  # Increment this for each test
+    "version": "1.0.3"  # Increment this for each test
 }
 
 try:

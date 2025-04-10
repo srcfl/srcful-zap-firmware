@@ -33,6 +33,7 @@ class Endpoint {
         BLE_STOP,
         CRYPTO_SIGN,
         OTA_UPDATE,
+        OTA_STATUS,
         UNKNOWN
     };
     const Type type;

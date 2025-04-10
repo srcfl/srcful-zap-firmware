@@ -5,7 +5,6 @@
 #include "crypto.h"
 #include <HTTPClient.h>
 #include <esp_system.h>
-#include "p1data.h"
 #include "endpoints/endpoint_mapper.h"
 #include <WiFiClientSecure.h>
 #include "esp_heap_caps.h"
@@ -14,8 +13,9 @@
 #include "server/server_task.h"
 #include "wifi/wifi_manager.h"
 #include "wifi/wifi_status_task.h"
-#include "data_sender/data_sender_task.h"
-#include "data_sender/data_reader_task.h"  // Add the new DataReaderTask
+#include "data/data_sender_task.h"
+#include "data/data_reader_task.h"
+#include "ota_handler.h"  // Include OTA handler
 
 #define LED_PIN 7
 
@@ -102,6 +102,11 @@ void setup() {
     wifiStatusTask.setWifiManager(&wifiManager);
     wifiStatusTask.setLedPin(LED_PIN);
     wifiStatusTask.begin();
+    
+    // Start the OTA handler
+    Serial.println("Starting OTA handler...");
+    extern OTAHandler g_otaHandler;
+    g_otaHandler.begin();
     
     // Configure and start the data sender task
     dataSenderTask.begin(&wifiManager);
