@@ -12,9 +12,11 @@
 #include "../config.h"
 #include "data_package.h"  // Include the new data package header
 
+#include "p1_meter.h"  // Include P1Meter class for reading data
+
 class DataReaderTask {
 public:
-    DataReaderTask(uint32_t stackSize = 4096 * 2, UBaseType_t priority = 4);
+    DataReaderTask(uint32_t stackSize = 1024 * 9, UBaseType_t priority = 4);
     ~DataReaderTask();
     
     void begin(QueueHandle_t dataQueue);
@@ -26,6 +28,7 @@ public:
 private:
     static void taskFunction(void* parameter);
     String generateP1JWT();
+    void enqueueData(const P1Data& p1data);
     
     TaskHandle_t taskHandle;
     uint32_t stackSize;
@@ -35,6 +38,8 @@ private:
     QueueHandle_t p1DataQueue;
     uint32_t readInterval;
     unsigned long lastReadTime;
+
+    P1Meter p1Meter;  // Pointer to the P1Meter instance for reading data
 };
 
 #endif // DATA_READER_TASK_H

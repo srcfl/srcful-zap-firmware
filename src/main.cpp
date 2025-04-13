@@ -24,7 +24,7 @@ ServerTask serverTask(80); // Create a server task instance
 WifiManager wifiManager; // Create a WiFi manager instance
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 DataSenderTask dataSenderTask; // Create a data sender task instance
-DataReaderTask dataReaderTask; // Create a data reader task instance
+DataReaderTask *dataReaderTask; // Create a data reader task instance
 
 String configuredSSID = "";
 String configuredPassword = "";
@@ -122,8 +122,9 @@ void setup() {
     dataSenderTask.setBleActive(true);
     
     // Configure and start the data reader task
-    dataReaderTask.setInterval(10000); // 10 seconds interval for generating data
-    dataReaderTask.begin(dataSenderTask.getQueueHandle()); // Share the queue between tasks
+    dataReaderTask = new DataReaderTask();
+    dataReaderTask->setInterval(10000); // 10 seconds interval for generating data
+    dataReaderTask->begin(dataSenderTask.getQueueHandle()); // Share the queue between tasks
     
     // Start the server task
     Serial.println("Starting server task...");

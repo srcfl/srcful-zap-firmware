@@ -130,8 +130,8 @@ void DataSenderTask::sendJWT(const String& jwt) {
     }
     
     Serial.println("Data sender task: Sending JWT...");
-    Serial.print("Data sender task: JWT length: ");
-    Serial.println(jwt.length());
+    Serial.print("Data sender task jwt:");
+    Serial.println(jwt);
     
     Serial.print("Data sender task: Sending JWT to: ");
     Serial.println(DATA_URL);

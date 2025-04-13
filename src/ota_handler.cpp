@@ -54,6 +54,7 @@ EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
     );
     
     if (requestSuccess) {
+        // otaTask.begin();    // TODO: we likely will need to stop some other tasks also...
         response.statusCode = 202; // Accepted
         response.data = "{\"status\":\"success\",\"message\":\"Update request accepted\"}";
     } else {

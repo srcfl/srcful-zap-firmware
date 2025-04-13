@@ -11,7 +11,7 @@
 class WifiStatusTask {
 public:
     // Constructor
-    WifiStatusTask(uint32_t stackSize = 8192, UBaseType_t priority = 5);
+    WifiStatusTask(uint32_t stackSize = 1024 * 2, UBaseType_t priority = 5);
     
     // Initialize and start the task
     void begin();
