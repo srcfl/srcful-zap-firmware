@@ -1,7 +1,13 @@
 #include "p1_dlms_decoder.h"
 #include <time.h>
+#include <cstdio> 
 
-// Define the static OBIS codes
+
+#ifdef P1_DLMS_SERIAL_DEBUG
+    #include <Arduino.h>
+#endif
+
+// Define the static OBIS codes https://onemeter.com/docs/device/obis/
 const char* P1DLMSDecoder::OBIS_ELECTRICITY_DELIVERED_TARIFF1 = "1-0:1.8.1";
 const char* P1DLMSDecoder::OBIS_ELECTRICITY_DELIVERED_TARIFF2 = "1-0:1.8.2";
 const char* P1DLMSDecoder::OBIS_ELECTRICITY_RETURNED_TARIFF1 = "1-0:2.8.1";
@@ -44,22 +50,82 @@ const char* P1DLMSDecoder::OBIS_CURRENT_L3 = "1-0:71.7.0";
 #define OBIS_E 4
 #define OBIS_F 5
 
-// Known OBIS binary C,D patterns
+// Known OBIS binary C,D patterns, with unit https://onemeter.com/docs/device/obis/
 static const uint8_t OBIS_TIMESTAMP_HEX[]               = {0x01, 0x00}; // 0-0:1.0.0*255
-static const uint8_t OBIS_ACTIVE_ENERGY_PLUS_HEX[]      = {0x01, 0x08}; // 1-0:1.8.0*255
-static const uint8_t OBIS_ACTIVE_ENERGY_MINUS_HEX[]     = {0x02, 0x08}; // 1-0:2.8.0*255
-static const uint8_t OBIS_REACTIVE_ENERGY_PLUS_HEX[]    = {0x03, 0x08}; // 1-0:3.8.0*255
-static const uint8_t OBIS_REACTIVE_ENERGY_MINUS_HEX[]   = {0x04, 0x08}; // 1-0:4.8.0*255
-static const uint8_t OBIS_ACTIVE_POWER_PLUS_HEX[]       = {0x01, 0x07}; // 1-0:1.7.0*255
-static const uint8_t OBIS_ACTIVE_POWER_MINUS_HEX[]      = {0x02, 0x07}; // 1-0:2.7.0*255
-static const uint8_t OBIS_REACTIVE_POWER_PLUS_HEX[]     = {0x03, 0x07}; // 1-0:3.7.0*255
-static const uint8_t OBIS_REACTIVE_POWER_MINUS_HEX[]    = {0x04, 0x07}; // 1-0:4.7.0*255
-static const uint8_t OBIS_VOLTAGE_L1_HEX[]              = {0x20, 0x07}; // 1-0:32.7.0*255
-static const uint8_t OBIS_VOLTAGE_L2_HEX[]              = {0x34, 0x07}; // 1-0:52.7.0*255
-static const uint8_t OBIS_VOLTAGE_L3_HEX[]              = {0x48, 0x07}; // 1-0:72.7.0*255
-static const uint8_t OBIS_CURRENT_L1_HEX[]              = {0x1F, 0x07}; // 1-0:31.7.0*255
-static const uint8_t OBIS_CURRENT_L2_HEX[]              = {0x33, 0x07}; // 1-0:51.7.0*255
-static const uint8_t OBIS_CURRENT_L3_HEX[]              = {0x47, 0x07}; // 1-0:71.7.0*255
+
+
+struct CDUnit {
+    uint8_t C;
+    uint8_t D;
+    P1Data::OBISUnit unit;
+};
+
+static const CDUnit OBIS_10_CD_UNIT[]= {
+    { 1, 8, P1Data::OBISUnit::kWH},    // 1-0:1.8.0*255 kWh Active Energy Plus
+    { 2, 8, P1Data::OBISUnit::kWH},    // 1-0:2.8.0*255 kWh Active Energy Minus
+    { 3, 8, P1Data::OBISUnit::kVARH}, // 1-0:3.8.0*255 kvarh Reactive Energy Plus
+    { 4, 8, P1Data::OBISUnit::kVARH}, // 1-0:4.8.0*255 kvarh Reactive Energy Minus
+    { 1, 7, P1Data::OBISUnit::kW},    // 1-0:1.7.0*255 kW Active Power Plus
+    { 2, 7, P1Data::OBISUnit::kW},    // 1-0:2.7.0*255 kW Active Power Minus
+    { 3, 7, P1Data::OBISUnit::kVAR},  // 1-0:3.7.0*255 kvar Reactive Power Plus
+    { 4, 7, P1Data::OBISUnit::kVAR},  // 1-0:4.7.0*255 kvar Reactive Power Minus
+    {21, 7, P1Data::OBISUnit::kW},    // 1-0:21.7.0*255 kW Active Power Plus L1
+    {41, 7, P1Data::OBISUnit::kW},    // 1-0:41.7.0*255 kW Active Power Plus L2
+    {61, 7, P1Data::OBISUnit::kW},    // 1-0:61.7.0*255 kW Active Power Plus L3
+    {22, 7, P1Data::OBISUnit::kW},    // 1-0:22.7.0*255 kW Active Power Minus L1
+    {42, 7, P1Data::OBISUnit::kW},    // 1-0:42.7.0*255 kW Active Power Minus L2
+    {62, 7, P1Data::OBISUnit::kW},    // 1-0:62.7.0*255 kW Active Power Minus L3
+
+    {23, 7, P1Data::OBISUnit::kW},    // 1-0:21.7.0*255 kW Reactive Power Plus L1
+    {43, 7, P1Data::OBISUnit::kW},    // 1-0:41.7.0*255 kW Reactive Power Plus L2
+    {63, 7, P1Data::OBISUnit::kW},    // 1-0:61.7.0*255 kW Reactive Power Plus L3
+    {24, 7, P1Data::OBISUnit::kW},    // 1-0:22.7.0*255 kW Reactive Power Minus L1
+    {44, 7, P1Data::OBISUnit::kW},    // 1-0:42.7.0*255 kW Reactive Power Minus L2
+    {64, 7, P1Data::OBISUnit::kW},    // 1-0:62.7.0*255 kW Reactive Power Minus L3
+
+    {32, 7, P1Data::OBISUnit::VOLT},  // 1-0:32.7.0*255 V Voltage L1
+    {52, 7, P1Data::OBISUnit::VOLT},  // 1-0:52.7.0*255 V Voltage L2
+    {72, 7, P1Data::OBISUnit::VOLT},  // 1-0:72.7.0*255 V Voltage L3
+    {31, 7, P1Data::OBISUnit::AMP},   // 1-0:31.7.0*255 A Current L1
+    {51, 7, P1Data::OBISUnit::AMP},   // 1-0:51.7.0*255 A Current L2
+    {71, 7, P1Data::OBISUnit::AMP}    // 1-0:71.7.0*255 A Current L3
+};
+
+P1Data::OBISUnit getObisUnit(uint8_t C, uint8_t D) {
+    for (const auto& obis : OBIS_10_CD_UNIT) {
+        if (obis.C == C && obis.D == D) {
+            return obis.unit;
+        }
+    }
+    return P1Data::OBISUnit::UNKNOWN;
+}
+
+
+// static const uint8_t OBIS_ACTIVE_ENERGY_PLUS_HEX[]      = {0x01, 0x08, }; // 1-0:1.8.0*255 kWh
+// static const uint8_t OBIS_ACTIVE_ENERGY_MINUS_HEX[]     = {0x02, 0x08}; // 1-0:2.8.0*255 kWh
+// static const uint8_t OBIS_REACTIVE_ENERGY_PLUS_HEX[]    = {0x03, 0x08}; // 1-0:3.8.0*255 kvarh
+// static const uint8_t OBIS_REACTIVE_ENERGY_MINUS_HEX[]   = {0x04, 0x08}; // 1-0:4.8.0*255 kvarh
+
+// static const uint8_t OBIS_ACTIVE_POWER_PLUS_HEX[]       = {0x01, 0x07}; // 1-0:1.7.0*255 kW
+// static const uint8_t OBIS_ACTIVE_POWER_MINUS_HEX[]      = {0x02, 0x07}; // 1-0:2.7.0*255 kW
+
+// static const uint8_t OBIS_REACTIVE_POWER_PLUS_HEX[]     = {0x03, 0x07}; // 1-0:3.7.0*255 kvar
+// static const uint8_t OBIS_REACTIVE_POWER_MINUS_HEX[]    = {0x04, 0x07}; // 1-0:4.7.0*255 kvar
+
+
+// static const uint8_t OBIS_ACTIVE_POWER_PLUS_L1_HEX[]   = {0x15, 0x07}; // 1-0:21.7.0*255 kW
+// static const uint8_t OBIS_ACTIVE_POWER_PLUS_L2_HEX[]   = {0x16, 0x07}; // 1-0:41.7.0*255 kW
+// static const uint8_t OBIS_ACTIVE_POWER_PLUS_L3_HEX[]   = {0x17, 0x07}; // 1-0:61.7.0*255 kW
+// static const uint8_t OBIS_ACTIVE_POWER_MINUS_L1_HEX[]  = {0x18, 0x07}; // 1-0:22.7.0*255 kW
+// static const uint8_t OBIS_ACTIVE_POWER_MINUS_L2_HEX[]  = {0x19, 0x07}; // 1-0:42.7.0*255 kW
+// static const uint8_t OBIS_ACTIVE_POWER_MINUS_L3_HEX[]  = {0x1A, 0x07}; // 1-0:62.7.0*255 kW
+
+// static const uint8_t OBIS_VOLTAGE_L1_HEX[]              = {0x20, 0x07}; // 1-0:32.7.0*255
+// static const uint8_t OBIS_VOLTAGE_L2_HEX[]              = {0x34, 0x07}; // 1-0:52.7.0*255
+// static const uint8_t OBIS_VOLTAGE_L3_HEX[]              = {0x48, 0x07}; // 1-0:72.7.0*255
+// static const uint8_t OBIS_CURRENT_L1_HEX[]              = {0x1F, 0x07}; // 1-0:31.7.0*255
+// static const uint8_t OBIS_CURRENT_L2_HEX[]              = {0x33, 0x07}; // 1-0:51.7.0*255
+// static const uint8_t OBIS_CURRENT_L3_HEX[]              = {0x47, 0x07}; // 1-0:71.7.0*255
 
 P1DLMSDecoder::P1DLMSDecoder() {
     // Constructor implementation - nothing to initialize currently
@@ -78,64 +144,70 @@ uint32_t P1DLMSDecoder::swap_uint32(uint32_t val) {
 }
 
 // For text format decoding (kept for backward compatibility)
-String P1DLMSDecoder::extractValue(const String& line) {
-    int startPos = line.indexOf('(');
-    int endPos = line.indexOf(')');
-    if (startPos != -1 && endPos != -1 && endPos > startPos) {
-        return line.substring(startPos + 1, endPos);
-    }
-    return "";
-}
+// String P1DLMSDecoder::extractValue(const String& line) {
+//     int startPos = line.indexOf('(');
+//     int endPos = line.indexOf(')');
+//     if (startPos != -1 && endPos != -1 && endPos > startPos) {
+//         return line.substring(startPos + 1, endPos);
+//     }
+//     return "";
+// }
 
-float P1DLMSDecoder::stringToFloat(const String& valueStr) {
-    if (valueStr.length() == 0) {
-        return 0.0f;
-    }
+// float P1DLMSDecoder::stringToFloat(const String& valueStr) {
+//     if (valueStr.length() == 0) {
+//         return 0.0f;
+//     }
     
-    return valueStr.toFloat();
+//     return valueStr.toFloat();
+// }
+
+bool is_obis_cd(const uint8_t* obisCode, const uint8_t* pattern) {
+    return (obisCode[OBIS_C] == pattern[0] && obisCode[OBIS_D] == pattern[1]);
 }
 
 // For debugging - get readable description of OBIS code
-const char* P1DLMSDecoder::getObisDescription(const uint8_t* obisCode) {
-    // Check for known OBIS codes by comparing C,D values
-    if (obisCode[OBIS_A] == 0 && obisCode[OBIS_B] == 0 && 
-        obisCode[OBIS_C] == 0x01 && obisCode[OBIS_D] == 0x00)
-        return "Timestamp";
+// const char* P1DLMSDecoder::getObisDescription(const uint8_t* obisCode) {
+//     // Check for known OBIS codes by comparing C,D values
+//     if (obisCode[OBIS_A] == 0 && obisCode[OBIS_B] == 0 && 
+//         obisCode[OBIS_C] == 0x01 && obisCode[OBIS_D] == 0x00)
+//         return "Timestamp";
         
-    if (obisCode[OBIS_A] == 1 && obisCode[OBIS_B] == 0) {
-        if (memcmp(&obisCode[OBIS_C], OBIS_ACTIVE_ENERGY_PLUS_HEX, 2) == 0)
-            return "Active Energy Plus";
-        if (memcmp(&obisCode[OBIS_C], OBIS_ACTIVE_ENERGY_MINUS_HEX, 2) == 0)
-            return "Active Energy Minus";
-        if (memcmp(&obisCode[OBIS_C], OBIS_REACTIVE_ENERGY_PLUS_HEX, 2) == 0)
-            return "Reactive Energy Plus";
-        if (memcmp(&obisCode[OBIS_C], OBIS_REACTIVE_ENERGY_MINUS_HEX, 2) == 0)
-            return "Reactive Energy Minus";
-        if (memcmp(&obisCode[OBIS_C], OBIS_ACTIVE_POWER_PLUS_HEX, 2) == 0)
-            return "Active Power Plus";
-        if (memcmp(&obisCode[OBIS_C], OBIS_ACTIVE_POWER_MINUS_HEX, 2) == 0)
-            return "Active Power Minus";
-        if (memcmp(&obisCode[OBIS_C], OBIS_REACTIVE_POWER_PLUS_HEX, 2) == 0)
-            return "Reactive Power Plus";
-        if (memcmp(&obisCode[OBIS_C], OBIS_REACTIVE_POWER_MINUS_HEX, 2) == 0)
-            return "Reactive Power Minus";
-        if (memcmp(&obisCode[OBIS_C], OBIS_VOLTAGE_L1_HEX, 2) == 0)
-            return "Voltage L1";
-        if (memcmp(&obisCode[OBIS_C], OBIS_VOLTAGE_L2_HEX, 2) == 0)
-            return "Voltage L2";
-        if (memcmp(&obisCode[OBIS_C], OBIS_VOLTAGE_L3_HEX, 2) == 0)
-            return "Voltage L3";
-        if (memcmp(&obisCode[OBIS_C], OBIS_CURRENT_L1_HEX, 2) == 0)
-            return "Current L1";
-        if (memcmp(&obisCode[OBIS_C], OBIS_CURRENT_L2_HEX, 2) == 0)
-            return "Current L2";
-        if (memcmp(&obisCode[OBIS_C], OBIS_CURRENT_L3_HEX, 2) == 0)
-            return "Current L3";
-    }
+//     if (obisCode[OBIS_A] == 1 && obisCode[OBIS_B] == 0) {
+//         if (is_obis_cd(obisCode, OBIS_ACTIVE_ENERGY_PLUS_HEX))
+//             return "Active Energy Plus";
+//         if (is_obis_cd(obisCode, OBIS_ACTIVE_ENERGY_MINUS_HEX))
+//             return "Active Energy Minus";
+//         if (is_obis_cd(obisCode, OBIS_REACTIVE_ENERGY_PLUS_HEX))
+//             return "Reactive Energy Plus";
+//         if (is_obis_cd(obisCode, OBIS_REACTIVE_ENERGY_MINUS_HEX))
+//             return "Reactive Energy Minus";
+//         if (is_obis_cd(obisCode, OBIS_ACTIVE_POWER_PLUS_HEX))
+//             return "Active Power Plus";
+//         if (is_obis_cd(obisCode, OBIS_ACTIVE_POWER_MINUS_HEX))
+//             return "Active Power Minus";
+//         if (is_obis_cd(obisCode, OBIS_REACTIVE_POWER_PLUS_HEX))
+//             return "Reactive Power Plus";
+//         if (is_obis_cd(obisCode, OBIS_REACTIVE_POWER_MINUS_HEX))
+//             return "Reactive Power Minus";
+//         if (is_obis_cd(obisCode, OBIS_VOLTAGE_L1_HEX))
+//             return "Voltage L1";
+//         if (is_obis_cd(obisCode, OBIS_VOLTAGE_L2_HEX))
+//             return "Voltage L2";
+//         if (is_obis_cd(obisCode, OBIS_VOLTAGE_L3_HEX))
+//             return "Voltage L3";
+//         if (is_obis_cd(obisCode, OBIS_CURRENT_L1_HEX))
+//             return "Current L1";
+//         if (is_obis_cd(obisCode, OBIS_CURRENT_L2_HEX))
+//             return "Current L2";
+//         if (is_obis_cd(obisCode, OBIS_CURRENT_L3_HEX))
+//             return "Current L3";
+//         if (is_obis_cd(obisCode, OBIS_ACTIVE_POWER_PLUS_L1_HEX))
+//             return "Active Power L1";
+//     }
     
-    // If not found, return NULL
-    return NULL;
-}
+//     // If not found, return NULL
+//     return NULL;
+// }
 
 // Helper function to extract numeric value with appropriate scaling
 float P1DLMSDecoder::extractNumericValue(const uint8_t* buffer, int position, uint8_t dataType, size_t length) {
@@ -178,11 +250,11 @@ float P1DLMSDecoder::extractNumericValue(const uint8_t* buffer, int position, ui
     }
 
     // For debugging - print several bytes after the value
-    Serial.printf("    Bytes after value: ");
+    P1_DLMS_LOG(printf("    Bytes after value: "));
     for (int i = 0; i < 8 && position + i < length; i++) {
-        Serial.printf("%02X ", buffer[position + i]);
+        P1_DLMS_LOG(printf("%02X ", buffer[position + i]));
     }
-    Serial.println();
+    P1_DLMS_LOG(println());
    
     // Check if we have a structure tag followed by scale factor
     // Parse the structure after the value
@@ -197,18 +269,18 @@ float P1DLMSDecoder::extractNumericValue(const uint8_t* buffer, int position, ui
             switch (tag) {
                 case 0x0F:  // Scale factor
                     scale = (int8_t)buffer[position++];
-                    Serial.printf("    Scale factor tag found: %d\n", scale);
+                    P1_DLMS_LOG(printf("    Scale factor tag found: %d\n", scale));
                     break;
                     
                 case 0x16:  // Unit
                     unit = buffer[position++];
-                    Serial.printf("    Unit tag found: 0x%02X\n", unit);
+                    P1_DLMS_LOG(printf("    Unit tag found: 0x%02X\n", unit));
                     break;
                     
                 default:
                     // Skip unknown tag and its value
                     position++;
-                    Serial.printf("    Unknown tag: 0x%02X\n", tag);
+                    P1_DLMS_LOG(printf("    Unknown tag: 0x%02X\n", tag));
                     break;
             }
         }
@@ -226,7 +298,7 @@ float P1DLMSDecoder::extractNumericValue(const uint8_t* buffer, int position, ui
         
         result = result * scaleFactors[scaleIndex];
         
-        Serial.printf("    Final scale: %d (multiplier: %.5f)\n", scale, scaleFactors[scaleIndex]);
+        P1_DLMS_LOG(printf("    Final scale: %d (multiplier: %.5f)\n", scale, scaleFactors[scaleIndex]));
     }
     
     return result;
@@ -245,13 +317,15 @@ int P1DLMSDecoder::getDataTypeSize(uint8_t dataType) {
     }
 }
 
+
+
 // Process OBIS value and update P1Data accordingly
 bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buffer, int position, 
                                      uint8_t dataType, size_t length, P1Data& p1data) {
     bool known = false;
     
     // Print debug info
-    Serial.printf("  [%04d] Data Type: 0x%02X\n", position-1, dataType);
+    P1_DLMS_LOG(printf("  [%04d] Data Type: 0x%02X\n", position-1, dataType));
     
     // Handle numeric values
     if (dataType == DATA_INTEGER || dataType == DATA_UNSIGNED || 
@@ -259,91 +333,36 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buf
         
         int dataSize = getDataTypeSize(dataType);
         if (position + dataSize > length) {
-            Serial.printf("    Error: Not enough data for type 0x%02X\n", dataType);
+            P1_DLMS_LOG(printf("    Error: Not enough data for type 0x%02X\n", dataType));
             return false;
         }
         
         float value = extractNumericValue(buffer, position, dataType, length);
-        Serial.printf("    Value: %f\n", value);
+        P1_DLMS_LOG(printf("    Value: %f\n", value));
         
         // Process based on OBIS code
         if (obisCode[OBIS_A] == 1 && obisCode[OBIS_B] == 0) {
-            // Energy values (*.8.*) 
-            if (memcmp(&obisCode[OBIS_C], OBIS_ACTIVE_ENERGY_PLUS_HEX, 2) == 0) {
-                if (obisCode[OBIS_E] == 1) {
-                    p1data.electricityDeliveredTariff1 = value / 1000.0f; // Convert to kWh
-                    Serial.printf("    Electricity Delivered T1: %.3f kWh\n", p1data.electricityDeliveredTariff1);
-                } else if (obisCode[OBIS_E] == 2) {
-                    p1data.electricityDeliveredTariff2 = value / 1000.0f;
-                    Serial.printf("    Electricity Delivered T2: %.3f kWh\n", p1data.electricityDeliveredTariff2);
-                }
-                known = true;
-            }
-            else if (memcmp(&obisCode[OBIS_C], OBIS_ACTIVE_ENERGY_MINUS_HEX, 2) == 0) {
-                if (obisCode[OBIS_E] == 1) {
-                    p1data.electricityReturnedTariff1 = value / 1000.0f;
-                    Serial.printf("    Electricity Returned T1: %.3f kWh\n", p1data.electricityReturnedTariff1);
-                } else if (obisCode[OBIS_E] == 2) {
-                    p1data.electricityReturnedTariff2 = value / 1000.0f;
-                    Serial.printf("    Electricity Returned T2: %.3f kWh\n", p1data.electricityReturnedTariff2);
-                }
-                known = true;
-            }
-            // Power values (*.7.*)
-            else if (memcmp(&obisCode[OBIS_C], OBIS_ACTIVE_POWER_PLUS_HEX, 2) == 0) {
-                p1data.currentPowerDelivery = dataType == DATA_LONG_DOUBLE_UNSIGNED ? value / 1000.0f : value;
-                Serial.printf("    Current Power Delivery: %.3f kW\n", p1data.currentPowerDelivery);
-                known = true;
-            }
-            else if (memcmp(&obisCode[OBIS_C], OBIS_ACTIVE_POWER_MINUS_HEX, 2) == 0) {
-                p1data.currentPowerReturn = dataType == DATA_LONG_DOUBLE_UNSIGNED ? value / 1000.0f : value;
-                Serial.printf("    Current Power Return: %.3f kW\n", p1data.currentPowerReturn);
-                known = true;
-            }
-            // Voltage values
-            else if (memcmp(&obisCode[OBIS_C], OBIS_VOLTAGE_L1_HEX, 2) == 0) {
-                p1data.voltageL1 = value;
-                Serial.printf("    Voltage L1: %.1f V\n", p1data.voltageL1);
-                known = true;
-            }
-            else if (memcmp(&obisCode[OBIS_C], OBIS_VOLTAGE_L2_HEX, 2) == 0) {
-                p1data.voltageL2 = value;
-                Serial.printf("    Voltage L2: %.1f V\n", p1data.voltageL2);
-                known = true;
-            }
-            else if (memcmp(&obisCode[OBIS_C], OBIS_VOLTAGE_L3_HEX, 2) == 0) {
-                p1data.voltageL3 = value;
-                Serial.printf("    Voltage L3: %.1f V\n", p1data.voltageL3);
-                known = true;
-            }
-            // Current values
-            else if (memcmp(&obisCode[OBIS_C], OBIS_CURRENT_L1_HEX, 2) == 0) {
-                p1data.currentL1 = value;
-                Serial.printf("    Current L1: %.1f A\n", p1data.currentL1);
-                known = true;
-            }
-            else if (memcmp(&obisCode[OBIS_C], OBIS_CURRENT_L2_HEX, 2) == 0) {
-                p1data.currentL2 = value;
-                Serial.printf("    Current L2: %.1f A\n", p1data.currentL2);
-                known = true;
-            }
-            else if (memcmp(&obisCode[OBIS_C], OBIS_CURRENT_L3_HEX, 2) == 0) {
-                p1data.currentL3 = value;
-                Serial.printf("    Current L3: %.1f A\n", p1data.currentL3);
-                known = true;
-            }
+
+            // Handle OBIS codes with C,D values
+            p1data.obisValues[p1data.obisCount].C = obisCode[OBIS_C];
+            p1data.obisValues[p1data.obisCount].D = obisCode[OBIS_D];
+            p1data.obisValues[p1data.obisCount].value = value;
+            p1data.obisValues[p1data.obisCount].unit = getObisUnit(obisCode[OBIS_C], obisCode[OBIS_D]);
+            p1data.obisCount++;
+
+            
         }
     }
     // Handle octet strings
     else if (dataType == DATA_OCTET_STRING) {
         if (position >= length) {
-            Serial.println("    Error: Not enough data for octet string");
+            P1_DLMS_LOG(println("    Error: Not enough data for octet string"));
             return false;
         }
         
         int dataLength = buffer[position++];
         if (position + dataLength > length) {
-            Serial.printf("    Error: Not enough data for octet string of length %d\n", dataLength);
+            P1_DLMS_LOG(printf("    Error: Not enough data for octet string of length %d\n", dataLength));
             return false;
         }
         
@@ -366,8 +385,8 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buf
             timeinfo.tm_sec = second;
             
             p1data.timestamp = mktime(&timeinfo);
-            Serial.printf("    Timestamp: %04d-%02d-%02d %02d:%02d:%02d\n", 
-                          year, month, day, hour, minute, second);
+            P1_DLMS_LOG(printf("    Timestamp: %04d-%02d-%02d %02d:%02d:%02d\n", 
+                          year, month, day, hour, minute, second));
             known = true;
         }
         // Handle device ID
@@ -375,28 +394,26 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buf
             if (dataLength < P1Data::BUFFER_SIZE) {
                 memcpy(p1data.szDeviceId, &buffer[position], dataLength);
                 p1data.szDeviceId[dataLength] = 0; // Null terminate
-                Serial.printf("    Device ID: %s\n", p1data.szDeviceId);
+                P1_DLMS_LOG(printf("    Device ID: %s\n", p1data.szDeviceId));
                 known = true;
             }
         }
         // Handle gas reading
-        else if (obisCode[OBIS_A]==0 && obisCode[OBIS_B]==1 && obisCode[OBIS_C]==24 && obisCode[OBIS_D]==2) {
-            if (dataLength >= 6) {
-                // Extract gas timestamp
-                char timestampBuffer[20];
-                snprintf(timestampBuffer, sizeof(timestampBuffer), "%02x%02x%02x%02x%02x%02x", 
-                    buffer[position], buffer[position+1],
-                    buffer[position+2], buffer[position+3],
-                    buffer[position+4], buffer[position+5]);
-                p1data.gasTimestamp = String(timestampBuffer);
-                Serial.printf("    Gas Timestamp: %s\n", timestampBuffer);
+        // else if (obisCode[OBIS_A]==0 && obisCode[OBIS_B]==1 && obisCode[OBIS_C]==24 && obisCode[OBIS_D]==2) {
+        //     if (dataLength >= 6) {
+        //         // Extract gas timestamp
+        //         snprintf(p1data.szGasTimestamp, P1Data::BUFFER_SIZE, "%02x%02x%02x%02x%02x%02x", 
+        //             buffer[position], buffer[position+1],
+        //             buffer[position+2], buffer[position+3],
+        //             buffer[position+4], buffer[position+5]);
+        //         P1_DLMS_LOG(printf("    Gas Timestamp: %s\n", p1data.szGasTimestamp));
                 
-                // In a real implementation, you'd extract the actual gas value here
-                // For now we'll just set a dummy value
-                p1data.gasDelivered = 0.0;
-                known = true;
-            }
-        }
+        //         // In a real implementation, you'd extract the actual gas value here
+        //         // For now we'll just set a dummy value
+        //         p1data.gasDelivered = 0.0;
+        //         known = true;
+        //     }
+        // }
     }
     
     return known;
@@ -414,7 +431,7 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1D
     bool dataFound = false;
     int currentPos = DECODER_START_OFFSET;
     
-    Serial.println("\n--- Debug Decoding DLMS Frame ---");
+    P1_DLMS_LOG(println("\n--- Debug Decoding DLMS Frame ---"));
     
     while (currentPos < length - 10) {
         int startPos = currentPos;
@@ -423,13 +440,13 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1D
         if (buffer[currentPos] == DATA_OCTET_STRING && buffer[currentPos + 1] == OBIS_CODE_LEN) {
             uint8_t obisCode[OBIS_CODE_LEN];
             memcpy(obisCode, &buffer[currentPos + 2], OBIS_CODE_LEN);
-            const char* description = getObisDescription(obisCode);
+            const char* description = nullptr;
             
-            Serial.printf("[%04d] OBIS: %d-%d:%d.%d.%d*%d (%s)\n", 
+            P1_DLMS_LOG(printf("[%04d] OBIS: %d-%d:%d.%d.%d*%d (%s)\n", 
                 currentPos, 
                 obisCode[OBIS_A], obisCode[OBIS_B], obisCode[OBIS_C],
                 obisCode[OBIS_D], obisCode[OBIS_E], obisCode[OBIS_F],
-                description ? description : "Unknown");
+                description ? description : "Unknown"));
                 
             // Move past OBIS code
             currentPos += 2 + OBIS_CODE_LEN;
@@ -470,11 +487,11 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1D
     }
     
     // Set meter model if we have a device ID
-    if (strlen(p1data.szDeviceId) > 0 && strlen(p1data.szMeterModel) == 0) {
-        strncpy(p1data.szMeterModel, "DLMS/COSEM", P1Data::BUFFER_SIZE);
-    }
+    // if (strlen(p1data.szDeviceId) > 0 && strlen(p1data.szMeterModel) == 0) {
+    //     strncpy(p1data.szMeterModel, "DLMS/COSEM", P1Data::BUFFER_SIZE);
+    // }
     
-    Serial.println("--- Decoding Frame Done ---");
+    P1_DLMS_LOG(println("--- Decoding Frame Done ---"));
     return dataFound;
 }
 

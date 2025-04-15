@@ -88,8 +88,6 @@ bool P1Meter::update() {
         addToBuffer(inByte);
         _lastDataTime = millis();
     }
-
-    
     
     // Try to detect protocol if not detected yet
     // if (!_protocolDetected) {

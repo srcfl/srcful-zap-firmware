@@ -7,8 +7,11 @@
 #include <memory>
 
 // Default pin and rate configuration
-#define P1_DEFAULT_RX_PIN      20     // Default RX pin for P1 port
-#define P1_DEFAULT_DTR_PIN     -1      // Default Data Terminal Ready pin
+// #define P1_DEFAULT_RX_PIN      20     // Default RX pin for P1 port
+// #define P1_DEFAULT_DTR_PIN     -1      // Default Data Terminal Ready pin
+#define P1_DEFAULT_RX_PIN      10     // Default RX pin for P1 port
+#define P1_DEFAULT_DTR_PIN     6      // Default Data Terminal Ready pin
+
 #define P1_DEFAULT_BAUD_RATE   115200 // Default baud rate for P1 port
 #define P1_DEFAULT_BUFFER_SIZE 1024   // Default buffer size for reading P1 data
 

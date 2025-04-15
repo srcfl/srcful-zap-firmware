@@ -1,8 +1,22 @@
 #ifndef P1_DLMS_DECODER_H
 #define P1_DLMS_DECODER_H
 
-#include <Arduino.h>
+// #include <Arduino.h>
+#include <cstring>
+#include <cstdint>
 #include "p1data.h"
+
+// Debug logging control
+// Comment out to disable all debug logs
+//#define P1_DLMS_SERIAL_DEBUG
+
+#ifdef P1_DLMS_SERIAL_DEBUG
+  #define P1_DLMS_LOG(x) Serial.x
+  #define P1_DLMS_LOG_FUNCTION(x) x
+#else
+  #define P1_DLMS_LOG(x)
+  #define P1_DLMS_LOG_FUNCTION(x)
+#endif
 
 class P1DLMSDecoder {
 public:
@@ -34,11 +48,11 @@ private:
     
     // Text format decoding
     bool decodeTextBuffer(const uint8_t* buffer, size_t length, P1Data& p1data);
-    bool processTextLine(const String& line, P1Data& p1data);
+    // bool processTextLine(const String& line, P1Data& p1data);
     
     // Helper functions
-    String extractValue(const String& line);
-    float stringToFloat(const String& valueStr);
+    // String extractValue(const String& line);
+    // float stringToFloat(const String& valueStr);
     
     // Binary format helpers
     uint16_t swap_uint16(uint16_t val);

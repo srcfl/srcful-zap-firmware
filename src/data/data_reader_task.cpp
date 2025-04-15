@@ -1,5 +1,6 @@
 #include "data_reader_task.h"
 #include "p1_dlms_decoder.h"
+#include "p1data_funcs.h"
 
 DataReaderTask::DataReaderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
@@ -107,8 +108,8 @@ void DataReaderTask::taskFunction(void* parameter) {
             P1Data p1data;
             if (decoder.decodeBuffer(task->p1Meter.getBuffer(), task->p1Meter.getBufferIndex(), p1data)) {
                 //Serial.println("P1 data decoded successfully");
-                Serial.println(String(p1data.currentL1));
-                Serial.println(String(p1data.voltageL1));
+                // Serial.println(String(p1data.currentL1));
+                // Serial.println(String(p1data.voltageL1));
 
                 // Serial.println(p1data.currentL1);
                 // Serial.println(p1data.currentL2);
