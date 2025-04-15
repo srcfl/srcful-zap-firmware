@@ -5,50 +5,34 @@
 // Timeout for protocol detection (ms)
 #define PROTOCOL_DETECTION_TIMEOUT 5000
 
+// P1 frame delimiters (most common)
+#define P1_DEFAULT_START_CHAR 0x7E
+#define P1_DEFAULT_END_CHAR 0x7E
+#define P1_FRAME_TIMEOUT 500 // ms between bytes in same frame
+
 P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate)
     : _rxPin(rxPin),
       _dtrPin(dtrPin),
       _baudRate(baudRate),
       _serial(1), // Use UART1
-      _bufferSize(P1_DEFAULT_BUFFER_SIZE),
-      _bufferIndex(0),
-    //   _protocolDetected(false),
-      _lastDataTime(0) {
+      _frameBuffer(P1_DEFAULT_BUFFER_SIZE, P1_DEFAULT_START_CHAR, P1_DEFAULT_END_CHAR, P1_FRAME_TIMEOUT),
+      _lastDataTime(0),
+      _frameCallback(nullptr) {
     
     Serial.println("P1Meter constructor called");
     
-    // Allocate buffer with null check
-    try {
-        _buffer = new uint8_t[_bufferSize];
-        if (_buffer == nullptr) {
-            Serial.println("ERROR: Failed to allocate P1 buffer");
-            // We'll handle this in begin()
-        } else {
-            clearBuffer();
-        }
-    } catch (...) {
-        Serial.println("EXCEPTION: Failed to allocate P1 buffer");
-        _buffer = nullptr;
-    }
+    // Set up frame buffer callback
+    _frameBuffer.setFrameCallback([this](const uint8_t* data, size_t size) -> bool {
+        return this->onFrameDetected(data, size);
+    });
 }
 
 P1Meter::~P1Meter() {
     Serial.println("P1Meter destructor called");
-    // Free buffer
-    if (_buffer != nullptr) {
-        delete[] _buffer;
-        _buffer = nullptr;
-    }
 }
 
 bool P1Meter::begin() {
     Serial.println("Initializing P1 meter...");
-    
-    // Check if buffer allocation succeeded
-    if (_buffer == nullptr) {
-        Serial.println("ERROR: P1 buffer not allocated, cannot initialize");
-        return false;
-    }
     
     // Configure DTR pin
     if (_dtrPin >= 0) {
@@ -76,22 +60,33 @@ bool P1Meter::begin() {
 }
 
 bool P1Meter::update() {
-    if (_buffer == nullptr) {
-        return false;
-    }
-    
     bool dataProcessed = false;
+    bool dataRecieved = false;
     
     // Read available data
     while (_serial.available()) {
         uint8_t inByte = _serial.read();
-        addToBuffer(inByte);
+        Serial.print(inByte, HEX); Serial.print(" ");
+        dataRecieved = true;
+        // Process byte through frame buffer
+        if (_frameBuffer.addByte(inByte)) {
+            dataProcessed = true;
+        }
         _lastDataTime = millis();
     }
+    if (dataRecieved) {
+        Serial.println();
+    }
+
     
-    // Try to detect protocol if not detected yet
+    // Check for timeouts and process any frames that might be complete
+    if (_frameBuffer.update()) {
+        dataProcessed = true;
+    }
+    
+    // Try to detect protocol if needed
     // if (!_protocolDetected) {
-    //     if (_bufferIndex > 30 || millis() - _lastDataTime > PROTOCOL_DETECTION_TIMEOUT) {
+    //     if (getBufferUsed() > 30 || millis() - _lastDataTime > PROTOCOL_DETECTION_TIMEOUT) {
     //         detectProtocol();
     //     }
     // } else if (_reader) {
@@ -117,34 +112,42 @@ String P1Meter::getProtocolName() const {
     return "Unknown";
 }
 
-void P1Meter::addToBuffer(uint8_t byte) {
-    if (_buffer == nullptr) {
-        return;
-    }
-    
-    if (_bufferIndex < _bufferSize) {
-        _buffer[_bufferIndex++] = byte;
-    }
-    else {
-        Serial.println("Buffer overflow, clearing buffer");
-        clearBuffer();
-    }
+int P1Meter::getBufferSize() const {
+    return P1_DEFAULT_BUFFER_SIZE;
+}
+
+int P1Meter::getBufferUsed() const {
+    return _frameBuffer.available(); // Return number of bytes in frame buffer
 }
 
 void P1Meter::clearBuffer() {
-    if (_buffer == nullptr) {
-        return;
-    }
-    memset(_buffer, 0, _bufferSize);
-    _bufferIndex = 0;
+    // Clear frame buffer
+    _frameBuffer.clear();
 }
 
-bool P1Meter::detectProtocol() {
-    if (_buffer == nullptr || _bufferIndex == 0) {
+void P1Meter::setFrameCallback(FrameReceivedCallback callback) {
+    _frameCallback = callback;
+}
+
+bool P1Meter::onFrameDetected(const uint8_t* data, size_t size) {
+    if (data == nullptr || size == 0) {
         return false;
     }
     
-    Serial.println("Attempting to detect P1 protocol...");
+    Serial.printf("P1 frame detected (%zu bytes)\n", size);
+    
+    // Call user-provided frame callback if available
+    if (_frameCallback) {
+        _frameCallback(data, size);
+    }
+    
+    // Here would be a good place to integrate with protocol detection or decoding
+    
+    return true;
+}
+
+bool P1Meter::detectProtocol() {
+    // Serial.println("Attempting to detect P1 protocol...");
     
     // Use static factory method to detect protocol
     // try {
@@ -157,12 +160,12 @@ bool P1Meter::detectProtocol() {
     // if (_reader) {
     //     _protocolDetected = true;
     //     _reader->begin();
-        
+    //     
     //     Serial.print("Protocol detected: ");
     //     Serial.println(_reader->getProtocolName());
     //     return true;
     // }
     
-    Serial.println("Protocol detection failed, will retry");
+    Serial.println("Protocol detection not implemented yet");
     return false;
 }

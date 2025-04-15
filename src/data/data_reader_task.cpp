@@ -16,10 +16,14 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
         return; // Task already running
     }
 
+    // Set up the frame callback before initializing
+    p1Meter.setFrameCallback([this](const uint8_t* data, size_t size) {
+        this->handleFrame(data, size);
+    });
+
     if (!p1Meter.begin()) {
         Serial.println("Data reader task: Failed to initialize P1 meter");
     }
-
 
     this->p1DataQueue = dataQueue;
     shouldRun = true;
@@ -32,8 +36,6 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
         &taskHandle,
         0  // Run on core 0
     );
-
-
 }
 
 void DataReaderTask::stop() {
@@ -87,45 +89,42 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
     }
 }
 
+// New method to handle complete frames received from P1Meter
+void DataReaderTask::handleFrame(const uint8_t* data, size_t size) {
+    if (data == nullptr || size == 0) {
+        return;
+    }
+    
+    // Debug output print first 15 and last 15 bytes of the frame
+    Serial.printf("Data reader task: Received P1 frame (%zu bytes): ", size);
+    for (size_t i = 0; i < min(size, size_t(15)); i++) {
+        Serial.print((char)data[i]);
+    }
+    if (size > 30) Serial.print("...");
+    for (size_t i = max(size - 15, size_t(15)); i < size; i++) {
+        Serial.print((char)data[i]);
+    }
+    Serial.println();
+    
+    // Decode the frame
+    P1DLMSDecoder decoder;
+    P1Data p1data;
+    
+    if (decoder.decodeBuffer(data, size, p1data)) {
+        Serial.println("P1 data decoded successfully");
+        enqueueData(p1data);
+    } else {
+        Serial.println("Failed to decode P1 data frame");
+    }
+}
 
 void DataReaderTask::taskFunction(void* parameter) {
     DataReaderTask* task = static_cast<DataReaderTask*>(parameter);
     
     while (task->shouldRun) {
-
-
+        // Update P1 meter - this will read available data and call our frame callback
+        // when complete frames are detected
         task->p1Meter.update();
-        // Serial.println("Data reader task: P1 meter updated");
-        // Serial.println("Data reader task: Available bytes: " + String(task->p1Meter.getBufferIndex()));
-
-        // Check if we have new data
-        if (task->p1Meter.getBufferIndex() > 0) {
-            // Process the data
-            const String buffer(task->p1Meter.getBuffer(), task->p1Meter.getBufferIndex());
-            Serial.println("Data reader task: Buffer data: " + buffer);
-            
-            P1DLMSDecoder decoder;
-            P1Data p1data;
-            if (decoder.decodeBuffer(task->p1Meter.getBuffer(), task->p1Meter.getBufferIndex(), p1data)) {
-                //Serial.println("P1 data decoded successfully");
-                // Serial.println(String(p1data.currentL1));
-                // Serial.println(String(p1data.voltageL1));
-
-                // Serial.println(p1data.currentL1);
-                // Serial.println(p1data.currentL2);
-                // Serial.println(p1data.currentL3);
-
-                task->enqueueData(p1data);
-                Serial.println("Data reader task: P1 data enqueued");
-                
-            } else {
-                Serial.println("Failed to decode P1 data");
-            }
-
-
-            task->p1Meter.clearBuffer();
-            Serial.println("Data reader task: Buffer cleared");
-        }
         
         // Small delay to prevent task from hogging CPU
         vTaskDelay(pdMS_TO_TICKS(100));

@@ -23,7 +23,7 @@ public:
     // Constructor
     P1DLMSDecoder();
     
-    // Main decode function
+    // Main decode function - decodes a complete P1 frame
     bool decodeBuffer(const uint8_t* buffer, size_t length, P1Data& p1data);
     
     // Static OBIS codes (text format)

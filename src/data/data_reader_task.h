@@ -30,6 +30,9 @@ private:
     String generateP1JWT();
     void enqueueData(const P1Data& p1data);
     
+    // Handle a complete frame from P1 meter
+    void handleFrame(const uint8_t* data, size_t size);
+
     TaskHandle_t taskHandle;
     uint32_t stackSize;
     UBaseType_t priority;

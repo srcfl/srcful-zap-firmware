@@ -5,6 +5,7 @@
 #include <HardwareSerial.h>
 #include <vector>
 #include <memory>
+#include "serial_frame_buffer.h"
 
 // Default pin and rate configuration
 // #define P1_DEFAULT_RX_PIN      20     // Default RX pin for P1 port
@@ -17,6 +18,9 @@
 
 class P1Meter {
 public:
+    // Frame received callback
+    using FrameReceivedCallback = std::function<void(const uint8_t*, size_t)>;
+    
     // Constructor with default values
     P1Meter(int rxPin = P1_DEFAULT_RX_PIN, 
             int dtrPin = P1_DEFAULT_DTR_PIN, 
@@ -33,16 +37,15 @@ public:
     // Get the detected protocol name
     String getProtocolName() const;
     
-    // Get the current buffer and buffer size (used for protocol detection)
-    uint8_t* getBuffer() { return _buffer; }
-    int getBufferSize() const { return _bufferSize; }
-    int getBufferIndex() const { return _bufferIndex; }
-    
-    // Add data to buffer (used by reader for protocol detection)
-    void addToBuffer(uint8_t byte);
+    // Get buffer size and usage
+    int getBufferSize() const;
+    int getBufferUsed() const;
     
     // Clear the buffer
     void clearBuffer();
+    
+    // Set frame callback
+    void setFrameCallback(FrameReceivedCallback callback);
     
     // Get the serial interface
     HardwareSerial* getSerial() { return &_serial; }
@@ -54,16 +57,18 @@ private:
     int _baudRate;
     HardwareSerial _serial;
     
-    // Data buffer
-    uint8_t* _buffer;
-    int _bufferSize;
-    int _bufferIndex;
+    // Frame buffer for robust serial data handling
+    SerialFrameBuffer _frameBuffer;
     
     // Protocol detection
     // bool _protocolDetected;
     // std::unique_ptr<P1ReaderInterface> _reader;
     
     unsigned long _lastDataTime;
+    FrameReceivedCallback _frameCallback;
+    
+    // Internal frame callback
+    bool onFrameDetected(const uint8_t* data, size_t size);
     
     // Attempt to auto-detect protocol if needed
     bool detectProtocol();
