@@ -19,7 +19,7 @@
 class P1Meter {
 public:
     // Frame received callback
-    using FrameReceivedCallback = std::function<void(const uint8_t*, size_t)>;
+    using FrameReceivedCallback = std::function<void(const IFrameData&)>;
     
     // Constructor with default values
     P1Meter(int rxPin = P1_DEFAULT_RX_PIN, 
@@ -68,7 +68,7 @@ private:
     FrameReceivedCallback _frameCallback;
     
     // Internal frame callback
-    bool onFrameDetected(const uint8_t* data, size_t size);
+    bool onFrameDetected(const IFrameData& frame);
     
     // Attempt to auto-detect protocol if needed
     bool detectProtocol();

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cstdint>
 #include "p1data.h"
+#include "IFrameData.h"
 
 // Debug logging control
 // Comment out to disable all debug logs
@@ -18,13 +19,15 @@
   #define P1_DLMS_LOG_FUNCTION(x)
 #endif
 
+
+
 class P1DLMSDecoder {
 public:
     // Constructor
     P1DLMSDecoder();
     
     // Main decode function - decodes a complete P1 frame
-    bool decodeBuffer(const uint8_t* buffer, size_t length, P1Data& p1data);
+    bool decodeBuffer(const IFrameData& frame, P1Data& p1data);
     
     // Static OBIS codes (text format)
     static const char* OBIS_ELECTRICITY_DELIVERED_TARIFF1;
@@ -44,10 +47,10 @@ public:
     
 private:
     // Binary DLMS format decoding
-    bool decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1Data& p1data);
+    bool decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data);
     
     // Text format decoding
-    bool decodeTextBuffer(const uint8_t* buffer, size_t length, P1Data& p1data);
+    bool decodeTextBuffer(const IFrameData& frame, P1Data& p1data);
     // bool processTextLine(const String& line, P1Data& p1data);
     
     // Helper functions
@@ -58,10 +61,10 @@ private:
     uint16_t swap_uint16(uint16_t val);
     uint32_t swap_uint32(uint32_t val);
     const char* getObisDescription(const uint8_t* obisCode);
-    float extractNumericValue(const uint8_t* buffer, int position, uint8_t dataType, size_t length);
+    float extractNumericValue(const IFrameData& frame, int position, uint8_t dataType);
     int getDataTypeSize(uint8_t dataType);
-    bool processObisValue(const uint8_t* obisCode, const uint8_t* buffer, int position, 
-                          uint8_t dataType, size_t length, P1Data& p1data);
+    bool processObisValue(const uint8_t* obisCode, const IFrameData& frame, int position, 
+        uint8_t dataType, P1Data& p1data);
 };
 
 #endif // P1_DLMS_DECODER_H

@@ -210,7 +210,7 @@ bool is_obis_cd(const uint8_t* obisCode, const uint8_t* pattern) {
 // }
 
 // Helper function to extract numeric value with appropriate scaling
-float P1DLMSDecoder::extractNumericValue(const uint8_t* buffer, int position, uint8_t dataType, size_t length) {
+float P1DLMSDecoder::extractNumericValue(const IFrameData& frame, int position, uint8_t dataType) {
     float result = 0.0f;
     int8_t scale = 0;
     uint8_t unit = 0;
@@ -221,9 +221,7 @@ float P1DLMSDecoder::extractNumericValue(const uint8_t* buffer, int position, ui
     switch (dataType) {
 
         case DATA_INTEGER: { // 0x10 - 16-bit signed integer
-            int16_t val;
-            memcpy(&val, &buffer[position], 2);
-            val = swap_uint16(val);
+            int16_t val = frame.getFrameByte(position) << 8 | frame.getFrameByte(position + 1);            
             result = static_cast<float>(val);
             position += 2;
             break;
@@ -231,18 +229,17 @@ float P1DLMSDecoder::extractNumericValue(const uint8_t* buffer, int position, ui
             
         case DATA_UNSIGNED: // 0x11 - 8-bit unsigned
         case DATA_LONG_UNSIGNED: { // 0x12 - 16-bit unsigned
-            uint16_t val;
-            memcpy(&val, &buffer[position], 2);
-            val = swap_uint16(val);
+            int16_t val = frame.getFrameByte(position) << 8 | frame.getFrameByte(position + 1);   
             result = static_cast<float>(val);
             position += 2;
             break;
         }
             
         case DATA_LONG_DOUBLE_UNSIGNED: { // 0x06 - 32-bit unsigned
-            uint32_t val;
-            memcpy(&val, &buffer[position], 4);
-            val = swap_uint32(val);
+            uint32_t val = frame.getFrameByte(position) << 24| 
+                  (frame.getFrameByte(position + 1) << 16) | 
+                  (frame.getFrameByte(position + 2) << 8) | 
+                  (frame.getFrameByte(position + 3) << 0);
             result = static_cast<float>(val);
             position += 4;
             break;
@@ -251,29 +248,29 @@ float P1DLMSDecoder::extractNumericValue(const uint8_t* buffer, int position, ui
 
     // For debugging - print several bytes after the value
     P1_DLMS_LOG(printf("    Bytes after value: "));
-    for (int i = 0; i < 8 && position + i < length; i++) {
-        P1_DLMS_LOG(printf("%02X ", buffer[position + i]));
+    for (int i = 0; i < 8 && position + i < frame.getFrameSize(); i++) {
+        P1_DLMS_LOG(printf("%02X ", frame.getFrameByte(position + i)));
     }
     P1_DLMS_LOG(println());
    
     // Check if we have a structure tag followed by scale factor
     // Parse the structure after the value
-    if (position + 7 < length && buffer[position] == 0x02) {
-        int structElements = buffer[position + 1];
+    if (position + 7 < frame.getFrameSize() && frame.getFrameByte(position) == 0x02) {
+        int structElements = frame.getFrameByte(position + 1);
         position += 2;  // Move past structure tag and element count
         
         // Parse inner structure elements
-        for (int i = 0; i < structElements && position < length; i++) {
-            uint8_t tag = buffer[position++];
+        for (int i = 0; i < structElements && position < frame.getFrameSize(); i++) {
+            uint8_t tag = frame.getFrameByte(position++);
             
             switch (tag) {
                 case 0x0F:  // Scale factor
-                    scale = (int8_t)buffer[position++];
+                    scale = (int8_t)frame.getFrameByte(position++);
                     P1_DLMS_LOG(printf("    Scale factor tag found: %d\n", scale));
                     break;
                     
                 case 0x16:  // Unit
-                    unit = buffer[position++];
+                    unit = frame.getFrameByte(position++);
                     P1_DLMS_LOG(printf("    Unit tag found: 0x%02X\n", unit));
                     break;
                     
@@ -320,8 +317,8 @@ int P1DLMSDecoder::getDataTypeSize(uint8_t dataType) {
 
 
 // Process OBIS value and update P1Data accordingly
-bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buffer, int position, 
-                                     uint8_t dataType, size_t length, P1Data& p1data) {
+bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const IFrameData& frame, int position, 
+                                     uint8_t dataType, P1Data& p1data) {
     bool known = false;
     
     // Print debug info
@@ -332,12 +329,12 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buf
         dataType == DATA_LONG_UNSIGNED || dataType == DATA_LONG_DOUBLE_UNSIGNED) {
         
         int dataSize = getDataTypeSize(dataType);
-        if (position + dataSize > length) {
+        if (position + dataSize > frame.getFrameSize()) {
             P1_DLMS_LOG(printf("    Error: Not enough data for type 0x%02X\n", dataType));
             return false;
         }
         
-        float value = extractNumericValue(buffer, position, dataType, length);
+        float value = extractNumericValue(frame, position, dataType);
         P1_DLMS_LOG(printf("    Value: %f\n", value));
         
         // Process based on OBIS code
@@ -355,13 +352,13 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buf
     }
     // Handle octet strings
     else if (dataType == DATA_OCTET_STRING) {
-        if (position >= length) {
+        if (position >= frame.getFrameSize()) {
             P1_DLMS_LOG(println("    Error: Not enough data for octet string"));
             return false;
         }
         
-        int dataLength = buffer[position++];
-        if (position + dataLength > length) {
+        int dataLength = frame.getFrameByte(position++);
+        if (position + dataLength > frame.getFrameSize()) {
             P1_DLMS_LOG(printf("    Error: Not enough data for octet string of length %d\n", dataLength));
             return false;
         }
@@ -369,12 +366,14 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buf
         // Handle timestamp
         if (dataLength == 12 && obisCode[OBIS_A] == 0 && obisCode[OBIS_B] == 0 && 
             obisCode[OBIS_C] == 1 && obisCode[OBIS_D] == 0) {
-            uint16_t year = swap_uint16(*(uint16_t*)&buffer[position]);
-            uint8_t month = buffer[position+2];
-            uint8_t day = buffer[position+3];
-            uint8_t hour = buffer[position+5];
-            uint8_t minute = buffer[position+6];
-            uint8_t second = buffer[position+7];
+            uint16_t year = frame.getFrameByte(position) << 8 | frame.getFrameByte(position+1); // TODO: could be other way around....
+
+            // uint16_t year = swap_uint16(*(uint16_t*)&({buffer[position], buffer[position+1]}));
+            uint8_t month = frame.getFrameByte(position+2);
+            uint8_t day = frame.getFrameByte(position+3);
+            uint8_t hour = frame.getFrameByte(position+5);
+            uint8_t minute = frame.getFrameByte(position+6);
+            uint8_t second = frame.getFrameByte(position+7);
             
             struct tm timeinfo = {0};
             timeinfo.tm_year = year - 1900;
@@ -392,7 +391,12 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buf
         // Handle device ID
         else if (obisCode[OBIS_A]==0 && obisCode[OBIS_B]==0 && obisCode[OBIS_C]==96 && obisCode[OBIS_D]==1) {
             if (dataLength < P1Data::BUFFER_SIZE) {
-                memcpy(p1data.szDeviceId, &buffer[position], dataLength);
+                for (int i = 0; i < dataLength; i++) {
+                    if (frame.getFrameByte(position + i) == 0x00) {
+                        dataLength = i;
+                        break;
+                    }
+                }
                 p1data.szDeviceId[dataLength] = 0; // Null terminate
                 P1_DLMS_LOG(printf("    Device ID: %s\n", p1data.szDeviceId));
                 known = true;
@@ -419,12 +423,12 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const uint8_t* buf
     return known;
 }
 
-bool P1DLMSDecoder::decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1Data& p1data) {
+bool P1DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) {
     // Validate frame
-    if (buffer[0] != FRAME_FLAG || buffer[length -1] != FRAME_FLAG) {
+    if (frame.getFrameByte(0) != FRAME_FLAG || frame.getFrameByte(frame.getFrameSize() -1) != FRAME_FLAG) {
         return false; // Invalid frame start/end
     }
-    if (length < DECODER_START_OFFSET) {
+    if (frame.getFrameSize() < DECODER_START_OFFSET) {
         return false; // Buffer too short
     }
 
@@ -433,13 +437,15 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1D
     
     P1_DLMS_LOG(println("\n--- Debug Decoding DLMS Frame ---"));
     
-    while (currentPos < length - 10) {
+    while (currentPos < frame.getFrameSize() - 10) {
         int startPos = currentPos;
         
         // Look for OBIS code marker (octet string of length 6)
-        if (buffer[currentPos] == DATA_OCTET_STRING && buffer[currentPos + 1] == OBIS_CODE_LEN) {
+        if (frame.getFrameByte(currentPos) == DATA_OCTET_STRING && frame.getFrameByte(currentPos + 1) == OBIS_CODE_LEN) {
             uint8_t obisCode[OBIS_CODE_LEN];
-            memcpy(obisCode, &buffer[currentPos + 2], OBIS_CODE_LEN);
+            for (int i = 0; i < OBIS_CODE_LEN; i++) {
+                obisCode[i] = frame.getFrameByte(currentPos + 2 + i);
+            }
             const char* description = nullptr;
             
             P1_DLMS_LOG(printf("[%04d] OBIS: %d-%d:%d.%d.%d*%d (%s)\n", 
@@ -452,17 +458,17 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1D
             currentPos += 2 + OBIS_CODE_LEN;
             
             // Process the value if there's enough data
-            if (currentPos < length) {
-                uint8_t dataType = buffer[currentPos++];
+            if (currentPos < frame.getFrameSize()) {
+                uint8_t dataType = frame.getFrameByte(currentPos++);
                 int dataSize = getDataTypeSize(dataType);
                 
                 // Process the value based on its type
-                bool known = processObisValue(obisCode, buffer, currentPos, dataType, length, p1data);
+                bool known = processObisValue(obisCode, frame, currentPos, dataType, p1data);
                 
                 // Move position based on data type and length
                 if (dataType == DATA_OCTET_STRING) {
-                    if (currentPos < length) {
-                        uint8_t strLen = buffer[currentPos];
+                    if (currentPos < frame.getFrameSize()) {
+                        uint8_t strLen = frame.getFrameByte(currentPos);
                         currentPos += 1 + strLen;
                     }
                 } else {
@@ -472,8 +478,8 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1D
                 if (known) dataFound = true;
                 
                 // Skip potential separator bytes
-                if (currentPos < length - 1 && 
-                    (buffer[currentPos] == 0x02 || buffer[currentPos] == 0x0F)) {
+                if (currentPos < frame.getFrameSize() - 1 && 
+                    (frame.getFrameByte(currentPos) == 0x02 || frame.getFrameByte(currentPos) == 0x0F)) {
                     currentPos += 2;
                 }
             }
@@ -495,9 +501,9 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const uint8_t* buffer, size_t length, P1D
     return dataFound;
 }
 
-bool P1DLMSDecoder::decodeBuffer(const uint8_t* buffer, size_t length, P1Data& p1data) {
+bool P1DLMSDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
     // Try binary decoding first
-    if (decodeBinaryBuffer(buffer, length, p1data)) {
+    if (decodeBinaryBuffer(frame, p1data)) {
         return true;
     }
     

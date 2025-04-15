@@ -78,20 +78,30 @@ bool SerialFrameBuffer::addByte(uint8_t byte, const unsigned long currentTime) {
         }
     }
 
-    // Detect end of frame we do this before detecting the start so we can use the same delimiter.
     bool frameProcessed = false;
-    if (_frameInProgress && byte == _endDelimiter) {
-        // Try to process complete frames
-        frameProcessed = processCompleteFrames();
+    // special case if end and start are the same
+    if (_endDelimiter == _startDelimiter && byte == _endDelimiter) {
+        // If the start and end delimiters are the same, we need to handle this case
+        if (_frameInProgress) {
+            // We have a complete frame
+            frameProcessed = processCompleteFrames();
+        } else {
+            // We have a single delimiter, treat it as a start
+            _frameInProgress = true;
+            _frameStartIndex = (_writeIndex - 1 + _bufferSize) % _bufferSize; // Adjust to point to the start char
+        }
+    } else {
+         // Detect start of frame
+         if (byte == _startDelimiter && !_frameInProgress) {
+            _frameInProgress = true;
+            _frameStartIndex = (_writeIndex - 1 + _bufferSize) % _bufferSize; // Adjust to point to the start char
+        }
+
+        if (_frameInProgress && byte == _endDelimiter) {
+            // Try to process complete frames
+            frameProcessed = processCompleteFrames();
+        }
     }
-    
-    // Detect start of frame
-    if (byte == _startDelimiter) {
-        _frameInProgress = true;
-        _frameStartIndex = (_writeIndex - 1 + _bufferSize) % _bufferSize; // Adjust to point to the start char
-    }
-    
-    
     
     return frameProcessed;
 }
@@ -152,19 +162,18 @@ bool SerialFrameBuffer::processCompleteFrames() {
     
     bool anyFramesProcessed = false;
     
-    // Look for complete frames in buffer
-    uint8_t* frameData = nullptr;
-    size_t frameSize = 0;
     
     // Try to extract a complete frame
-    while (extractCompleteFrame(&frameData, &frameSize)) {
+    while (extractCompleteFrame()) {
         // Call the callback with the frame data
-        bool processed = _frameCallback(frameData, frameSize);
+        bool processed = _frameCallback(*this);
         
         if (processed) {
             _frameCount++;
             anyFramesProcessed = true;
         }
+
+        _currentFrameSize = 0; // Reset current frame size after processing
     }
     
     return anyFramesProcessed;
@@ -203,7 +212,7 @@ bool SerialFrameBuffer::findNextFrameStart() {
     return false;
 }
 
-bool SerialFrameBuffer::extractCompleteFrame(uint8_t** frameData, size_t* frameSize) {
+bool SerialFrameBuffer::extractCompleteFrame() {
     if (_buffer == nullptr || _bufferUsed < 2 || !_frameInProgress) {
         return false;
     }
@@ -236,21 +245,10 @@ bool SerialFrameBuffer::extractCompleteFrame(uint8_t** frameData, size_t* frameS
             
             // Only proceed if we have a reasonable frame size
             if (frameLength >= 2) {
-                // Set output parameters
-                static uint8_t tempFrame[2048]; // Static buffer for returning frame data
-                
-                // Copy frame data to a contiguous buffer
-                size_t tempIndex = 0;
-                size_t pos = startPos;
-                
-                for (size_t i = 0; i < frameLength && tempIndex < sizeof(tempFrame); i++) {
-                    tempFrame[tempIndex++] = _buffer[pos];
-                    pos = (pos + 1) % _bufferSize;
-                }
-                
-                *frameData = tempFrame;
-                *frameSize = tempIndex;
-                
+                // Instead of copying data, store metadata about the frame for IFrameData implementation
+                _currentFrameStartIndex = startPos;
+                _currentFrameSize = frameLength;
+                               
                 // Advance read index past this frame
                 // We'll start the next frame search after the end delimiter
                 _readIndex = (endPos + 1) % _bufferSize;

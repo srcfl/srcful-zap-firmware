@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <functional>
 
+#include "IFrameData.h"
+
 /**
  * @brief A robust circular buffer for handling serial data frames
  * 
@@ -11,7 +13,7 @@
  * with special handling for framed protocols (start/end delimiters).
  * It automatically detects complete frames and calls a user-provided callback when available.
  */
-class SerialFrameBuffer {
+class SerialFrameBuffer : public IFrameData {
 public:
     /**
      * @brief Frame detection callback type
@@ -19,7 +21,7 @@ public:
      * @param size Size of the frame data in bytes
      * @return true if frame was successfully processed, false otherwise
      */
-    using FrameCallback = std::function<bool(const uint8_t*, size_t)>;
+    using FrameCallback = std::function<bool(IFrameData& frameData)>;
     
     /**
      * @brief Construct a new SerialFrameBuffer
@@ -118,6 +120,21 @@ public:
      */
     uint32_t getOverflowCount() const { return _overflowCount; }
 
+
+    virtual size_t getFrameSize() const override { return _currentFrameSize; } 
+    /**
+     * @brief Get a byte from the frame at the specified index
+     * 
+     * @param index Index into the frame data (0 is the first byte)
+     * @return uint8_t The byte value at the specified position
+     */
+    virtual uint8_t getFrameByte(size_t index) const override {
+        if (index < _currentFrameSize) {
+            return _buffer[(_currentFrameStartIndex + index) % _bufferSize];
+        }
+        return 0; // Out of bounds
+    }
+
 private:
     // Buffer management
     uint8_t* _buffer;
@@ -125,6 +142,9 @@ private:
     size_t _writeIndex;
     size_t _readIndex;
     size_t _bufferUsed;
+
+    size_t _currentFrameStartIndex;
+    size_t _currentFrameSize;
     
     // Frame detection
     uint8_t _startDelimiter;
@@ -144,7 +164,7 @@ private:
     // Internal methods
     bool processCompleteFrames();
     bool findNextFrameStart();
-    bool extractCompleteFrame(uint8_t** frameData, size_t* frameSize);
+    bool extractCompleteFrame();
     void advanceReadIndex(size_t count);
 };
 

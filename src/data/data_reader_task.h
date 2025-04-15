@@ -13,6 +13,7 @@
 #include "data_package.h"  // Include the new data package header
 
 #include "p1_meter.h"  // Include P1Meter class for reading data
+#include "IFrameData.h"  // Include IFrameData interface for frame data handling
 
 class DataReaderTask {
 public:
@@ -31,7 +32,7 @@ private:
     void enqueueData(const P1Data& p1data);
     
     // Handle a complete frame from P1 meter
-    void handleFrame(const uint8_t* data, size_t size);
+    void handleFrame(const IFrameData& frame);
 
     TaskHandle_t taskHandle;
     uint32_t stackSize;

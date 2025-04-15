@@ -17,8 +17,8 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
     }
 
     // Set up the frame callback before initializing
-    p1Meter.setFrameCallback([this](const uint8_t* data, size_t size) {
-        this->handleFrame(data, size);
+    p1Meter.setFrameCallback([this](const IFrameData& frame) {
+        this->handleFrame(frame);
     });
 
     if (!p1Meter.begin()) {
@@ -90,19 +90,18 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
 }
 
 // New method to handle complete frames received from P1Meter
-void DataReaderTask::handleFrame(const uint8_t* data, size_t size) {
-    if (data == nullptr || size == 0) {
-        return;
-    }
+void DataReaderTask::handleFrame(const IFrameData& frame) {
     
+    const size_t size = frame.getFrameSize();
+
     // Debug output print first 15 and last 15 bytes of the frame
     Serial.printf("Data reader task: Received P1 frame (%zu bytes): ", size);
     for (size_t i = 0; i < min(size, size_t(15)); i++) {
-        Serial.print((char)data[i]);
+        Serial.print((char)frame.getFrameByte(i));
     }
     if (size > 30) Serial.print("...");
     for (size_t i = max(size - 15, size_t(15)); i < size; i++) {
-        Serial.print((char)data[i]);
+        Serial.print((char)frame.getFrameByte(i));
     }
     Serial.println();
     
@@ -110,7 +109,7 @@ void DataReaderTask::handleFrame(const uint8_t* data, size_t size) {
     P1DLMSDecoder decoder;
     P1Data p1data;
     
-    if (decoder.decodeBuffer(data, size, p1data)) {
+    if (decoder.decodeBuffer(frame, p1data)) {
         Serial.println("P1 data decoded successfully");
         enqueueData(p1data);
     } else {

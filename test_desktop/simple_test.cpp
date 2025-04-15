@@ -5,6 +5,25 @@
 #include "../src/data/p1data.h"
 #include "../src/data/p1_dlms_decoder.h"
 
+class FrameData : public IFrameData {
+public:
+    FrameData(const uint8_t* data, size_t size) : data_(data), size_(size) {}
+
+    uint8_t getFrameByte(size_t index) const override {
+        if (index < size_) {
+            return data_[index];
+        }
+        return 0;
+    }
+
+    size_t getFrameSize() const override {
+        return size_;
+    }
+private:
+    const uint8_t* data_;
+    size_t size_;
+};
+
 int test_decoder_frame() {
     
     P1Data p1data;
@@ -42,7 +61,9 @@ int test_decoder_frame() {
         0x1C, 0x90, 0x7E
     };
 
-    decoder.decodeBuffer(buffer, sizeof(buffer), p1data);
+    FrameData frameData(buffer, sizeof(buffer));
+
+    decoder.decodeBuffer(frameData, p1data);
 
 
     for (int i = 0; i < p1data.obisCount; i++) {
@@ -66,7 +87,7 @@ int main() {
         P1DLMSDecoder decoder;
         uint8_t buffer[] = {0x00, 0x01};
 
-        decoder.decodeBuffer(buffer, 2, p1data);
+        // decoder.decodeBuffer(buffer, 2, p1data);
 
         test_decoder_frame();
 

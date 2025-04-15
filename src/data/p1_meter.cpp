@@ -22,8 +22,8 @@ P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate)
     Serial.println("P1Meter constructor called");
     
     // Set up frame buffer callback
-    _frameBuffer.setFrameCallback([this](const uint8_t* data, size_t size) -> bool {
-        return this->onFrameDetected(data, size);
+    _frameBuffer.setFrameCallback([this](const IFrameData& frame) -> bool {
+        return this->onFrameDetected(frame);
     });
 }
 
@@ -129,16 +129,13 @@ void P1Meter::setFrameCallback(FrameReceivedCallback callback) {
     _frameCallback = callback;
 }
 
-bool P1Meter::onFrameDetected(const uint8_t* data, size_t size) {
-    if (data == nullptr || size == 0) {
-        return false;
-    }
-    
-    Serial.printf("P1 frame detected (%zu bytes)\n", size);
+bool P1Meter::onFrameDetected(const IFrameData& frame) {
+   
+    Serial.printf("P1 frame detected (%zu bytes)\n", frame.getFrameSize());
     
     // Call user-provided frame callback if available
     if (_frameCallback) {
-        _frameCallback(data, size);
+        _frameCallback(frame);
     }
     
     // Here would be a good place to integrate with protocol detection or decoding
