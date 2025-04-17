@@ -23,6 +23,7 @@ EndpointResponse handleWiFiStatus(const EndpointRequest& request);
 EndpointResponse handleWiFiScan(const EndpointRequest& request);
 EndpointResponse handleCryptoSign(const EndpointRequest& request);
 EndpointResponse handleInitialize(const EndpointRequest& request);
+EndpointResponse handleDebug(const EndpointRequest& request);
 
 #include "endpoint_handlers.h"
 #include "wifi_endpoint_handlers.h"
@@ -38,3 +39,4 @@ extern InitializeHandler g_initializeHandler;
 extern CryptoSignHandler g_cryptoSignHandler;
 extern OTAUpdateHandler g_otaUpdateHandler;
 extern BLEStopHandler g_bleStopHandler;
+extern DebugHandler g_debugHandler;

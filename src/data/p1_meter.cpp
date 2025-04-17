@@ -15,7 +15,7 @@ P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate)
       _dtrPin(dtrPin),
       _baudRate(baudRate),
       _serial(1), // Use UART1
-      _frameBuffer(P1_DEFAULT_BUFFER_SIZE, P1_DEFAULT_START_CHAR, P1_DEFAULT_END_CHAR, P1_FRAME_TIMEOUT),
+      _frameBuffer(millis(), P1_DEFAULT_BUFFER_SIZE, P1_DEFAULT_START_CHAR, P1_DEFAULT_END_CHAR, P1_FRAME_TIMEOUT),
       _lastDataTime(0),
       _frameCallback(nullptr) {
     
@@ -42,13 +42,14 @@ bool P1Meter::begin() {
     }
     
     // Initialize serial
-    try {
+    // try {
+        _serial.setRxBufferSize(2048); // Set RX buffer size
         _serial.begin(_baudRate, SERIAL_8N1, _rxPin, -1, true); // Inverted logic
         Serial.printf("Initialized UART1 with baud rate %d, RX pin %d\n", _baudRate, _rxPin);
-    } catch (...) {
-        Serial.println("EXCEPTION: Failed to initialize P1 serial");
-        return false;
-    }
+    // } catch (...) {
+    //     Serial.println("EXCEPTION: Failed to initialize P1 serial");
+    //     return false;
+    // }
     
     // Reset state
     clearBuffer();
@@ -61,26 +62,43 @@ bool P1Meter::begin() {
 
 bool P1Meter::update() {
     bool dataProcessed = false;
-    bool dataRecieved = false;
+    int availableBytes;
+    static const int bufferSize = 1024;
+    static uint8_t buffer[bufferSize];
+    size_t readBytes = 0;
     
     // Read available data
-    while (_serial.available()) {
-        uint8_t inByte = _serial.read();
-        Serial.print(inByte, HEX); Serial.print(" ");
-        dataRecieved = true;
+    while ((availableBytes = _serial.available()) > 0) {
+        Serial.print("Available bytes: "); Serial.println(availableBytes);
+        size_t leftInBuffer = bufferSize - readBytes;
+        if (leftInBuffer <= 0) {
+            Serial.println("Buffer overflow, processing data");
+            break;
+        }
+
+        readBytes += _serial.readBytes(&buffer[readBytes], availableBytes < leftInBuffer ? availableBytes : leftInBuffer);
+        // Serial.print("Read bytes: "); Serial.println(readBytes);
+        
+        // Serial.print(inByte, HEX); Serial.print(" ");
         // Process byte through frame buffer
-        if (_frameBuffer.addByte(inByte)) {
+        // if (_frameBuffer.addByte(inByte)) {
+        //     dataProcessed = true;
+        // }
+        _lastDataTime = millis();
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    if (readBytes) {
+        
+        Serial.print("Processing read bytes: "); Serial.println(readBytes);
+        if (_frameBuffer.addData(buffer, readBytes, _lastDataTime)) {
             dataProcessed = true;
         }
-        _lastDataTime = millis();
-    }
-    if (dataRecieved) {
-        Serial.println();
     }
 
     
     // Check for timeouts and process any frames that might be complete
-    if (_frameBuffer.update()) {
+    if (_frameBuffer.update(millis())) {
         dataProcessed = true;
     }
     
@@ -122,7 +140,7 @@ int P1Meter::getBufferUsed() const {
 
 void P1Meter::clearBuffer() {
     // Clear frame buffer
-    _frameBuffer.clear();
+    _frameBuffer.clear(millis());
 }
 
 void P1Meter::setFrameCallback(FrameReceivedCallback callback) {

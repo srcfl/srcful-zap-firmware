@@ -1,6 +1,7 @@
 #include "endpoint_handlers.h"
 #include "../wifi/wifi_manager.h"
 #include "../crypto.h"
+#include "../debug.h"
 
 // System Info Handler Implementation
 EndpointResponse SystemInfoHandler::handle(const String& contents) {
@@ -136,6 +137,23 @@ EndpointResponse OTAUpdateHandler::handle(const String& contents) {
     // For now, just return success
     response.statusCode = 200;
     response.data = "{\"status\":\"success\",\"message\":\"OTA update started\"}";
+    
+    return response;
+}
+
+// Debug Info Handler Implementation
+EndpointResponse DebugHandler::handle(const String& contents) {
+    // Implementation for debug info endpoint
+    EndpointResponse response;
+    response.contentType = "application/json";
+    
+    response.statusCode = 200;
+    
+    JsonBuilder json;
+    json.beginObject()
+        .add("status", "success");
+    Debug::getJsonReport(json);
+    response.data = json.end();
     
     return response;
 }

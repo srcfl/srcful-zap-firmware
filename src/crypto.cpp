@@ -8,6 +8,10 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
 
+#include <esp_efuse.h>
+#include <esp_system.h>
+#include <soc/efuse_reg.h>
+
 static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len);
 
 // Helper functions
@@ -365,9 +369,33 @@ static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t 
 } 
 
 String crypto_getId() {
+  // Debug flag
+  const bool debug = true;
   uint64_t chipId = ESP.getEfuseMac();
-  char serial[17];
-  snprintf(serial, sizeof(serial), "%016llx", chipId);
+  
+  if (debug) {
+    Serial.print("Method 1 - ESP.getEfuseMac(): ");
+    
+    // Print the 64-bit value byte by byte in hex
+    for (int i = 7; i >= 0; i--) {
+      uint8_t byte = (chipId >> (i * 8)) & 0xFF;
+      char hexDigits[] = "0123456789ABCDEF";
+      Serial.print(hexDigits[(byte >> 4) & 0xF]);
+      Serial.print(hexDigits[byte & 0xF]);
+      if (i > 0) Serial.print(":");
+    }
+    Serial.println();
+  }
+  
+  // Convert 64-bit chipId to 16 hex characters
+  char serial[17]; // 16 hex chars + null terminator
+  for (int i = 0; i < 8; i++) {
+    uint8_t byte = (chipId >> ((7-i) * 8)) & 0xFF;
+    char hexDigits[] = "0123456789abcdef"; // lowercase for consistency
+    serial[i*2] = hexDigits[(byte >> 4) & 0xF];
+    serial[i*2+1] = hexDigits[byte & 0xF];
+  }
+  serial[16] = '\0';
   
   String id = "zap-" + String(serial);
   

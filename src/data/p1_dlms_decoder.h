@@ -9,7 +9,7 @@
 
 // Debug logging control
 // Comment out to disable all debug logs
-//#define P1_DLMS_SERIAL_DEBUG
+#define P1_DLMS_SERIAL_DEBUG
 
 #ifdef P1_DLMS_SERIAL_DEBUG
   #define P1_DLMS_LOG(x) Serial.x
@@ -46,6 +46,19 @@ public:
     static const char* OBIS_CURRENT_L3;
     
 private:
+
+    struct HDLCHeader {
+        union {
+            struct {
+                uint8_t  flag;
+                uint16_t format;
+            } __attribute__((packed));
+            uint8_t bytes[3];
+        };
+        
+    };
+
+
     // Binary DLMS format decoding
     bool decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data);
     
@@ -56,6 +69,8 @@ private:
     // Helper functions
     // String extractValue(const String& line);
     // float stringToFloat(const String& valueStr);
+
+    uint16_t _ntohs(uint16_t netshort);
     
     // Binary format helpers
     uint16_t swap_uint16(uint16_t val);

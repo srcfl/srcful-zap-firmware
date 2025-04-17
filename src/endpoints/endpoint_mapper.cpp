@@ -16,6 +16,8 @@ const char* EndpointMapper::BLE_STOP_PATH = "/api/ble/stop";
 const char* EndpointMapper::CRYPTO_SIGN_PATH = "/api/crypto/sign";
 const char* EndpointMapper::OTA_UPDATE_PATH = "/api/ota/update";
 const char* EndpointMapper::OTA_STATUS_PATH = "/api/ota/status";
+const char* EndpointMapper::DEBUG_PATH = "/api/debug";
+
 
 // Global instance of OTA handler
 OTAHandler g_otaHandler;
@@ -30,6 +32,7 @@ const Endpoint endpoints[] = {
     Endpoint(Endpoint::NAME_INFO, Endpoint::Verb::GET, EndpointMapper::NAME_INFO_PATH, g_nameInfoHandler),
     Endpoint(Endpoint::WIFI_STATUS, Endpoint::Verb::GET, EndpointMapper::WIFI_STATUS_PATH, g_wifiStatusHandler),
     Endpoint(Endpoint::WIFI_SCAN, Endpoint::Verb::GET, EndpointMapper::WIFI_SCAN_PATH, g_wifiScanHandler),
+    Endpoint(Endpoint::DEBUG, Endpoint::Verb::GET, EndpointMapper::DEBUG_PATH, g_debugHandler), // Special case handled in route
 #if defined(USE_BLE_SETUP)
     Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_bleStopHandler), // Special case handled in route
 #endif
@@ -103,6 +106,7 @@ void EndpointMapper::printPaths() {
     Serial.println(CRYPTO_SIGN_PATH);
     Serial.println(OTA_UPDATE_PATH);
     Serial.println(OTA_STATUS_PATH);
+    Serial.println(DEBUG_PATH);
 }
 
 // Define the global instance

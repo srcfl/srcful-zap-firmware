@@ -1,7 +1,8 @@
 #include "serial_frame_buffer.h"
-#include <Arduino.h>
+
 
 SerialFrameBuffer::SerialFrameBuffer(
+    unsigned long currentTime,
     size_t bufferSize,
     uint8_t startDelimiter,
     uint8_t endDelimiter,
@@ -21,17 +22,17 @@ SerialFrameBuffer::SerialFrameBuffer(
     _frameCallback(nullptr) {
     
     // Allocate buffer with null check
-    try {
+    // try {
         _buffer = new uint8_t[_bufferSize];
         if (_buffer == nullptr) {
-            Serial.println("ERROR: Failed to allocate SerialFrameBuffer");
+            // Serial.println("ERROR: Failed to allocate SerialFrameBuffer");
         } else {
-            clear();
+            clear(currentTime);
         }
-    } catch (...) {
-        Serial.println("EXCEPTION: Failed to allocate SerialFrameBuffer");
-        _buffer = nullptr;
-    }
+    // } catch (...) {
+    //     Serial.println("EXCEPTION: Failed to allocate SerialFrameBuffer");
+    //     _buffer = nullptr;
+    // }
 }
 
 SerialFrameBuffer::~SerialFrameBuffer() {
@@ -41,10 +42,6 @@ SerialFrameBuffer::~SerialFrameBuffer() {
     }
 }
 
-bool SerialFrameBuffer::addByte(uint8_t byte) {
-    return addByte(byte, millis());
-}
-
 bool SerialFrameBuffer::addByte(uint8_t byte, const unsigned long currentTime) {
     if (_buffer == nullptr) {
         return false;
@@ -52,7 +49,7 @@ bool SerialFrameBuffer::addByte(uint8_t byte, const unsigned long currentTime) {
     
     // Check for frame timeout
     if (_frameInProgress && currentTime - _lastByteTime > _interFrameTimeout) {
-        Serial.printf("Frame timeout occurred after %lu ms, resetting frame state\n", currentTime - _lastByteTime);
+        // Serial.printf("Frame timeout occurred after %lu ms, resetting frame state\n", currentTime - _lastByteTime);
         _frameInProgress = false;
     }
     
@@ -73,7 +70,7 @@ bool SerialFrameBuffer::addByte(uint8_t byte, const unsigned long currentTime) {
         
         // If we're tracking a frame and lose its start due to overflow, reset frame state
         if (_frameInProgress && _readIndex > _frameStartIndex) {
-            Serial.println("WARNING: Buffer overflow caused loss of frame start, resetting frame state");
+            // Serial.println("WARNING: Buffer overflow caused loss of frame start, resetting frame state");
             _frameInProgress = false;
         }
     }
@@ -106,7 +103,7 @@ bool SerialFrameBuffer::addByte(uint8_t byte, const unsigned long currentTime) {
     return frameProcessed;
 }
 
-bool SerialFrameBuffer::addData(const uint8_t* data, size_t length) {
+bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned long currentTime) {
     if (_buffer == nullptr || data == nullptr) {
         return false;
     }
@@ -115,7 +112,7 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length) {
     
     // Add each byte and track if any frames were processed
     for (size_t i = 0; i < length; i++) {
-        if (addByte(data[i])) {
+        if (addByte(data[i], currentTime)) {
             frameProcessed = true;
         }
     }
@@ -123,15 +120,14 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length) {
     return frameProcessed;
 }
 
-bool SerialFrameBuffer::update() {
+bool SerialFrameBuffer::update(unsigned long currentTime) {
     if (_buffer == nullptr || _bufferUsed == 0) {
         return false;
     }
     
     // Check if current frame timed out
-    unsigned long currentTime = millis();
     if (_frameInProgress && currentTime - _lastByteTime > _interFrameTimeout) {
-        Serial.printf("Frame timeout occurred during update after %lu ms\n", currentTime - _lastByteTime);
+        // Serial.printf("Frame timeout occurred during update after %lu ms\n", currentTime - _lastByteTime);
         _frameInProgress = false;
         
         // We could try to process what we have, but for now we'll discard incomplete frames
@@ -141,7 +137,7 @@ bool SerialFrameBuffer::update() {
     return processCompleteFrames();
 }
 
-void SerialFrameBuffer::clear() {
+void SerialFrameBuffer::clear(unsigned long currentTime) {
     if (_buffer == nullptr) {
         return;
     }
@@ -152,7 +148,7 @@ void SerialFrameBuffer::clear() {
     _bufferUsed = 0;
     _frameInProgress = false;
     _frameStartIndex = 0;
-    _lastByteTime = millis();
+    _lastByteTime = currentTime;
 }
 
 bool SerialFrameBuffer::processCompleteFrames() {
@@ -198,7 +194,7 @@ bool SerialFrameBuffer::findNextFrameStart() {
             if (searchPos != _readIndex) {
                 size_t skipCount = (searchPos - _readIndex + _bufferSize) % _bufferSize;
                 advanceReadIndex(skipCount);
-                Serial.printf("Skipped %zu bytes to find frame start\n", skipCount);
+                // Serial.printf("Skipped %zu bytes to find frame start\n", skipCount);
             }
             
             return true;

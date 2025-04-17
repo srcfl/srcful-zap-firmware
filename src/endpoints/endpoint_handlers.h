@@ -55,6 +55,11 @@ public:
     EndpointResponse handle(const String& contents) override;
 };
 
+class DebugHandler : public EndpointFunction {
+public:
+    EndpointResponse handle(const String& contents) override;
+};
+
 // BLE Stop Handler
 class BLEStopHandler : public EndpointFunction {
     private:

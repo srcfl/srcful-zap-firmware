@@ -27,6 +27,9 @@ WiFiScanHandler g_wifiScanHandler(wifiManager);
 InitializeHandler g_initializeHandler;
 CryptoSignHandler g_cryptoSignHandler;
 OTAUpdateHandler g_otaUpdateHandler;
+DebugHandler g_debugHandler;
+
+
 #if defined(USE_BLE_SETUP)
 BLEStopHandler g_bleStopHandler(bleHandler);
 #endif

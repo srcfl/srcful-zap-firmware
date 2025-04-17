@@ -27,13 +27,13 @@ public:
         OBISUnit unit;
 
         const char * unitToString(OBISUnit unit) const {
-            const char * unitStrings[] = {"kWh","kvarh","kvar", "V", "A", "kW", "unknown"};
+            const char * unitStrings[] = {"kWh","kVArh","kVAr", "V", "A", "kW", "unknown"};
 
             return unitStrings[unit];
         }
 
         int toString(char * char_buffer, size_t size) const {
-            return snprintf(char_buffer, size, "1-0:%d.%d.0(%f%s)", C, D, value, unitToString(unit));
+            return snprintf(char_buffer, size, "1-0:%d.%d.0(%f*%s)", C, D, value, unitToString(unit));
         }
     };
 

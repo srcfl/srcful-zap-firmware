@@ -1,7 +1,6 @@
 #ifndef SERIAL_FRAME_BUFFER_H
 #define SERIAL_FRAME_BUFFER_H
 
-#include <Arduino.h>
 #include <functional>
 
 #include "IFrameData.h"
@@ -32,6 +31,7 @@ public:
      * @param interFrameTimeout Maximum time (ms) between bytes in the same frame
      */
     SerialFrameBuffer(
+        unsigned long currentTime,
         size_t bufferSize = 1024,
         uint8_t startDelimiter = '/',  // Default for many P1 protocols
         uint8_t endDelimiter = '!',    // Default for many P1 protocols
@@ -50,7 +50,6 @@ public:
      * @param currentTime Time in milliseconds since the last byte was received millis will be used if not provided.
      * @return true if this byte completed a frame that was then processed
      */
-    bool addByte(uint8_t byte);
     bool addByte(uint8_t byte, unsigned long currentTime);
     
     /**
@@ -60,19 +59,19 @@ public:
      * @param length Length of the data in bytes
      * @return true if at least one complete frame was detected and processed
      */
-    bool addData(const uint8_t* data, size_t length);
+    bool addData(const uint8_t* data, size_t length, unsigned long currentTime);
     
     /**
      * @brief Update internal state and check for timeouts
      * 
      * @return true if a frame was processed during this call
      */
-    bool update();
+    bool update(unsigned long currentTime);
     
     /**
      * @brief Clear the buffer
      */
-    void clear();
+    void clear(unsigned long currentTime);
     
     /**
      * @brief Set the frame callback function

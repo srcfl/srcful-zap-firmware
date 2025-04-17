@@ -30,6 +30,7 @@ const char* P1DLMSDecoder::OBIS_CURRENT_L3 = "1-0:71.7.0";
 // Data types
 #define DATA_NULL 0x00
 #define DATA_OCTET_STRING 0x09
+#define DATA_STRING 0x0A
 #define DATA_INTEGER 0x10
 #define DATA_UNSIGNED 0x11
 #define DATA_LONG_UNSIGNED 0x12
@@ -396,6 +397,7 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const IFrameData& 
                         dataLength = i;
                         break;
                     }
+                    p1data.szDeviceId[i] = frame.getFrameByte(position + i);
                 }
                 p1data.szDeviceId[dataLength] = 0; // Null terminate
                 P1_DLMS_LOG(printf("    Device ID: %s\n", p1data.szDeviceId));
@@ -418,10 +420,84 @@ bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const IFrameData& 
         //         known = true;
         //     }
         // }
+    } else if (dataType == DATA_STRING) {
+        // Handle string values (if needed)
+        // For now, we just skip them
+        known = false;
+        P1_DLMS_LOG(println("    String value found, skipping..."));
+    } else {
+        known = false;
+        P1_DLMS_LOG(printf("    Unknown data type: 0x%02X\n", dataType));
     }
     
     return known;
 }
+
+// uint16_t crc16_x25(const uint8_t* p, int len)
+// {
+// 	uint16_t crc = UINT16_MAX;
+
+// 	while(len--)
+// 		for (uint16_t i = 0, d = 0xff & *p++; i < 8; i++, d >>= 1)
+// 			crc = ((crc & 1) ^ (d & 1)) ? (crc >> 1) ^ 0x8408 : (crc >> 1);
+
+// 	return (~crc << 8) | (~crc >> 8 & 0xff);
+// }
+
+// uint16_t crc16 (const uint8_t *p, int len) {
+//     uint16_t crc = 0;
+
+//     while (len--) {
+// 		uint8_t i;
+// 		crc ^= *p++;
+// 		for (i = 0 ; i < 8 ; ++i) {
+// 			if (crc & 1)
+// 				crc = (crc >> 1) ^ 0xa001;
+// 			else
+// 				crc = (crc >> 1);
+// 		}    			
+//     }
+    
+//     return crc;
+// }
+
+uint16_t crc16_x25(const IFrameData& frame, int position, int len)
+{
+    uint16_t crc = UINT16_MAX;
+
+    for (int bytePos = 0; bytePos < len; bytePos++) {
+        uint8_t d = frame.getFrameByte(position + bytePos);
+        for (uint16_t i = 0; i < 8; i++, d >>= 1) {
+            crc = ((crc & 1) ^ (d & 1)) ? (crc >> 1) ^ 0x8408 : (crc >> 1);
+        }
+    }
+
+    return (~crc << 8) | (~crc >> 8 & 0xff);
+}
+
+uint16_t crc16(const IFrameData& frame, int position, int len) {
+    uint16_t crc = 0;
+
+    for (int bytePos = 0; bytePos < len; bytePos++) {
+        uint8_t p = frame.getFrameByte(position + bytePos);
+        crc ^= p;
+        for (uint8_t i = 0; i < 8; ++i) {
+            if (crc & 1)
+                crc = (crc >> 1) ^ 0xa001;
+            else
+                crc = (crc >> 1);
+        }
+    }
+    
+    return crc;
+}
+
+uint16_t P1DLMSDecoder::_ntohs(uint16_t netshort) {
+    // Split into bytes and reconstruct in reverse order
+    return ((netshort & 0xFF00) >> 8) | 
+           ((netshort & 0x00FF) << 8);
+}
+
 
 bool P1DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) {
     // Validate frame
@@ -434,6 +510,41 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) 
 
     bool dataFound = false;
     int currentPos = DECODER_START_OFFSET;
+
+    
+    HDLCHeader header;
+    header.bytes[0] = frame.getFrameByte(0);
+    header.bytes[1] = frame.getFrameByte(1);
+    header.bytes[2] = frame.getFrameByte(2);
+
+    if((header.format & 0xF0) != 0xA0) {
+        P1_DLMS_LOG(println("Invalid frame format"));
+        return false; // Invalid frame format
+    }
+
+    int len = (_ntohs(header.format) & 0x7FF) + 2;
+    if(len > frame.getFrameSize()) {
+        P1_DLMS_LOG(println("Invalid frame length"));
+        return false; // Invalid frame length
+    }
+
+
+
+
+    currentPos = 3; // Skip the first byte (frame start) and header 3 bytes
+    // Skip destination and source address, LSB marks last byte
+    while((frame.getFrameByte(currentPos) & 0x01) == 0x00) {
+        currentPos++;
+    }
+    currentPos++;
+    while((frame.getFrameByte(currentPos) & 0x01) == 0x00) {
+        currentPos++;
+    }
+    currentPos++;
+
+    // Skip confrol field, HCS abd LLC
+    currentPos += 3 + 3;
+
     
     P1_DLMS_LOG(println("\n--- Debug Decoding DLMS Frame ---"));
     

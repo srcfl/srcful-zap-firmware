@@ -1,6 +1,8 @@
 #include "data_reader_task.h"
 #include "p1_dlms_decoder.h"
 #include "p1data_funcs.h"
+#include "debug.h"
+
 
 DataReaderTask::DataReaderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
@@ -95,7 +97,7 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     const size_t size = frame.getFrameSize();
 
     // Debug output print first 15 and last 15 bytes of the frame
-    Serial.printf("Data reader task: Received P1 frame (%zu bytes): ", size);
+    Serial.print("Data reader task: Received P1 frame ("); Serial.print(size); Serial.println(" bytes)");
     for (size_t i = 0; i < min(size, size_t(15)); i++) {
         Serial.print((char)frame.getFrameByte(i));
     }
@@ -110,9 +112,11 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     P1Data p1data;
     
     if (decoder.decodeBuffer(frame, p1data)) {
+        Debug::addFrame();
         Serial.println("P1 data decoded successfully");
         enqueueData(p1data);
     } else {
+        Debug::addFailedFrame();
         Serial.println("Failed to decode P1 data frame");
     }
 }

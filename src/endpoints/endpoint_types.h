@@ -34,6 +34,7 @@ class Endpoint {
         CRYPTO_SIGN,
         OTA_UPDATE,
         OTA_STATUS,
+        DEBUG,
         UNKNOWN
     };
     const Type type;
