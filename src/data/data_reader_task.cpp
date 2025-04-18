@@ -114,6 +114,9 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     if (decoder.decodeBuffer(frame, p1data)) {
         Debug::addFrame();
         Serial.println("P1 data decoded successfully");
+        if (p1data.szDeviceId[0] != '\0') {
+           Debug::setDeviceId(p1data.szDeviceId);
+        }
         enqueueData(p1data);
     } else {
         Debug::addFailedFrame();

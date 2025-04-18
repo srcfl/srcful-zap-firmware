@@ -17,7 +17,8 @@
 #include "data/data_reader_task.h"
 #include "ota_handler.h"  // Include OTA handler
 
-#define LED_PIN 7
+#define LED_PIN 3
+#define IO_BUTTON 9
 
 // Global variables
 ServerTask serverTask(80); // Create a server task instance
@@ -28,6 +29,11 @@ DataReaderTask *dataReaderTask; // Create a data reader task instance
 
 String configuredSSID = "";
 String configuredPassword = "";
+
+// Button press detection variables
+unsigned long buttonPressStartTime = 0;
+bool buttonPressed = false;
+const unsigned long LONG_PRESS_DURATION = 5000; // 5 seconds for long press
 
 #if defined(USE_BLE_SETUP)
     #include "ble_handler.h"
@@ -40,11 +46,10 @@ void setupSSL();
 
 void setup() {
     pinMode(LED_PIN, OUTPUT);
+    pinMode(IO_BUTTON, INPUT_PULLUP); // Initialize button pin with internal pull-up
     digitalWrite(LED_PIN, LOW); // Quick blink on startup
     delay(500);
     digitalWrite(LED_PIN, HIGH);
-
-
 
     Serial.begin(115200);
     delay(1000);
@@ -137,9 +142,65 @@ void setup() {
 }
 
 void loop() {
+    // Handle button press for WiFi reset
+    int buttonState = digitalRead(IO_BUTTON);
+    
+    // Button is active LOW (pressed when reading LOW)
+    if (buttonState == LOW) {
+        // Button is currently pressed
+        if (!buttonPressed) {
+            // Button was just pressed, record the time and do a quick blink
+            buttonPressStartTime = millis();
+            buttonPressed = true;
+            Serial.println("Button pressed, starting timer");
+            
+            // Quick LED blink as feedback
+            digitalWrite(LED_PIN, LOW);
+            delay(100);
+            digitalWrite(LED_PIN, HIGH);
+        } else {
+            // Button is being held, check for long press
+            unsigned long pressDuration = millis() - buttonPressStartTime;
+            
+            // When we reach 5 seconds threshold, start continuous fast blinking
+            if (pressDuration > LONG_PRESS_DURATION) {
+                // Reached long press threshold - continuous fast blinking as feedback
+                digitalWrite(LED_PIN, (pressDuration / 100) % 2 ? HIGH : LOW); // Fast blink (5Hz)
+            }
+        }
+    } else if (buttonPressed) {
+        // Button was released
+        unsigned long pressDuration = millis() - buttonPressStartTime;
+        buttonPressed = false;
+        
+        if (pressDuration > LONG_PRESS_DURATION) {
+            // Long press confirmed and button released, now reset WiFi and restart
+            Serial.println("Long press confirmed! Resetting WiFi settings...");
+            
+            // Clear WiFi credentials
+            wifiManager.clearCredentials();
+            
+            // Disconnect from WiFi
+            WiFi.disconnect(true);
+            WiFi.mode(WIFI_OFF);
+            delay(500);
+            
+            #if defined(USE_BLE_SETUP)
+                // Initialize BLE for fresh setup
+                Serial.println("Initializing BLE...");
+                bleHandler.init();
+            #endif
+            
+            // Restart the ESP32
+            Serial.println("Restarting the board...");
+            delay(250);
+            ESP.restart();
+        }
+    }
+
     // Check if the server task is running
     if (wifiManager.isConnected()) {
-        digitalWrite(LED_PIN, LOW); // Solid LED when connected
+        digitalWrite(LED_PIN, HIGH); // Solid LED when connected
         
         // Check if the server task is running, restart if needed
         if (!serverTask.isRunning()) {
@@ -161,7 +222,6 @@ void loop() {
     if (bleHandler.shouldHardStop(3000)) {
         bleHandler.hardStop();
     }
-
     #endif
     
     yield();

@@ -58,7 +58,10 @@ public:
     // Constructor
     P1Data() : 
         timestamp(0),
-        obisCount(0) {}
+        obisCount(0) {
+            szDeviceId[0] = '\0';
+            szMeterModel[0] = '\0';
+        }
 };
 
 
