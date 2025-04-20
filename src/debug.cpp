@@ -31,7 +31,6 @@ void Debug::setFaultyFrameData(const uid_t* data, size_t size) {
 void Debug::addFaultyFrameData(const uid_t byte) {
     if (faultyFrameDataSize < sizeof(faultyFrameData)) {
         faultyFrameData[faultyFrameDataSize++] = byte;
-        faultyFrameDataSize++;
     }
 }
 
