@@ -8,7 +8,7 @@
 #include "endpoints/endpoint_mapper.h"
 #include <WiFiClientSecure.h>
 #include "esp_heap_caps.h"
-#include "graphql.h"
+#include "backend/graphql.h"  // Updated path to graphql.h
 #include "config.h"
 #include "server/server_task.h"
 #include "wifi/wifi_manager.h"

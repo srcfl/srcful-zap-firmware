@@ -5,7 +5,7 @@
 #include <WiFi.h>
 #include <esp_system.h>
 #include "crypto.h"
-#include "graphql.h"
+#include "../backend/graphql.h"
 #include "html.h"
 #include "firmware_version.h"
 #include "wifi/wifi_manager.h"

@@ -96,6 +96,7 @@ public:
         buffer += key;
         buffer += "\":\"";
         for (size_t i = 0; i < size; i++) {
+            if (data[i] < 0x10) buffer += '0'; // Add leading zero for single hex digits
             buffer += String(data[i], HEX);
         }
         buffer += '"';

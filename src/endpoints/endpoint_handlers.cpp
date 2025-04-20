@@ -1,7 +1,8 @@
 #include "endpoint_handlers.h"
-#include "../wifi/wifi_manager.h"
-#include "../crypto.h"
-#include "../debug.h"
+#include "wifi/wifi_manager.h"
+#include "crypto.h"
+#include "debug.h"
+#include "firmware_version.h"
 
 // System Info Handler Implementation
 EndpointResponse SystemInfoHandler::handle(const String& contents) {

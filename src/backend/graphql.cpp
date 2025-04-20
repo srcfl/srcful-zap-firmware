@@ -1,5 +1,6 @@
 #include "graphql.h"
 #include "esp_heap_caps.h"  // Add this for heap functions
+#include "config.h"
 
 // At the top of the file, outside any function
 static uint8_t* sslBuffer = nullptr;
@@ -73,7 +74,6 @@ String fetchGatewayName(const String& serialNumber) {
     })";
     
     String response;
-    extern const char* API_URL;
     if (makeGraphQLRequest(query, response, API_URL)) {
         // Parse JSON response manually to avoid ArduinoJson
         int dataPos = response.indexOf("\"data\":");

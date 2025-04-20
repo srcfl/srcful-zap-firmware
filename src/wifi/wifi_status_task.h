@@ -1,11 +1,12 @@
-#pragma once
+#ifndef WIFI_STATUS_TASK_H
+#define WIFI_STATUS_TASK_H
 
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "wifi_manager.h"
 #include "crypto.h"
-#include "graphql.h"
+#include "../backend/graphql.h"
 #include "config.h"
 
 class WifiStatusTask {
@@ -50,4 +51,6 @@ private:
 
     int connectionAttempts = 0; // Number of connection attempts
     
-}; 
+};
+
+#endif // WIFI_STATUS_TASK_H

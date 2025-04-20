@@ -3,14 +3,12 @@
 
 #include "endpoint_types.h"
 #include "wifi/wifi_manager.h"
-#include "crypto.h"
-#include "graphql.h"
-#include "firmware_version.h"
 #include <WiFi.h>
-#include <esp_system.h>
-#include "json_light/json_light.h"
-
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include "../backend/graphql.h"
 #include "../ble_handler.h"
+#include "ota_handler.h"
 
 // Forward declarations
 extern const char* PRIVATE_KEY_HEX;
@@ -69,4 +67,4 @@ class BLEStopHandler : public EndpointFunction {
     EndpointResponse handle(const String& contents) override;
 };
 
-#endif // ENDPOINT_HANDLERS_H 
+#endif // ENDPOINT_HANDLERS_H

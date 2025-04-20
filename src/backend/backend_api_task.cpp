@@ -2,6 +2,7 @@
 #include <WiFiClientSecure.h>
 #include "../crypto.h"
 #include "../config.h"
+#include "graphql.h"  // Include local graphql.h
 
 BackendApiTask::BackendApiTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),

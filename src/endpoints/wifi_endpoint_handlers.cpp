@@ -1,5 +1,6 @@
 #include "wifi_endpoint_handlers.h"
 #include "endpoint_handlers.h"
+#include "json_light/json_light.h"
 
 // WiFi Config Handler Implementation
 EndpointResponse WiFiConfigHandler::handle(const String& contents) {
