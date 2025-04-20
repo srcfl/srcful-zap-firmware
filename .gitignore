@@ -3,6 +3,10 @@
 .pioenvs
 .piolibdeps
 
+# Build
+build/
+
+
 # Sensitive configuration
 src/config.h
 src/config.cpp

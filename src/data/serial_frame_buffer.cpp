@@ -1,116 +1,56 @@
 #include "serial_frame_buffer.h"
 
-
 SerialFrameBuffer::SerialFrameBuffer(
     unsigned long currentTime,
     size_t bufferSize,
     uint8_t startDelimiter,
     uint8_t endDelimiter,
     unsigned long interFrameTimeout
-) : _bufferSize(bufferSize),
-    _writeIndex(0),
-    _readIndex(0),
-    _bufferUsed(0),
-    _startDelimiter(startDelimiter),
-    _endDelimiter(endDelimiter),
-    _frameInProgress(false),
-    _frameStartIndex(0),
-    _lastByteTime(0),
-    _interFrameTimeout(interFrameTimeout),
-    _frameCount(0),
-    _overflowCount(0),
+) : _circularBuffer(bufferSize),
+    _frameDetector(startDelimiter, endDelimiter, interFrameTimeout),
+    _currentFrameSize(0),
+    _currentFrameStartIndex(0),
     _frameCallback(nullptr) {
     
-    // Allocate buffer with null check
-    // try {
-        _buffer = new uint8_t[_bufferSize];
-        if (_buffer == nullptr) {
-            // Serial.println("ERROR: Failed to allocate SerialFrameBuffer");
-        } else {
-            clear(currentTime);
-        }
-    // } catch (...) {
-    //     Serial.println("EXCEPTION: Failed to allocate SerialFrameBuffer");
-    //     _buffer = nullptr;
-    // }
+    // Clear the buffer to initialize
+    clear(currentTime);
 }
 
 SerialFrameBuffer::~SerialFrameBuffer() {
-    if (_buffer != nullptr) {
-        delete[] _buffer;
-        _buffer = nullptr;
-    }
+    // CircularBuffer and FrameDetector will clean up in their own destructors
 }
 
-bool SerialFrameBuffer::addByte(uint8_t byte, const unsigned long currentTime) {
-    if (_buffer == nullptr) {
+bool SerialFrameBuffer::addByte(uint8_t byte, unsigned long currentTime) {
+    // Add the byte to the circular buffer (this is now the responsibility of SerialFrameBuffer)
+    if (!_circularBuffer.addByte(byte, currentTime)) {
         return false;
     }
     
-    // Check for frame timeout
-    if (_frameInProgress && currentTime - _lastByteTime > _interFrameTimeout) {
-        // Serial.printf("Frame timeout occurred after %lu ms, resetting frame state\n", currentTime - _lastByteTime);
-        _frameInProgress = false;
-    }
-    
-    // Update timestamp of last received byte
-    _lastByteTime = currentTime;
-    
-    // Add byte to circular buffer
-    _buffer[_writeIndex] = byte;
-    _writeIndex = (_writeIndex + 1) % _bufferSize;
-    
-    // Update buffer usage
-    if (_bufferUsed < _bufferSize) {
-        _bufferUsed++;
-    } else {
-        // Buffer full, move read index to keep space
-        _readIndex = (_readIndex + 1) % _bufferSize;
-        _overflowCount++;
+    // Process the byte with the frame detector
+    FrameInfo frameInfo;
+    if (_frameDetector.processByte(_circularBuffer, byte, currentTime, frameInfo) && frameInfo.complete) {
+        // Update current frame information for IFrameData interface
+        updateCurrentFrame(frameInfo);
         
-        // If we're tracking a frame and lose its start due to overflow, reset frame state
-        if (_frameInProgress && _readIndex > _frameStartIndex) {
-            // Serial.println("WARNING: Buffer overflow caused loss of frame start, resetting frame state");
-            _frameInProgress = false;
+        // Frame detected, process it if we have a callback
+        if (processDetectedFrame()) {
+            // Now that the frame has been successfully processed, 
+            // advance the buffer's read index
+            _circularBuffer.advanceReadIndex(calculateReadAdvance(frameInfo));
+            return true;
         }
     }
-
-    bool frameProcessed = false;
-    // special case if end and start are the same
-    if (_endDelimiter == _startDelimiter && byte == _endDelimiter) {
-        // If the start and end delimiters are the same, we need to handle this case
-        if (_frameInProgress) {
-            // We have a complete frame
-            frameProcessed = processCompleteFrames();
-        } else {
-            // We have a single delimiter, treat it as a start
-            _frameInProgress = true;
-            _frameStartIndex = (_writeIndex - 1 + _bufferSize) % _bufferSize; // Adjust to point to the start char
-        }
-    } else {
-         // Detect start of frame
-         if (byte == _startDelimiter && !_frameInProgress) {
-            _frameInProgress = true;
-            _frameStartIndex = (_writeIndex - 1 + _bufferSize) % _bufferSize; // Adjust to point to the start char
-        }
-
-        if (_frameInProgress && byte == _endDelimiter) {
-            // Try to process complete frames
-            frameProcessed = processCompleteFrames();
-        }
-    }
-    
-    return frameProcessed;
+    return false;
 }
 
 bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned long currentTime) {
-    if (_buffer == nullptr || data == nullptr) {
+    if (!data || length == 0) {
         return false;
     }
     
     bool frameProcessed = false;
     
-    // Add each byte and track if any frames were processed
+    // Process each byte individually
     for (size_t i = 0; i < length; i++) {
         if (addByte(data[i], currentTime)) {
             frameProcessed = true;
@@ -121,156 +61,62 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned lon
 }
 
 bool SerialFrameBuffer::update(unsigned long currentTime) {
-    if (_buffer == nullptr || _bufferUsed == 0) {
-        return false;
-    }
-    
-    // Check if current frame timed out
-    if (_frameInProgress && currentTime - _lastByteTime > _interFrameTimeout) {
-        // Serial.printf("Frame timeout occurred during update after %lu ms\n", currentTime - _lastByteTime);
-        _frameInProgress = false;
+    // Update frame detector to check for timeouts and process complete frames
+    FrameInfo frameInfo;
+    if (_frameDetector.update(_circularBuffer, currentTime, frameInfo) && frameInfo.complete) {
+        // Update current frame information for IFrameData interface
+        updateCurrentFrame(frameInfo);
         
-        // We could try to process what we have, but for now we'll discard incomplete frames
+        // Frame detected, process it if we have a callback
+        if (processDetectedFrame()) {
+            // Now that the frame has been successfully processed,
+            // advance the buffer's read index
+            _circularBuffer.advanceReadIndex(calculateReadAdvance(frameInfo));
+            return true;
+        }
     }
-    
-    // Process any complete frames that might be in the buffer
-    return processCompleteFrames();
+    return false;
 }
 
 void SerialFrameBuffer::clear(unsigned long currentTime) {
-    if (_buffer == nullptr) {
-        return;
-    }
+    // Clear the circular buffer
+    _circularBuffer.clear(currentTime);
     
-    // Reset buffer indices and state
-    _writeIndex = 0;
-    _readIndex = 0;
-    _bufferUsed = 0;
-    _frameInProgress = false;
-    _frameStartIndex = 0;
-    _lastByteTime = currentTime;
+    // Reset the frame detector state
+    _frameDetector.reset();
+    
+    // Reset current frame data
+    _currentFrameSize = 0;
+    _currentFrameStartIndex = 0;
 }
 
-bool SerialFrameBuffer::processCompleteFrames() {
-    if (_buffer == nullptr || _bufferUsed == 0 || !_frameCallback) {
+bool SerialFrameBuffer::processDetectedFrame() {
+    if (!_frameCallback) {
         return false;
     }
     
-    bool anyFramesProcessed = false;
-    
-    
-    // Try to extract a complete frame
-    while (extractCompleteFrame()) {
-        // Call the callback with the frame data
-        bool processed = _frameCallback(*this);
-        
-        if (processed) {
-            _frameCount++;
-            anyFramesProcessed = true;
-        }
-
-        _currentFrameSize = 0; // Reset current frame size after processing
-    }
-    
-    return anyFramesProcessed;
+    // Call the callback with the frame data (this buffer implements IFrameData)
+    return _frameCallback(*this);
 }
 
-bool SerialFrameBuffer::findNextFrameStart() {
-    if (_buffer == nullptr || _bufferUsed == 0) {
-        return false;
+size_t SerialFrameBuffer::calculateReadAdvance(const FrameInfo& frameInfo) const {
+    // Calculate how many bytes to advance the read index based on frame info
+    size_t bufferSize = _circularBuffer.getBufferSize();
+    size_t readIndex = _circularBuffer.getReadIndex();
+    size_t bufferUsed = _circularBuffer.available();
+    
+    // Calculate position in buffer to advance read index to
+    size_t readAdvance = (frameInfo.endIndex - readIndex + 1 + bufferSize) % bufferSize;
+    
+    // Safety check to ensure we don't advance beyond available data
+    if (readAdvance > bufferUsed) {
+        readAdvance = bufferUsed;
     }
     
-    // Look for the start delimiter from the current read position
-    size_t searchPos = _readIndex;
-    size_t bytesSearched = 0;
-    
-    while (bytesSearched < _bufferUsed) {
-        if (_buffer[searchPos] == _startDelimiter) {
-            // Found start delimiter
-            _frameStartIndex = searchPos;
-            _frameInProgress = true;
-            
-            // Move read position to the start of the frame
-            if (searchPos != _readIndex) {
-                size_t skipCount = (searchPos - _readIndex + _bufferSize) % _bufferSize;
-                advanceReadIndex(skipCount);
-                // Serial.printf("Skipped %zu bytes to find frame start\n", skipCount);
-            }
-            
-            return true;
-        }
-        
-        // Move to next position in circular buffer
-        searchPos = (searchPos + 1) % _bufferSize;
-        bytesSearched++;
-    }
-    
-    return false;
+    return readAdvance;
 }
 
-bool SerialFrameBuffer::extractCompleteFrame() {
-    if (_buffer == nullptr || _bufferUsed < 2 || !_frameInProgress) {
-        return false;
-    }
-    
-    // Start our search at the frame start index
-    size_t searchPos = _frameStartIndex;
-    bool foundStart = false;
-    size_t bytesSearched = 0;
-    size_t startPos = 0;
-    size_t endPos = 0;
-    
-    // Search for a complete frame (start to end delimiter)
-    while (bytesSearched < _bufferUsed) {
-        uint8_t current = _buffer[searchPos];
-        
-        if (!foundStart && current == _startDelimiter) {
-            foundStart = true;
-            startPos = searchPos;
-        } else if (foundStart && current == _endDelimiter) {
-            // Found end delimiter
-            endPos = searchPos;
-            
-            // Calculate frame size (including delimiters)
-            size_t frameLength;
-            if (endPos >= startPos) {
-                frameLength = endPos - startPos + 1;
-            } else {
-                frameLength = _bufferSize - startPos + endPos + 1;
-            }
-            
-            // Only proceed if we have a reasonable frame size
-            if (frameLength >= 2) {
-                // Instead of copying data, store metadata about the frame for IFrameData implementation
-                _currentFrameStartIndex = startPos;
-                _currentFrameSize = frameLength;
-                               
-                // Advance read index past this frame
-                // We'll start the next frame search after the end delimiter
-                _readIndex = (endPos + 1) % _bufferSize;
-                _bufferUsed -= frameLength;
-                
-                // Reset frame tracking state
-                _frameInProgress = false;
-                
-                return true;
-            }
-        }
-        
-        // Move to next position in circular buffer
-        searchPos = (searchPos + 1) % _bufferSize;
-        bytesSearched++;
-    }
-    
-    // No complete frame found
-    return false;
-}
-
-void SerialFrameBuffer::advanceReadIndex(size_t count) {
-    if (count > _bufferUsed) {
-        count = _bufferUsed;
-    }
-    
-    _readIndex = (_readIndex + count) % _bufferSize;
-    _bufferUsed -= count;
+void SerialFrameBuffer::updateCurrentFrame(const FrameInfo& frameInfo) {
+    _currentFrameSize = frameInfo.size;
+    _currentFrameStartIndex = frameInfo.startIndex;
 }

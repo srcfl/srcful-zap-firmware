@@ -7,6 +7,8 @@
 #include "ams/HdlcParser.h"
 #include "frames.h"
 
+#include "data/circular_buffer_test.cpp"
+
 class FrameData : public IFrameData {
 public:
     FrameData(const uint8_t* data, size_t size) : data_(data), size_(size) {}
@@ -69,6 +71,8 @@ int main() {
         // decoder.decodeBuffer(buffer, 2, p1data);
 
         test_decoder_frame();
+
+        circular_buffer_test::run();
 
         std::cout << "All tests passed!" << std::endl;
         return 0;

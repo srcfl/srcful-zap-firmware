@@ -2,13 +2,14 @@
 #define SERIAL_FRAME_BUFFER_H
 
 #include <functional>
-
+#include "circular_buffer.h"
+#include "frame_detector.h"
 #include "IFrameData.h"
 
 /**
- * @brief A robust circular buffer for handling serial data frames
+ * @brief A robust buffer for handling serial data frames
  * 
- * This class manages a circular buffer to handle serial data that may arrive in bursts,
+ * This class manages serial data that may arrive in bursts,
  * with special handling for framed protocols (start/end delimiters).
  * It automatically detects complete frames and calls a user-provided callback when available.
  */
@@ -16,8 +17,7 @@ class SerialFrameBuffer : public IFrameData {
 public:
     /**
      * @brief Frame detection callback type
-     * @param buffer Pointer to the buffer containing the frame data
-     * @param size Size of the frame data in bytes
+     * @param frameData Reference to the IFrameData interface for accessing frame data
      * @return true if frame was successfully processed, false otherwise
      */
     using FrameCallback = std::function<bool(IFrameData& frameData)>;
@@ -25,6 +25,7 @@ public:
     /**
      * @brief Construct a new SerialFrameBuffer
      * 
+     * @param currentTime Current time in milliseconds
      * @param bufferSize Size of the buffer in bytes
      * @param startDelimiter Character that marks the start of a frame
      * @param endDelimiter Character that marks the end of a frame
@@ -47,7 +48,7 @@ public:
      * @brief Add data to the buffer
      * 
      * @param byte Byte to add to the buffer
-     * @param currentTime Time in milliseconds since the last byte was received millis will be used if not provided.
+     * @param currentTime Time in milliseconds since the last byte was received
      * @return true if this byte completed a frame that was then processed
      */
     bool addByte(uint8_t byte, unsigned long currentTime);
@@ -57,6 +58,7 @@ public:
      * 
      * @param data Pointer to the data
      * @param length Length of the data in bytes
+     * @param currentTime Current time in milliseconds
      * @return true if at least one complete frame was detected and processed
      */
     bool addData(const uint8_t* data, size_t length, unsigned long currentTime);
@@ -64,12 +66,15 @@ public:
     /**
      * @brief Update internal state and check for timeouts
      * 
+     * @param currentTime Current time in milliseconds
      * @return true if a frame was processed during this call
      */
     bool update(unsigned long currentTime);
     
     /**
      * @brief Clear the buffer
+     * 
+     * @param currentTime Current time in milliseconds
      */
     void clear(unsigned long currentTime);
     
@@ -87,8 +92,7 @@ public:
      * @param endDelimiter Character that marks the end of a frame
      */
     void setFrameDelimiters(uint8_t startDelimiter, uint8_t endDelimiter) {
-        _startDelimiter = startDelimiter;
-        _endDelimiter = endDelimiter;
+        _frameDetector.setFrameDelimiters(startDelimiter, endDelimiter);
     }
     
     /**
@@ -96,75 +100,58 @@ public:
      * 
      * @param timeout Maximum time (ms) between bytes in the same frame
      */
-    void setInterFrameTimeout(unsigned long timeout) { _interFrameTimeout = timeout; }
+    void setInterFrameTimeout(unsigned long timeout) {
+        _frameDetector.setInterFrameTimeout(timeout);
+    }
     
     /**
      * @brief Get the number of bytes currently in the buffer
      * 
      * @return Number of bytes in the buffer
      */
-    size_t available() const { return _bufferUsed; }
+    size_t available() const { return _circularBuffer.available(); }
     
     /**
      * @brief Get the number of complete frames detected so far
      * 
      * @return Frame count
      */
-    uint32_t getFrameCount() const { return _frameCount; }
+    uint32_t getFrameCount() const { return _frameDetector.getFrameCount(); }
     
     /**
      * @brief Get the number of bytes that were discarded due to buffer overflow
      * 
      * @return Bytes discarded
      */
-    uint32_t getOverflowCount() const { return _overflowCount; }
+    uint32_t getOverflowCount() const { return _circularBuffer.getOverflowCount(); }
 
-
-    virtual size_t getFrameSize() const override { return _currentFrameSize; } 
-    /**
-     * @brief Get a byte from the frame at the specified index
-     * 
-     * @param index Index into the frame data (0 is the first byte)
-     * @return uint8_t The byte value at the specified position
-     */
+    // IFrameData interface implementation
+    virtual size_t getFrameSize() const override { 
+        return _currentFrameSize; 
+    } 
+    
     virtual uint8_t getFrameByte(size_t index) const override {
         if (index < _currentFrameSize) {
-            return _buffer[(_currentFrameStartIndex + index) % _bufferSize];
+            return _circularBuffer.getByteAt((_currentFrameStartIndex + index) % _circularBuffer.getBufferSize());
         }
-        return 0; // Out of bounds
+        return 0;
     }
 
 private:
-    // Buffer management
-    uint8_t* _buffer;
-    size_t _bufferSize;
-    size_t _writeIndex;
-    size_t _readIndex;
-    size_t _bufferUsed;
-
-    size_t _currentFrameStartIndex;
+    CircularBuffer _circularBuffer;
+    FrameDetector _frameDetector;
+    
+    // Frame information for IFrameData interface
     size_t _currentFrameSize;
-    
-    // Frame detection
-    uint8_t _startDelimiter;
-    uint8_t _endDelimiter;
-    bool _frameInProgress;
-    size_t _frameStartIndex;
-    unsigned long _lastByteTime;
-    unsigned long _interFrameTimeout;
-    
-    // Statistics
-    uint32_t _frameCount;
-    uint32_t _overflowCount;
+    size_t _currentFrameStartIndex;
     
     // Callback for frame processing
     FrameCallback _frameCallback;
     
     // Internal methods
-    bool processCompleteFrames();
-    bool findNextFrameStart();
-    bool extractCompleteFrame();
-    void advanceReadIndex(size_t count);
+    bool processDetectedFrame();
+    size_t calculateReadAdvance(const FrameInfo& frameInfo) const;
+    void updateCurrentFrame(const FrameInfo& frameInfo);
 };
 
 #endif // SERIAL_FRAME_BUFFER_H
