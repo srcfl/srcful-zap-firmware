@@ -3,6 +3,10 @@
 #include <cstdio> 
 
 
+// Notes on format
+// https://github.com/bmork/obinsect/blob/master/random-notes.md
+
+
 #ifdef P1_DLMS_SERIAL_DEBUG
     #include <Arduino.h>
 #endif
@@ -517,15 +521,16 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) 
     header.bytes[1] = frame.getFrameByte(1);
     header.bytes[2] = frame.getFrameByte(2);
 
+    // check that it is type 3 frame
     if((header.format & 0xF0) != 0xA0) {
         P1_DLMS_LOG(println("Invalid frame format"));
-        // return false; // Invalid frame format
+        return false; // Invalid frame format
     }
 
     int len = (_ntohs(header.format) & 0x7FF) + 2;
     if(len > frame.getFrameSize()) {
         P1_DLMS_LOG(println("Invalid frame length"));
-        // return false; // Invalid frame length
+        return false; // Invalid frame length
     }
 
 
