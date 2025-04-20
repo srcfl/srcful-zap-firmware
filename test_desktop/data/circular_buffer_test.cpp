@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "../src/data/circular_buffer.cpp"
+#include "../src/data/circular_buffer.h"
 
 namespace circular_buffer_test {
 

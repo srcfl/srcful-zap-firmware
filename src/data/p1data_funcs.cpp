@@ -32,8 +32,8 @@ String createP1JWT(const char* privateKey, const String& deviceId, const P1Data&
 
     // Find the 42 7 code and print the value
     for (int i = 0; i < p1data.obisCount; i++) {
-        if (p1data.obisValues[i].C == 42 && p1data.obisValues[i].D == 7) {
-            Serial.print("Found 42.7 code (L2 Export): ");
+        if (p1data.obisValues[i].C == 1 && p1data.obisValues[i].D == 7) {
+            Serial.print("Found 1.7 code (+Inst Power kW): ");
             Serial.println(p1data.obisValues[i].value);
             break;
         }

@@ -150,6 +150,7 @@ private:
     
     // Internal methods
     bool processDetectedFrame();
+    bool processBufferForFrames(unsigned long currentTime);
     size_t calculateReadAdvance(const FrameInfo& frameInfo) const;
     void updateCurrentFrame(const FrameInfo& frameInfo);
 };

@@ -7,7 +7,11 @@
 #include "ams/HdlcParser.h"
 #include "frames.h"
 
+#include "../src/data/circular_buffer.cpp"
+
+
 #include "data/circular_buffer_test.cpp"
+#include "data/frame_detector_test.cpp"
 
 class FrameData : public IFrameData {
 public:
@@ -73,6 +77,7 @@ int main() {
         test_decoder_frame();
 
         circular_buffer_test::run();
+        frame_detector_test::run();
 
         std::cout << "All tests passed!" << std::endl;
         return 0;

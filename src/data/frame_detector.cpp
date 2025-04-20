@@ -13,68 +13,7 @@ FrameDetector::FrameDetector(
     // Nothing else to initialize
 }
 
-bool FrameDetector::processByte(
-    const CircularBuffer& buffer, 
-    uint8_t byte, 
-    unsigned long currentTime, 
-    FrameInfo& frameInfo
-) {
-    // First check for frame timeout
-    if (_frameInProgress && (currentTime - buffer.getLastByteTime() > _interFrameTimeout)) {
-        // Frame timed out, reset state
-        _frameInProgress = false;
-    }
-    
-    // Note: We're not adding the byte to the buffer here anymore
-    // That's the responsibility of the caller
-    
-    // Special case if start and end delimiters are the same
-    if (_startDelimiter == _endDelimiter && byte == _endDelimiter) {
-        if (_frameInProgress) {
-            // We have a complete frame
-            return extractCompleteFrame(buffer, frameInfo);
-        } else {
-            // Mark the beginning of a frame
-            _frameInProgress = true;
-            _frameStartIndex = (buffer.getWriteIndex() - 1 + buffer.getBufferSize()) % buffer.getBufferSize();
-            return false;
-        }
-    } else {
-        // Normal case with different start and end delimiters
-        if (byte == _startDelimiter && !_frameInProgress) {
-            // Start of a new frame
-            _frameInProgress = true;
-            _frameStartIndex = (buffer.getWriteIndex() - 1 + buffer.getBufferSize()) % buffer.getBufferSize();
-            return false;
-        }
-        
-        if (_frameInProgress && byte == _endDelimiter) {
-            // End of current frame
-            return extractCompleteFrame(buffer, frameInfo);
-        }
-    }
-    
-    return false;
-}
 
-bool FrameDetector::update(
-    const CircularBuffer& buffer,
-    unsigned long currentTime, 
-    FrameInfo& frameInfo
-) {
-    if (buffer.available() == 0) {
-        return false;
-    }
-    
-    // Check if current frame timed out
-    if (_frameInProgress && (currentTime - buffer.getLastByteTime() > _interFrameTimeout)) {
-        _frameInProgress = false;
-        // We don't try to salvage incomplete frames
-    }
-    
-    // Try to find and extract any complete frames in the buffer
-    return extractCompleteFrame(buffer, frameInfo);
-}
 
 void FrameDetector::reset() {
     _frameInProgress = false;
@@ -166,4 +105,31 @@ bool FrameDetector::extractCompleteFrame(const CircularBuffer& buffer, FrameInfo
     // No complete frame found
     frameInfo.complete = false;
     return false;
+}
+
+bool FrameDetector::detect(
+    const CircularBuffer& buffer,
+    unsigned long currentTime,
+    FrameInfo& frameInfo
+) {
+    // First check for frame timeout if a frame was in progress
+    if (_frameInProgress && (currentTime - buffer.getLastByteTime() > _interFrameTimeout)) {
+        // Frame timed out, reset state
+        _frameInProgress = false;
+    }
+    
+    // Check if we need to find the start of a frame
+    if (!_frameInProgress) {
+        size_t startPos;
+        if (!findNextFrameStart(buffer, startPos)) {
+            // No start delimiter found in the buffer
+            return false;
+        }
+        _frameStartIndex = startPos;
+        _frameInProgress = true;
+    }
+    
+    // Now that we have a frame in progress (or found a new one),
+    // check if we can extract a complete frame
+    return extractCompleteFrame(buffer, frameInfo);
 }

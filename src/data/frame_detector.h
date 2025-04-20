@@ -36,36 +36,23 @@ public:
         unsigned long interFrameTimeout = 500
     );
     
+
+    
     /**
-     * @brief Process a new byte and check if it completes a frame
+     * @brief Process a chunk of data and check if it completes a frame
      * 
      * @param buffer The circular buffer containing the data
-     * @param byte The byte to process
      * @param currentTime Current time in milliseconds
      * @param frameInfo Output parameter to store detected frame information
      * @return true if a complete frame was detected
      */
-    bool processByte(
-        const CircularBuffer& buffer, 
-        uint8_t byte, 
-        unsigned long currentTime, 
-        FrameInfo& frameInfo
-    );
-    
-    /**
-     * @brief Update the detector state and check for timeouts
-     * 
-     * @param buffer The circular buffer containing the data
-     * @param currentTime Current time in milliseconds
-     * @param frameInfo Output parameter to store detected frame information
-     * @return true if this resulted in a new complete frame
-     */
-    bool update(
+    bool detect(
         const CircularBuffer& buffer,
-        unsigned long currentTime, 
+        unsigned long currentTime,
         FrameInfo& frameInfo
     );
     
+   
     /**
      * @brief Reset the detector state
      */

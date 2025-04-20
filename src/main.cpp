@@ -15,6 +15,7 @@
 #include "wifi/wifi_status_task.h"
 #include "data/data_sender_task.h"
 #include "data/data_reader_task.h"
+#include "backend/backend_api_task.h" // Include BackendApiTask
 #include "ota_handler.h"  // Include OTA handler
 
 #define LED_PIN 3
@@ -26,6 +27,7 @@ WifiManager wifiManager; // Create a WiFi manager instance
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 DataSenderTask dataSenderTask; // Create a data sender task instance
 DataReaderTask *dataReaderTask; // Create a data reader task instance
+BackendApiTask backendApiTask; // Create a backend API task instance
 
 String configuredSSID = "";
 String configuredPassword = "";
@@ -131,6 +133,13 @@ void setup() {
     dataReaderTask->setInterval(10000); // 10 seconds interval for generating data
     dataReaderTask->begin(dataSenderTask.getQueueHandle()); // Share the queue between tasks
     
+    // Start the backend API task
+    Serial.println("Starting backend API task...");
+    backendApiTask.begin(&wifiManager);  // Pass the WiFi manager reference
+    backendApiTask.setInterval(300000);  // 5 minutes interval (300,000 ms) for state updates
+    backendApiTask.setBleActive(true);   // Initialize with BLE active (same as dataSenderTask)
+    Serial.println("Backend API task started");
+    
     // Start the server task
     Serial.println("Starting server task...");
     serverTask.begin();
@@ -210,8 +219,9 @@ void loop() {
     }
     
     #if defined(USE_BLE_SETUP)
-    // Update BLE state in data sender task
+    // Update BLE state in data sender task and backend API task
     dataSenderTask.setBleActive(bleHandler.isActive());
+    backendApiTask.setBleActive(bleHandler.isActive());
     
     // Handle BLE request queue in the main loop
     if (millis() - lastBLECheck > 1000) {

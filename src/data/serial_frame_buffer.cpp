@@ -21,26 +21,8 @@ SerialFrameBuffer::~SerialFrameBuffer() {
 }
 
 bool SerialFrameBuffer::addByte(uint8_t byte, unsigned long currentTime) {
-    // Add the byte to the circular buffer (this is now the responsibility of SerialFrameBuffer)
-    if (!_circularBuffer.addByte(byte, currentTime)) {
-        return false;
-    }
-    
-    // Process the byte with the frame detector
-    FrameInfo frameInfo;
-    if (_frameDetector.processByte(_circularBuffer, byte, currentTime, frameInfo) && frameInfo.complete) {
-        // Update current frame information for IFrameData interface
-        updateCurrentFrame(frameInfo);
-        
-        // Frame detected, process it if we have a callback
-        if (processDetectedFrame()) {
-            // Now that the frame has been successfully processed, 
-            // advance the buffer's read index
-            _circularBuffer.advanceReadIndex(calculateReadAdvance(frameInfo));
-            return true;
-        }
-    }
-    return false;
+    // Add a single byte and treat it as a chunk of size 1
+    return addData(&byte, 1, currentTime);
 }
 
 bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned long currentTime) {
@@ -48,22 +30,27 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned lon
         return false;
     }
     
-    bool frameProcessed = false;
-    
-    // Process each byte individually
+    // Add all bytes to the circular buffer at once
     for (size_t i = 0; i < length; i++) {
-        if (addByte(data[i], currentTime)) {
-            frameProcessed = true;
+        if (!_circularBuffer.addByte(data[i], currentTime)) {
+            // Buffer overflow
+            return false;
         }
     }
     
-    return frameProcessed;
+    // Process the entire chunk at once after adding all bytes
+    return processBufferForFrames(currentTime);
 }
 
 bool SerialFrameBuffer::update(unsigned long currentTime) {
-    // Update frame detector to check for timeouts and process complete frames
+    // Process any data in the buffer to check for complete frames or timeouts
+    return processBufferForFrames(currentTime);
+}
+
+bool SerialFrameBuffer::processBufferForFrames(unsigned long currentTime) {
+    // Process all data in the buffer to find complete frames
     FrameInfo frameInfo;
-    if (_frameDetector.update(_circularBuffer, currentTime, frameInfo) && frameInfo.complete) {
+    if (_frameDetector.detect(_circularBuffer, currentTime, frameInfo) && frameInfo.complete) {
         // Update current frame information for IFrameData interface
         updateCurrentFrame(frameInfo);
         
