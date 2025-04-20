@@ -53,7 +53,7 @@ EndpointResponse handleWiFiConfig(const EndpointRequest& request) {
         bool hasPsk = parser.getString("psk", psk, sizeof(psk));
         
         Serial.println("Received WiFi config request:");
-        Serial.println(request.content);
+        Serial.println(request.content.c_str());
         
         if (!hasSsid || !hasPsk) {
             Serial.println("Missing ssid or psk in request");
@@ -62,11 +62,11 @@ EndpointResponse handleWiFiConfig(const EndpointRequest& request) {
             return response;
         }
         
-        String ssidStr = String(ssid);
-        String password = String(psk);
+        zap::Str ssidStr = zap::Str(ssid);
+        zap::Str password = zap::Str(psk);
         
         Serial.print("Setting WiFi SSID: ");
-        Serial.println(ssidStr);
+        Serial.println(ssidStr.c_str());
         Serial.println("Setting WiFi password (length): " + String(password.length()));
         
         // Try to connect with new credentials
@@ -94,7 +94,7 @@ EndpointResponse handleSystemInfo(const EndpointRequest& request) {
     }
 
     JsonBuilder json;
-    String deviceId = crypto_getId();
+    zap::Str deviceId = crypto_getId();
     
     json.beginObject()
         .add("deviceId", deviceId.c_str())
@@ -105,7 +105,7 @@ EndpointResponse handleSystemInfo(const EndpointRequest& request) {
         .add("firmwareVersion", getFirmwareVersion());
     
     extern const char* PRIVATE_KEY_HEX;
-    String publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
+    zap::Str publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
     json.add("publicKey", publicKey.c_str());
     
     if (wifiManager.isConnected()) {
@@ -158,18 +158,18 @@ EndpointResponse handleCryptoInfo(const EndpointRequest& request) {
     json.beginObject()
         .add("deviceName", "software_zap");
     
-    String serialNumber = crypto_getId();
+    zap::Str serialNumber = crypto_getId();
     json.add("serialNumber", serialNumber.c_str());
     
     extern const char* PRIVATE_KEY_HEX;
     
-    String publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
+    zap::Str publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
     json.add("publicKey", publicKey.c_str());
     
     response.statusCode = 200;
     response.data = json.end();
     Serial.print("Response data: ");
-    Serial.println(response.data);
+    Serial.println(response.data.c_str());
     return response;
 }
 
@@ -183,7 +183,7 @@ EndpointResponse handleNameInfo(const EndpointRequest& request) {
         return response;
     }
     
-    String name = fetchGatewayName(crypto_getId());
+    zap::Str name = fetchGatewayName(crypto_getId());
     
     JsonBuilder json;
     json.beginObject()
@@ -280,11 +280,11 @@ EndpointResponse handleInitialize(const EndpointRequest& request) {
         return response;
     }
     
-    String deviceId = crypto_getId();
-    String idAndWallet = deviceId + ":" + String(wallet);
+    zap::Str deviceId = crypto_getId();
+    zap::Str idAndWallet = deviceId + ":" + zap::Str(wallet);
     
     extern const char* PRIVATE_KEY_HEX;
-    String signature = crypto_create_signature_hex(idAndWallet.c_str(), PRIVATE_KEY_HEX);
+    zap::Str signature = crypto_create_signature_hex(idAndWallet.c_str(), PRIVATE_KEY_HEX);
     
     JsonBuilder json;
     json.beginObject()

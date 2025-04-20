@@ -1,6 +1,7 @@
 #pragma once
 #include "endpoint_types.h"
 #include "wifi/wifi_manager.h"
+#include "zap_str.h"
 
 
 class WifiHandler {
@@ -15,14 +16,14 @@ class WifiHandler {
 class WiFiConfigHandler : public EndpointFunction, protected WifiHandler {
     public:
         WiFiConfigHandler(WifiManager& wifiManager) : WifiHandler(wifiManager) {}
-        EndpointResponse handle(const String& contents) override;
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 // WiFi Reset Handler
 class WiFiResetHandler : public EndpointFunction, protected WifiHandler {
     public:
         WiFiResetHandler(WifiManager& wifiManager) : WifiHandler(wifiManager) {}
-        EndpointResponse handle(const String& contents) override;
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 
@@ -30,7 +31,7 @@ class WiFiResetHandler : public EndpointFunction, protected WifiHandler {
 class WiFiStatusHandler : public EndpointFunction, protected WifiHandler {
     public:
         WiFiStatusHandler(WifiManager& wifiManager) : WifiHandler(wifiManager) {}
-        EndpointResponse handle(const String& contents) override;
+        EndpointResponse handle(const zap::Str& contents) override;
 
 };
 
@@ -38,6 +39,6 @@ class WiFiStatusHandler : public EndpointFunction, protected WifiHandler {
 class WiFiScanHandler : public EndpointFunction, protected WifiHandler {
     public:
         WiFiScanHandler(WifiManager& wifiManager) : WifiHandler(wifiManager) {}
-        EndpointResponse handle(const String& contents) override;
+        EndpointResponse handle(const zap::Str& contents) override;
 
 };

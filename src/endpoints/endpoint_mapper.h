@@ -1,8 +1,9 @@
 #pragma once
 
-#include <Arduino.h>
+// #include <Arduino.h>
 #include "endpoint_types.h"
 #include "endpoints.h"
+#include "zap_str.h"
 #include <array>
 
 class EndpointMapper {
@@ -55,9 +56,9 @@ public:
     Iterator end() const;
     
     // Mapping functions
-    static const Endpoint& toEndpoint(const String& path, const String& verb);
-    static Endpoint::Verb stringToVerb(const String& method);
-    static String verbToString(Endpoint::Verb method);
+    static const Endpoint& toEndpoint(const zap::Str& path, const zap::Str& verb);
+    static Endpoint::Verb stringToVerb(const zap::Str& method);
+    static zap::Str verbToString(Endpoint::Verb method);
     static EndpointResponse route(const EndpointRequest& request);
     static void printPaths();
 };

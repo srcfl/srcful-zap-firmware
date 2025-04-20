@@ -1,6 +1,5 @@
 #include "crypto.h"
 #include <NimBLEDevice.h>
-#include <string.h>
 #include <esp_random.h>
 #include <mbedtls/ecdsa.h>
 #include <mbedtls/ecp.h>
@@ -10,6 +9,8 @@
 
 #include <esp_efuse.h>
 #include <esp_system.h>
+// #include <Arduino.h>
+#include <esp_random.h>
 #include <soc/efuse_reg.h>
 
 static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len);
@@ -38,9 +39,9 @@ static void bytes_to_hex_string(const uint8_t* bytes, size_t length, char* hex_s
 }
 
 // Base64URL encoding implementation
-String base64url_encode(const char* data, size_t length) {
+zap::Str base64url_encode(const char* data, size_t length) {
     static const char base64url_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    String result;
+    zap::Str result;
     result.reserve(((length + 2) / 3) * 4);
     
     for (size_t i = 0; i < length; i += 3) {
@@ -230,7 +231,7 @@ cleanup:
 }
 
 // Legacy function implementations
-String crypto_get_public_key(const char* private_key_hex) {
+zap::Str crypto_get_public_key(const char* private_key_hex) {
     uint8_t privateKey[32];
     uint8_t publicKey[64];
     
@@ -246,19 +247,19 @@ String crypto_get_public_key(const char* private_key_hex) {
     
     char hex_result[129];  // Changed to 129 to accommodate 64 bytes (128 hex chars + null terminator)
     bytes_to_hex_string(publicKey, 64, hex_result);
-    return String(hex_result);
+    return zap::Str(hex_result);
 }
 
-String crypto_create_jwt(const char* header, const char* payload, const char* private_key_hex) {
+zap::Str crypto_create_jwt(const char* header, const char* payload, const char* private_key_hex) {
     uint8_t privateKey[32];
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
         return "";
     }
     
     // Create the JWT parts
-    String encodedHeader = base64url_encode(header, strlen(header));
-    String encodedPayload = base64url_encode(payload, strlen(payload));
-    String signatureInput = encodedHeader + "." + encodedPayload;
+    zap::Str encodedHeader = base64url_encode(header, strlen(header));
+    zap::Str encodedPayload = base64url_encode(payload, strlen(payload));
+    zap::Str signatureInput = encodedHeader + "." + encodedPayload;
     
     // Create signature
     uint8_t signature[64];  // Changed to 64 bytes
@@ -267,13 +268,13 @@ String crypto_create_jwt(const char* header, const char* payload, const char* pr
     }
     
     // Encode signature
-    String encodedSignature = base64url_encode((const char*)signature, 64);  // Changed to 64 bytes
+    zap::Str encodedSignature = base64url_encode((const char*)signature, 64);  // Changed to 64 bytes
     
     // Combine all parts
     return encodedHeader + "." + encodedPayload + "." + encodedSignature;
 }
 
-String crypto_create_signature_base64url(const char* data, const char* private_key_hex) {
+zap::Str crypto_create_signature_base64url(const char* data, const char* private_key_hex) {
     uint8_t privateKey[32];
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
         return "";
@@ -287,7 +288,7 @@ String crypto_create_signature_base64url(const char* data, const char* private_k
     return base64url_encode((const char*)signature, 64);  // Changed to 64 bytes
 }
 
-String crypto_create_signature_hex(const char* data, const char* private_key_hex) {
+zap::Str crypto_create_signature_hex(const char* data, const char* private_key_hex) {
     uint8_t privateKey[32];
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
         return "";
@@ -300,11 +301,11 @@ String crypto_create_signature_hex(const char* data, const char* private_key_hex
     
     char hex_result[129];  // Changed to 129 to accommodate 64 bytes (128 hex chars + null terminator)
     bytes_to_hex_string(signature, 64, hex_result);  // Changed to 64 bytes
-    return String(hex_result);
+    return zap::Str(hex_result);
 } 
 
 
-String crypto_create_signature_der_hex(const char* data, const char* private_key_hex) {
+zap::Str crypto_create_signature_der_hex(const char* data, const char* private_key_hex) {
     uint8_t signature[64];
 
     uint8_t privateKey[32];
@@ -313,18 +314,18 @@ String crypto_create_signature_der_hex(const char* data, const char* private_key
     }
     
     if (!Crypto::signMessage(privateKey, (const uint8_t*)data, strlen(data), signature)) {
-        return String();
+        return zap::Str();
     }
 
     uint8_t der[64 + 6];
     size_t der_len;
     if (!crypto_convert_to_der(signature, der, &der_len)) {
-        return String();
+        return zap::Str();
     }
 
     char der_hex[der_len * 2];
     bytes_to_hex_string(der, der_len, der_hex);
-    return String(der_hex);
+    return zap::Str(der_hex);
 }
 
 static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len) {
@@ -368,7 +369,7 @@ static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t 
     return 1;
 } 
 
-String crypto_getId() {
+zap::Str crypto_getId() {
   // Debug flag
   const bool debug = true;
   uint64_t chipId = ESP.getEfuseMac();
@@ -397,7 +398,7 @@ String crypto_getId() {
   }
   serial[16] = '\0';
   
-  String id = "zap-" + String(serial);
+  zap::Str id = "zap-" + zap::Str(serial);
   
   // Ensure exactly 18 characters
   if (id.length() > 18) {

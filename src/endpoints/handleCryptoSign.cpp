@@ -9,7 +9,7 @@
 
 
 // Crypto Sign Handler Implementation
-EndpointResponse CryptoSignHandler::handle(const String& contents) {
+EndpointResponse CryptoSignHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
@@ -21,7 +21,7 @@ EndpointResponse CryptoSignHandler::handle(const String& contents) {
     bool hasTimestamp = parser.getString("timestamp", timestamp, sizeof(timestamp));
     
     // Get message to sign if provided, otherwise use an empty string
-    String messageStr = hasMessage ? String(message) : "";
+    zap::Str messageStr = hasMessage ? zap::Str(message) : "";
     
     // Check for pipe characters which are not allowed
     if (hasMessage && messageStr.indexOf('|') != -1) {
@@ -31,13 +31,13 @@ EndpointResponse CryptoSignHandler::handle(const String& contents) {
     }
     
     // Generate nonce (random string)
-    String nonce = String(random(100000, 999999));
+    zap::Str nonce = zap::Str(random(100000, 999999));
     // String nonce = "313589";    // hard coded to avoid nonce fragmentation in ble case
     
     // Get timestamp - use provided timestamp or generate one
-    String timestampStr;
+    zap::Str timestampStr;
     if (hasTimestamp) {
-        timestampStr = String(timestamp);
+        timestampStr = zap::Str(timestamp);
         
         // Check for pipe characters which are not allowed
         if (timestampStr.indexOf('|') != -1) {
@@ -51,15 +51,15 @@ EndpointResponse CryptoSignHandler::handle(const String& contents) {
         time(&now);
         char timestamp[24];
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
-        timestampStr = String(timestamp);
+        timestampStr = zap::Str(timestamp);
     }
     
     // Get device serial number
-    String serialNumber = crypto_getId();
+    zap::Str serialNumber = crypto_getId();
     
     // Create the combined message: message|nonce|timestamp|serial
     // If message is empty, don't include the initial pipe character
-    String combinedMessage;
+    zap::Str combinedMessage;
     if (messageStr.length() > 0) {
         combinedMessage = messageStr + "|" + nonce + "|" + timestampStr + "|" + serialNumber;
     } else {
@@ -68,10 +68,10 @@ EndpointResponse CryptoSignHandler::handle(const String& contents) {
     
     // Sign the combined message
     extern const char* PRIVATE_KEY_HEX;
-    String signature = crypto_create_signature_hex(combinedMessage.c_str(), PRIVATE_KEY_HEX);
+    zap::Str signature = crypto_create_signature_hex(combinedMessage.c_str(), PRIVATE_KEY_HEX);
     
     // Create the response as a json string, we put the signature first so this is sent first to void fragmented signatures in ble case
-    String responseString = "{\"sign\":\"" + signature + "\",\"message\":\"" + combinedMessage + "\"}";
+    zap::Str responseString = "{\"sign\":\"" + signature + "\",\"message\":\"" + combinedMessage + "\"}";
     response.data = responseString;
     response.statusCode = 200;
     return response;

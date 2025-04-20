@@ -6,6 +6,7 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <HTTPClient.h>
+#include "../zap_str.h"
 
 #include "wifi/wifi_manager.h"
 #include "data_package.h"  // Local include for data package header
@@ -30,7 +31,7 @@ public:
     
 private:
     static void taskFunction(void* parameter);
-    void sendJWT(const String& jwt);
+    void sendJWT(const zap::Str& jwt);
     
     TaskHandle_t taskHandle;
     uint32_t stackSize;

@@ -57,7 +57,7 @@ void WifiStatusTask::taskFunction(void* parameter) {
                 if (!wasConnected) {
                     Serial.println("WiFi connected");
                     Serial.print("IP address: ");
-                    Serial.println(task->wifiManager->getLocalIP());
+                    Serial.println(task->wifiManager->getLocalIP().c_str());
                     wasConnected = true;
                     task->connectionAttempts = 0; // Reset connection attempts
                 }

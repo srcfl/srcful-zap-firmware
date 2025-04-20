@@ -9,9 +9,9 @@ public:
     }
 
     bool isConnected() const { return true; }
-    String getConfiguredSSID() const { return "helloworld"; }
-    const std::vector<String>& getLastScanResults() const { 
-        static std::vector<String> mockResults = {"Network1", "Network2", "Network3"};
+    zap::Str getConfiguredSSID() const { return "helloworld"; }
+    const std::vector<zap::Str>& getLastScanResults() const { 
+        static std::vector<zap::Str> mockResults = {"Network1", "Network2", "Network3"};
         return mockResults;
     }
 };
@@ -31,9 +31,9 @@ void test_wifi_status_handler() {
     Serial.print("Status Code: ");
     Serial.println(response.statusCode);
     Serial.print("Content Type: ");
-    Serial.println(response.contentType);
+    Serial.println(response.contentType.c_str());
     Serial.print("Response Data: ");
-    Serial.println(response.data);
+    Serial.println(response.data.c_str());
     Serial.println("=================================");
     
     // Basic validation

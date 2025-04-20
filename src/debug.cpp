@@ -1,5 +1,5 @@
 #include "debug.h"
-
+#include <Arduino.h>
 
 int Debug::failedFrames = 0;
 int Debug::frames = 0;

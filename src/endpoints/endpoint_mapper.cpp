@@ -44,7 +44,7 @@ const Endpoint endpoints[] = {
 EndpointMapper::Iterator EndpointMapper::begin() const { return EndpointMapper::Iterator(endpoints); }
 EndpointMapper::Iterator EndpointMapper::end() const { return EndpointMapper::Iterator(endpoints + sizeof(endpoints) / sizeof(endpoints[0])); }
 
-const Endpoint& EndpointMapper::toEndpoint(const String& path, const String& verb) {
+const Endpoint& EndpointMapper::toEndpoint(const zap::Str& path, const zap::Str& verb) {
     // Create an instance of EndpointMapper to use the non-static begin() and end() methods
     Endpoint::Verb eVerb = stringToVerb(verb);
     static const Endpoint unknownEndpoint = Endpoint(Endpoint::UNKNOWN, Endpoint::Verb::UNKNOWN, "", g_nullHandler);
@@ -56,14 +56,14 @@ const Endpoint& EndpointMapper::toEndpoint(const String& path, const String& ver
     return unknownEndpoint;
 }
 
-Endpoint::Verb EndpointMapper::stringToVerb(const String& verb) {
+Endpoint::Verb EndpointMapper::stringToVerb(const zap::Str& verb) {
     if (verb == "GET") return Endpoint::Verb::GET;
     if (verb == "POST") return Endpoint::Verb::POST;
     if (verb == "DELETE") return Endpoint::Verb::DELETE;
     return Endpoint::Verb::UNKNOWN;
 }
 
-String EndpointMapper::verbToString(Endpoint::Verb verb) {
+zap::Str EndpointMapper::verbToString(Endpoint::Verb verb) {
     switch (verb) {
         case Endpoint::Verb::GET: return "GET";
         case Endpoint::Verb::POST: return "POST";

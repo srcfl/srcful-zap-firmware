@@ -13,7 +13,7 @@ void test_handle_crypto_sign_endpoint(void) {
     CryptoSignHandler cryptoSignHandler;
 
     // Create a test request with a message
-    String contents = "{\"message\":\"Bygcy876b3bsjMvvhZxghvs3EyR5y6a7vpvAp5D62n2w\",\"timestamp\":\"2025-04-06T08:33:00Z\"}";
+    zap::Str contents = "{\"message\":\"Bygcy876b3bsjMvvhZxghvs3EyR5y6a7vpvAp5D62n2w\",\"timestamp\":\"2025-04-06T08:33:00Z\"}";
     
     // Call the endpoint handler
     EndpointResponse response = cryptoSignHandler.handle(contents);
@@ -23,9 +23,9 @@ void test_handle_crypto_sign_endpoint(void) {
     Serial.print("Status Code: ");
     Serial.println(response.statusCode);
     Serial.print("Content Type: ");
-    Serial.println(response.contentType);
+    Serial.println(response.contentType.c_str());
     Serial.print("Response Data: ");
-    Serial.println(response.data);
+    Serial.println(response.data.c_str());
     Serial.println("=================================");
     
     // Basic validation

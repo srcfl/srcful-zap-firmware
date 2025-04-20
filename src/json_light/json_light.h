@@ -1,10 +1,11 @@
 #pragma once
+#include "../zap_str.h"
 
-#include <Arduino.h>
+#include <ctype.h>
 #include <vector>
 class JsonBuilder {
 private:
-    String buffer;
+    zap::Str buffer;
     bool firstItem;
     bool inObject;
     std::vector<bool> objectStack; // Stack to track firstItem state for nested objects
@@ -97,7 +98,7 @@ public:
         buffer += "\":\"";
         for (size_t i = 0; i < size; i++) {
             if (data[i] < 0x10) buffer += '0'; // Add leading zero for single hex digits
-            buffer += String(data[i], HEX);
+            buffer += zap::Str(data[i], 16);
         }
         buffer += '"';
         firstItem = false;
@@ -105,7 +106,7 @@ public:
     }
     
     // Add an array of string values
-    JsonBuilder& addArray(const char* key, const std::vector<String>& values) {
+    JsonBuilder& addArray(const char* key, const std::vector<zap::Str>& values) {
         if (!firstItem) buffer += ',';
         buffer += '"';
         buffer += key;
@@ -135,7 +136,7 @@ public:
     }
     
     // End all objects and get the result
-    String end() {
+    zap::Str end() {
         while (inObject && !objectStack.empty()) {
             buffer += '}';
             objectStack.pop_back();
@@ -146,7 +147,7 @@ public:
     
     // Clear the buffer and reset state
     void clear() {
-        buffer = "";
+        buffer.clear();
         firstItem = true;
         inObject = false;
         objectStack.clear();

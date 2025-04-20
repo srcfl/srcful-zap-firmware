@@ -9,7 +9,7 @@ void test_crypto_create_signature(void) {
     const char* testMessage = "test_message_for_signature_verification";
     
     // Generate signature using the actual implementation
-    String hexSignature = crypto_create_signature_der_hex(testMessage, PRIVATE_KEY_HEX);
+    zap::Str hexSignature = crypto_create_signature_der_hex(testMessage, PRIVATE_KEY_HEX);
     
     // Print the signature for verification
     Serial.print("Test message: ");
@@ -24,7 +24,7 @@ void test_crypto_create_signature(void) {
     }
     Serial.println(hexMsg);
     Serial.print("Generated signature (der format): ");
-    Serial.println(hexSignature);
+    Serial.println(hexSignature.c_str());
     
     // Basic validation
     TEST_ASSERT_NOT_EQUAL(0, hexSignature.length());

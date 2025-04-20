@@ -2,7 +2,7 @@
 #include "json_light/json_light.h"
 #include "crypto.h"
 
-String createP1JWT(const char* privateKey, const String& deviceId, const P1Data& p1data) {
+zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const P1Data& p1data) {
     // Create the header
     JsonBuilder header;
     header.beginObject()
@@ -14,13 +14,13 @@ String createP1JWT(const char* privateKey, const String& deviceId, const P1Data&
         .add("dtype", "p1_telnet_json")
         .add("sn", "LGF5E360");
 
-    String headerStr = header.end();
+    zap::Str headerStr = header.end();
 
     // Create the payload
     JsonBuilder payload;
-    String timestampStr;
+    zap::Str timestampStr;
     
-    timestampStr = String(p1data.timestamp);
+    timestampStr = zap::Str(static_cast<long>(p1data.timestamp));
     timestampStr += "000"; // Append '000' to the timestamp as in milliseconds
     
     // Start the payload object
@@ -38,17 +38,16 @@ String createP1JWT(const char* privateKey, const String& deviceId, const P1Data&
             break;
         }
     }
-    
 
     dataObj.add("serial_number", "LGF5E360");
 
-    // Use a vector of Strings instead of an array of C-style strings
-    std::vector<String> rows;
+    // Use a vector of Str instead of an array of C-style strings
+    std::vector<zap::Str> rows;
 
     for (int i = 0; i < p1data.obisCount; i++) {
         char buffer[64];
         p1data.obisValues[i].toString(buffer, sizeof(buffer));
-        rows.push_back(String(buffer));
+        rows.push_back(zap::Str(buffer));
     }
     
     // Format timestamp
@@ -60,10 +59,10 @@ String createP1JWT(const char* privateKey, const String& deviceId, const P1Data&
     snprintf(buffer, sizeof(buffer), "0-0:1.0.0(%02d%02d%02d%02d%02d%02dW)",
              timeinfo.tm_year % 100, timeinfo.tm_mon + 1, timeinfo.tm_mday,
              timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-    rows.push_back(String(buffer));
+    rows.push_back(zap::Str(buffer));
     
     // Calculate checksum (simple implementation)
-    String checksum = "0E78"; // Fixed checksum for now
+    zap::Str checksum = "0E78"; // Fixed checksum for now
     
     // Add the rows to the data object
     dataObj.addArray("rows", rows);
@@ -72,11 +71,17 @@ String createP1JWT(const char* privateKey, const String& deviceId, const P1Data&
     dataObj.add("checksum", checksum.c_str());
     
     // Add the data object to the payload with the timestamp as the key
-    String dataStr = dataObj.end();
-    String payloadStr = "{\"" + timestampStr + "\":" + dataStr + "}";
+    zap::Str dataStr = dataObj.end();
+    
+    // Construct the payload JSON manually since we don't have complex JSON operations in our Str class
+    zap::Str payloadStr = "{\"";
+    payloadStr += timestampStr;
+    payloadStr += "\":";
+    payloadStr += dataStr;
+    payloadStr += "}";
     
     // Use the crypto_create_jwt function from the crypto module
-    String jwt = crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), privateKey);
+    zap::Str jwt = crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), privateKey);
     
     return jwt;
 }

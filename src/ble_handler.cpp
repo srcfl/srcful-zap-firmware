@@ -143,34 +143,34 @@ static const char SUCCESS_WIFI_UPDATE[] PROGMEM = "{\"status\":\"success\",\"mes
 static const char SUCCESS_WIFI_RESET[] PROGMEM = "{\"status\":\"success\",\"message\":\"WiFi reset successful\"}";
 
 // Modify constructResponse to use PROGMEM strings
-String BLEHandler::constructResponse(const String& location, const String& method, 
-                                   const String& data, int offset) {
-    String header;
+zap::Str BLEHandler::constructResponse(const zap::Str& location, const zap::Str& method, 
+                                   const zap::Str& data, int offset) {
+    zap::Str header;
     
     // Add each part separately to avoid concatenation issues
-    header += FPSTR(RESPONSE_OK);
-    header += FPSTR(LOCATION);
+    header += RESPONSE_OK;
+    header += LOCATION;
     header += location;
     header += "\r\n";
     
-    header += FPSTR(METHOD);
+    header += METHOD;
     header += method;
     header += "\r\n";
     
-    header += FPSTR(CONTENT_TYPE);
+    header += CONTENT_TYPE;
     
-    header += FPSTR(CONTENT_LENGTH);
-    header += String(data.length());
+    header += CONTENT_LENGTH;
+    header += zap::Str(data.length());
     header += "\r\n";
     
     if (offset > 0) {
-        header += FPSTR(OFFSET);
-        header += String(offset);
+        header += OFFSET;
+        header += zap::Str(offset);
         header += "\r\n";
     }
     
     header += "\r\n";
-    String response = header + data.substring(offset);
+    zap::Str response = header + data.substring(offset);
     
     if (response.length() > MAX_BLE_PACKET_SIZE) {
         response = response.substring(0, MAX_BLE_PACKET_SIZE);
@@ -179,18 +179,18 @@ String BLEHandler::constructResponse(const String& location, const String& metho
     return response;
 }
 
-bool BLEHandler::sendResponse(const String& location, const String& method, 
-                            const String& data, int offset) {
-    String response = constructResponse(location, method, data, offset);
+bool BLEHandler::sendResponse(const zap::Str& location, const zap::Str& method, 
+                            const zap::Str& data, int offset) {
+    zap::Str response = constructResponse(location, method, data, offset);
     pResponseChar->setValue((uint8_t*)response.c_str(), response.length());
     pResponseChar->notify();
     return true;
 }
 
 void BLERequestCallback::onWrite(NimBLECharacteristic* pCharacteristic) {
-    std::string value = pCharacteristic->getValue();
+    std::string value = pCharacteristic->getValue();    // TODO: Propbably not optimal to go via std::string
     if (value.length() > 0) {
-        handler->enqueueRequest(String(value.c_str()));
+        handler->enqueueRequest(zap::Str(value.c_str()));
     }
 }
 
@@ -198,7 +198,7 @@ void BLEResponseCallback::onRead(NimBLECharacteristic* pCharacteristic) {
     // Handle read if needed
 }
 
-void BLEHandler::enqueueRequest(const String& requestStr) {
+void BLEHandler::enqueueRequest(const zap::Str& requestStr) {
     if (_requestQueue == nullptr) return;
     
     // Allocate memory for the string
@@ -228,7 +228,7 @@ void BLEHandler::handlePendingRequest() {
             Serial.printf("Dequeued request (%d bytes)\n", strlen(buffer));
 
             // Create a String object from the buffer
-            String receivedRequest(buffer);
+            zap::Str receivedRequest(buffer);
 
             // Process the request
             handleRequest(receivedRequest);
@@ -239,8 +239,8 @@ void BLEHandler::handlePendingRequest() {
     }
 }
 
-void BLEHandler::handleRequest(const String& request) {
-    String method, path, content;
+void BLEHandler::handleRequest(const zap::Str& request) {
+    zap::Str method, path, content;
     int offset = 0;
     
     if (!parseRequest(request, method, path, content, offset)) {
@@ -251,21 +251,21 @@ void BLEHandler::handleRequest(const String& request) {
     handleRequestInternal(method, path, content, offset);
 }
 
-bool BLEHandler::parseRequest(const String& request, String& method, String& path, 
-                            String& content, int& offset) {
+bool BLEHandler::parseRequest(const zap::Str& request, zap::Str& method, zap::Str& path, 
+                                zap::Str& content, int& offset) {
     int headerEnd = request.indexOf("\r\n\r\n");
     if (headerEnd == -1) return false;
     
-    String header = request.substring(0, headerEnd);
+    zap::Str header = request.substring(0, headerEnd);
     content = request.substring(headerEnd + 4);
     
     // Parse first line
     int firstLineEnd = header.indexOf("\r\n");
-    String firstLine = header.substring(0, firstLineEnd);
+    zap::Str firstLine = header.substring(0, firstLineEnd);
     
     if (!firstLine.endsWith(" EGWTTP/1.1")) return false;
     
-    int methodEnd = firstLine.indexOf(" ");
+    int methodEnd = firstLine.indexOf(' ');
     method = firstLine.substring(0, methodEnd);
     
     // Get path and trim whitespace
@@ -283,15 +283,15 @@ bool BLEHandler::parseRequest(const String& request, String& method, String& pat
     return true;
 }
 
-void BLEHandler::handleRequestInternal(const String& method, const String& path, 
-                                     const String& content, int offset) {
+void BLEHandler::handleRequestInternal(const zap::Str& method, const zap::Str& path, 
+                                     const zap::Str& content, int offset) {
     EndpointRequest request(EndpointMapper::toEndpoint(path, method));
     request.content = content;
     request.offset = offset;
     
     EndpointResponse response = EndpointMapper::route(request);
 
-    Serial.println(method + " " + path + " " + " Response: " + response.data);
+    Serial.println((method + " " + path + " " + " Response: " + response.data).c_str());
     
     if (response.statusCode == 200) {
         sendResponse(path, method, response.data, offset);

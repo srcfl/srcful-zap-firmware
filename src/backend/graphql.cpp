@@ -15,14 +15,14 @@ void initSSL() {
     sslClient.setInsecure();
 }
 
-String prepareGraphQLQuery(const String& rawQuery) {
-    String prepared = rawQuery;
+zap::Str prepareGraphQLQuery(const zap::Str& rawQuery) {
+    zap::Str prepared = rawQuery;
     prepared.replace("\"", "\\\"");
     prepared.replace("\n", "\\n");
     return prepared;
 }
 
-bool makeGraphQLRequest(const String& query, String& responseData, const char* endpoint) {
+bool makeGraphQLRequest(const zap::Str& query, zap::Str& responseData, const char* endpoint) {
     // Print memory info
     Serial.printf("Free heap before request: %d\n", ESP.getFreeHeap());
     
@@ -33,13 +33,13 @@ bool makeGraphQLRequest(const String& query, String& responseData, const char* e
         http.addHeader("Content-Type", "application/json");
         
         // Construct JSON manually to avoid ArduinoJson memory overhead
-        String preparedQuery = prepareGraphQLQuery(query);
-        String requestBody = "{\"query\":\"" + preparedQuery + "\"}";
+        zap::Str preparedQuery = prepareGraphQLQuery(query);
+        zap::Str requestBody = "{\"query\":\"" + preparedQuery + "\"}";
         
         Serial.println("Sending GraphQL request:");
-        Serial.println(requestBody);
+        Serial.println(requestBody.c_str());
         
-        int httpResponseCode = http.POST(requestBody);
+        int httpResponseCode = http.POST(requestBody.c_str());
         
         if (httpResponseCode == 200) {
             // Stream the response instead of loading it all at once
@@ -64,8 +64,8 @@ bool makeGraphQLRequest(const String& query, String& responseData, const char* e
     return false;
 }
 
-String fetchGatewayName(const String& serialNumber) {
-    String query = R"({
+zap::Str fetchGatewayName(const zap::Str& serialNumber) {
+    zap::Str query = R"({
         gatewayConfiguration {
           gatewayName(id:")" + serialNumber + R"(") {
             name
@@ -73,7 +73,7 @@ String fetchGatewayName(const String& serialNumber) {
         }
     })";
     
-    String response;
+    zap::Str response;
     if (makeGraphQLRequest(query, response, API_URL)) {
         // Parse JSON response manually to avoid ArduinoJson
         int dataPos = response.indexOf("\"data\":");

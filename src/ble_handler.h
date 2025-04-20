@@ -50,9 +50,9 @@ class BLEHandler {
         QueueHandle_t _requestQueue;
         
         // Private helper methods
-        bool parseRequest(const String& request, String& method, String& path, String& content, int& offset);
-        void handleRequestInternal(const String& method, const String& path, const String& content, int offset);
-        String constructResponse(const String& location, const String& method, const String& data, int offset);
+        bool parseRequest(const zap::Str& request, zap::Str& method, zap::Str& path, zap::Str& content, int& offset);
+        void handleRequestInternal(const zap::Str& method, const zap::Str& path, const zap::Str& content, int offset);
+        zap::Str constructResponse(const zap::Str& location, const zap::Str& method, const zap::Str& data, int offset);
         
     public:
         BLEHandler();
@@ -62,11 +62,11 @@ class BLEHandler {
         void hardStop();
         bool isActive();
         void checkAdvertising();
-        bool sendResponse(const String& location, const String& method, const String& data, int offset);
-        void handleRequest(const String& request);
+        bool sendResponse(const zap::Str& location, const zap::Str& method, const zap::Str& data, int offset);
+        void handleRequest(const zap::Str& request);
         void handlePendingRequest();
-        void enqueueRequest(const String& requestStr);
-        void processRequest(const String& request);
+        void enqueueRequest(const zap::Str& requestStr);
+        void processRequest(const zap::Str& request);
         
         // Friend classes to allow callbacks to access private methods
         friend class SrcfulBLEServerCallbacks;

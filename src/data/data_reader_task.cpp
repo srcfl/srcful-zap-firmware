@@ -65,7 +65,7 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
         
         // Clear the data buffer first
         memset(package.data, 0, MAX_DATA_SIZE);
-        String jwt = createP1JWT(PRIVATE_KEY_HEX, crypto_getId(), p1data);
+        zap::Str jwt = createP1JWT(PRIVATE_KEY_HEX, crypto_getId(), p1data);
         // Check if the JWT was created successfully
         if (jwt.length() == 0) {
             Serial.println("Data reader task: Failed to create JWT");

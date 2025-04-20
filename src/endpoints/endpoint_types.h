@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+#include "zap_str.h"
 
 // Forward declarations
 struct EndpointResponse;
@@ -8,7 +8,7 @@ struct EndpointRequest;
 
 class EndpointFunction {
     public:
-        virtual EndpointResponse handle(const String& contents) = 0;
+        virtual EndpointResponse handle(const zap::Str& contents) = 0;
 };
 
 // Define all possible endpoints as an enum
@@ -50,14 +50,14 @@ class Endpoint {
 // Response structure that can be used by both BLE and HTTP handlers
 struct EndpointResponse {
     int statusCode;      // HTTP-style status code (200, 400, etc.)
-    String contentType;  // Content type of the response
-    String data;        // Response data
+    zap::Str contentType;  // Content type of the response
+    zap::Str data;        // Response data
 };
 
 // Request structure that normalizes input from both BLE and HTTP
 struct EndpointRequest {
     EndpointRequest(const Endpoint& endpoint) : endpoint(endpoint) {}
     const Endpoint& endpoint;
-    String content;
+    zap::Str content;
     int offset;
 };

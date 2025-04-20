@@ -519,13 +519,13 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) 
 
     if((header.format & 0xF0) != 0xA0) {
         P1_DLMS_LOG(println("Invalid frame format"));
-        return false; // Invalid frame format
+        // return false; // Invalid frame format
     }
 
     int len = (_ntohs(header.format) & 0x7FF) + 2;
     if(len > frame.getFrameSize()) {
         P1_DLMS_LOG(println("Invalid frame length"));
-        return false; // Invalid frame length
+        // return false; // Invalid frame length
     }
 
 

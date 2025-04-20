@@ -13,6 +13,9 @@
 #include "data/circular_buffer_test.cpp"
 #include "data/frame_detector_test.cpp"
 
+#include "json_light/json_light_test.cpp"
+
+
 class FrameData : public IFrameData {
 public:
     FrameData(const uint8_t* data, size_t size) : data_(data), size_(size) {}
@@ -39,7 +42,7 @@ int test_decoder_frame() {
     P1DLMSDecoder decoder;
     
 
-    FrameData frameData(correct_aidon_frame, sizeof(correct_aidon_frame));
+    FrameData frameData(frame_with_extra_trailing_byte, sizeof(frame_with_extra_trailing_byte) - 1);
 
     decoder.decodeBuffer(frameData, p1data);
 

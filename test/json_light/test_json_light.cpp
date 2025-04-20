@@ -1,7 +1,7 @@
 #include <unity.h>
 #include "json_light/json_light.h"
 #include <vector>
-#include <string>
+#include <Arduino.h>
 
 void setUp(void) {
     // Setup code if needed
@@ -13,7 +13,7 @@ void tearDown(void) {
 
 void test_json_builder() {
     JsonBuilder json;
-    String result = json
+    zap::Str result = json
         .beginObject()
         .add("status", "success")
         .add("code", 200)
@@ -57,7 +57,7 @@ void test_json_parser() {
 void test_json_array() {
     JsonBuilder json;
     const char* items[] = {"item1", "item2", "item3"};
-    String result = json
+    zap::Str result = json
         .beginObject()
         .add("name", "test")
         .addArray("items", items, 3)
@@ -92,7 +92,7 @@ void test_json_builder_simple_object() {
         .add("key2", 123)
         .add("key3", true);
     
-    String json = builder.end();
+    zap::Str json = builder.end();
     TEST_ASSERT_EQUAL_STRING("{\"key1\":\"value1\",\"key2\":123,\"key3\":true}", json.c_str());
 }
 
@@ -110,7 +110,7 @@ void test_json_builder_nested_objects() {
         .endObject()
         .add("version", "1.0");
     
-    String json = builder.end();
+    zap::Str json = builder.end();
     TEST_ASSERT_EQUAL_STRING(
         "{\"name\":\"Device\",\"config\":{\"enabled\":true,\"interval\":5000,\"network\":{\"ssid\":\"TestNetwork\",\"security\":\"WPA2\"}},\"version\":\"1.0\"}", 
         json.c_str()
@@ -119,13 +119,13 @@ void test_json_builder_nested_objects() {
 
 void test_json_builder_array() {
     JsonBuilder builder;
-    std::vector<String> items = {"item1", "item2", "item3"};
+    std::vector<zap::Str> items = {"item1", "item2", "item3"};
     
     builder.beginObject()
         .add("title", "Test Array")
         .addArray("items", items);
     
-    String json = builder.end();
+    zap::Str json = builder.end();
     TEST_ASSERT_EQUAL_STRING("{\"title\":\"Test Array\",\"items\":[\"item1\",\"item2\",\"item3\"]}", json.c_str());
 }
 

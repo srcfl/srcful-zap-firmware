@@ -97,8 +97,8 @@ void DataSenderTask::taskFunction(void* parameter) {
                     if (xQueueReceive(task->p1DataQueue, &package, 0) == pdTRUE) {
                         Serial.println("Data sender task: Retrieved package from queue");
                         
-                        // Convert char array back to String for sending
-                        String dataStr(package.data);
+                        // Convert char array back to zap::Str for sending
+                        zap::Str dataStr(package.data);
                         
                         // Send the data from the package
                         task->sendJWT(dataStr);
@@ -123,7 +123,7 @@ void DataSenderTask::taskFunction(void* parameter) {
     vTaskDelete(NULL);
 }
 
-void DataSenderTask::sendJWT(const String& jwt) {
+void DataSenderTask::sendJWT(const zap::Str& jwt) {
     if (jwt.length() == 0) {
         Serial.println("Data sender task: Empty JWT, not sending");
         return;
@@ -131,7 +131,7 @@ void DataSenderTask::sendJWT(const String& jwt) {
     
     Serial.println("Data sender task: Sending JWT...");
     Serial.print("Data sender task jwt:");
-    Serial.println(jwt);
+    Serial.println(jwt.c_str());
     
     Serial.print("Data sender task: Sending JWT to: ");
     Serial.println(DATA_URL);
@@ -145,14 +145,14 @@ void DataSenderTask::sendJWT(const String& jwt) {
         http.addHeader("Content-Type", "text/plain");
         
         // Send POST request with JWT as body
-        int httpResponseCode = http.POST(jwt);
+        int httpResponseCode = http.POST(jwt.c_str());
         
         if (httpResponseCode > 0) {
             Serial.print("Data sender task: HTTP Response code: ");
             Serial.println(httpResponseCode);
-            String response = http.getString();
+            zap::Str response(http.getString().c_str());
             Serial.print("Data sender task: Response: ");
-            Serial.println(response);
+            Serial.println(response.c_str());
         } else {
             Serial.print("Data sender task: Error code: ");
             Serial.println(httpResponseCode);

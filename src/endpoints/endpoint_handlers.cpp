@@ -5,13 +5,13 @@
 #include "firmware_version.h"
 
 // System Info Handler Implementation
-EndpointResponse SystemInfoHandler::handle(const String& contents) {
+EndpointResponse SystemInfoHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
 
     JsonBuilder json;
-    String deviceId = crypto_getId();
+    zap::Str deviceId = crypto_getId();
     
     json.beginObject()
         .add("deviceId", deviceId.c_str())
@@ -21,7 +21,7 @@ EndpointResponse SystemInfoHandler::handle(const String& contents) {
         .add("sdkVersion", ESP.getSdkVersion())
         .add("firmwareVersion", getFirmwareVersion());
     
-    String publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
+    zap::Str publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
     json.add("publicKey", publicKey.c_str());
     
     // if (wifiManager.isConnected()) {
@@ -41,7 +41,7 @@ EndpointResponse SystemInfoHandler::handle(const String& contents) {
 
 
 // Crypto Info Handler Implementation
-EndpointResponse CryptoInfoHandler::handle(const String& contents) {
+EndpointResponse CryptoInfoHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
@@ -51,27 +51,27 @@ EndpointResponse CryptoInfoHandler::handle(const String& contents) {
     json.beginObject()
         .add("deviceName", "software_zap");
     
-    String serialNumber = crypto_getId();
+    zap::Str serialNumber = crypto_getId();
     json.add("serialNumber", serialNumber.c_str());
     
-    String publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
+    zap::Str publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
     json.add("publicKey", publicKey.c_str());
     
     response.statusCode = 200;
     response.data = json.end();
     Serial.print("Response data: ");
-    Serial.println(response.data);
+    Serial.println(response.data.c_str());
     return response;
 }
 
 // Name Info Handler Implementation
-EndpointResponse NameInfoHandler::handle(const String& contents) {
+EndpointResponse NameInfoHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
     
     
-    String name = fetchGatewayName(crypto_getId());
+    zap::Str name = fetchGatewayName(crypto_getId());
     
     JsonBuilder json;
     json.beginObject()
@@ -83,7 +83,7 @@ EndpointResponse NameInfoHandler::handle(const String& contents) {
 }
 
 // Initialize Handler Implementation
-EndpointResponse InitializeHandler::handle(const String& contents) {
+EndpointResponse InitializeHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
@@ -97,10 +97,10 @@ EndpointResponse InitializeHandler::handle(const String& contents) {
         return response;
     }
     
-    String deviceId = crypto_getId();
-    String idAndWallet = deviceId + ":" + String(wallet);
+    zap::Str deviceId = crypto_getId();
+    zap::Str idAndWallet = deviceId + ":" + zap::Str(wallet);
     
-    String signature = crypto_create_signature_hex(idAndWallet.c_str(), PRIVATE_KEY_HEX);
+    zap::Str signature = crypto_create_signature_hex(idAndWallet.c_str(), PRIVATE_KEY_HEX);
     
     JsonBuilder json;
     json.beginObject()
@@ -116,7 +116,7 @@ EndpointResponse InitializeHandler::handle(const String& contents) {
 
 
 // OTA Update Handler Implementation
-EndpointResponse OTAUpdateHandler::handle(const String& contents) {
+EndpointResponse OTAUpdateHandler::handle(const zap::Str& contents) {
     // Implementation for OTA update endpoint
     EndpointResponse response;
     response.contentType = "application/json";
@@ -143,7 +143,7 @@ EndpointResponse OTAUpdateHandler::handle(const String& contents) {
 }
 
 // Debug Info Handler Implementation
-EndpointResponse DebugHandler::handle(const String& contents) {
+EndpointResponse DebugHandler::handle(const zap::Str& contents) {
     // Implementation for debug info endpoint
     EndpointResponse response;
     response.contentType = "application/json";
@@ -160,7 +160,7 @@ EndpointResponse DebugHandler::handle(const String& contents) {
 }
 
 // BLE Stop Handler Implementation
-EndpointResponse BLEStopHandler::handle(const String& contents) {
+EndpointResponse BLEStopHandler::handle(const zap::Str& contents) {
     // Implementation for BLE stop endpoint
     EndpointResponse response;
     response.contentType = "application/json";

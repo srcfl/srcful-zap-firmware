@@ -19,12 +19,13 @@ WifiManager::WifiManager()
         _isProvisioned = _preferences.getBool(KEY_PROVISIONED, false);
         
         if (_isProvisioned) {
-            _configuredSSID = _preferences.getString(KEY_SSID, "");
-            _configuredPassword = _preferences.getString(KEY_PASSWORD, "");
+
+            _configuredSSID = getString(_preferences, KEY_SSID, "");
+            _configuredPassword = getString(_preferences, KEY_PASSWORD, "");;
             
             Serial.println("WiFi credentials loaded from NVS");
             Serial.print("SSID: ");
-            Serial.println(_configuredSSID);
+            Serial.println(_configuredSSID.c_str());
             Serial.print("Password length: ");
             Serial.println(_configuredPassword.length());
         } else {
@@ -64,11 +65,11 @@ void WifiManager::initNTP() {
     Serial.println();
 }
 
-bool WifiManager::connectToWiFi(const String& ssid, const String& password, bool updateGlobals) {
+bool WifiManager::connectToWiFi(const zap::Str& ssid, const zap::Str& password, bool updateGlobals) {
     if (ssid.length() > 0 && password.length() > 0) {
         Serial.println("Connecting to WiFi...");
         Serial.print("SSID: ");
-        Serial.println(ssid);
+        Serial.println(ssid.c_str());
         Serial.print("Password length: ");
         Serial.println(password.length());
         
@@ -146,9 +147,9 @@ void WifiManager::scanWiFiNetworks() {
         Serial.println(" networks found");
         
         // Store unique SSIDs (some networks might broadcast on multiple channels)
-        std::vector<String> uniqueSSIDs;
+        std::vector<zap::Str> uniqueSSIDs;
         for (int i = 0; i < n; ++i) {
-            String ssid = WiFi.SSID(i);
+            zap::Str ssid = WiFi.SSID(i).c_str();
             if (std::find(uniqueSSIDs.begin(), uniqueSSIDs.end(), ssid) == uniqueSSIDs.end()) {
                 uniqueSSIDs.push_back(ssid);
             }
@@ -175,8 +176,8 @@ bool WifiManager::isConnected() const {
     return WiFi.status() == WL_CONNECTED;
 }
 
-String WifiManager::getLocalIP() const {
-    return WiFi.localIP().toString();
+zap::Str WifiManager::getLocalIP() const {
+    return WiFi.localIP().toString().c_str();
 }
 
 int WifiManager::getStatus() const {
@@ -207,12 +208,12 @@ bool WifiManager::loadCredentials() {
     Serial.println(_isProvisioned ? "true" : "false");
     
     if (_isProvisioned) {
-        _configuredSSID = _preferences.getString(KEY_SSID, "");
-        _configuredPassword = _preferences.getString(KEY_PASSWORD, "");
+        _configuredSSID = getString(_preferences, KEY_SSID, "");
+        _configuredPassword = getString(_preferences, KEY_PASSWORD, "");
         
         Serial.println("Credentials loaded successfully");
         Serial.print("SSID: ");
-        Serial.println(_configuredSSID);
+        Serial.println(_configuredSSID.c_str());
         Serial.print("Password length: ");
         Serial.println(_configuredPassword.length());
         
@@ -248,7 +249,7 @@ bool WifiManager::saveCredentials() {
     
     if (_isProvisioned) {
         Serial.print("Saving SSID: '");
-        Serial.print(_configuredSSID);
+        Serial.print(_configuredSSID.c_str());
         Serial.println("'");
         Serial.print("Saving Password (length): ");
         Serial.println(_configuredPassword.length());
@@ -263,8 +264,8 @@ bool WifiManager::saveCredentials() {
     bool pwdResult = false;
     
     if (_isProvisioned) {
-        ssidResult = _preferences.putString(KEY_SSID, _configuredSSID);
-        pwdResult = _preferences.putString(KEY_PASSWORD, _configuredPassword);
+        ssidResult = _preferences.putString(KEY_SSID, _configuredSSID.c_str());
+        pwdResult = _preferences.putString(KEY_PASSWORD, _configuredPassword.c_str());
         
         Serial.print("Result of saving SSID: ");
         Serial.println(ssidResult ? "success" : "failure");
@@ -320,7 +321,7 @@ bool WifiManager::autoConnect() {
     // Try to connect using saved credentials
     if (_isProvisioned && _configuredSSID.length() > 0) {
         Serial.print("Found saved credentials for SSID: ");
-        Serial.println(_configuredSSID);
+        Serial.println(_configuredSSID.c_str());
         Serial.print("Password length: ");
         Serial.println(_configuredPassword.length());
         
@@ -329,4 +330,16 @@ bool WifiManager::autoConnect() {
     
     Serial.println("No saved credentials to auto-connect");
     return false;
+}
+
+const zap::Str& WifiManager::getString(Preferences &pref, const char* key, const char* defaultValue) {
+    static zap::Str result;
+    char buffer[64] = {0};
+    if (pref.getString(key, buffer, sizeof(buffer)) > 0) {
+        result = buffer;
+    } else {
+        result = defaultValue;
+    }
+    
+    return result;
 }

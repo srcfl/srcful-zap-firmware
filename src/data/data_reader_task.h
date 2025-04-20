@@ -6,6 +6,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
+#include "../zap_str.h"
 
 #include "p1data.h" // Local include since p1data is now in the data directory
 #include "../crypto.h"
@@ -28,7 +29,7 @@ public:
     
 private:
     static void taskFunction(void* parameter);
-    String generateP1JWT();
+    zap::Str generateP1JWT();
     void enqueueData(const P1Data& p1data);
     
     // Handle a complete frame from P1 meter

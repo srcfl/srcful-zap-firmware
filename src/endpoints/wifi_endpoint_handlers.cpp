@@ -3,7 +3,7 @@
 #include "json_light/json_light.h"
 
 // WiFi Config Handler Implementation
-EndpointResponse WiFiConfigHandler::handle(const String& contents) {
+EndpointResponse WiFiConfigHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
@@ -15,7 +15,7 @@ EndpointResponse WiFiConfigHandler::handle(const String& contents) {
         bool hasPsk = parser.getString("psk", psk, sizeof(psk));
         
         Serial.println("Received WiFi config request:");
-        Serial.println(contents);
+        Serial.println(contents.c_str());
         
         if (!hasSsid || !hasPsk) {
             Serial.println("Missing ssid or psk in request");
@@ -24,12 +24,12 @@ EndpointResponse WiFiConfigHandler::handle(const String& contents) {
             return response;
         }
         
-        String ssidStr = String(ssid);
-        String password = String(psk);
+        zap::Str ssidStr = zap::Str(ssid);
+        zap::Str password = zap::Str(psk);
         
         Serial.print("Setting WiFi SSID: ");
-        Serial.println(ssidStr);
-        Serial.println("Setting WiFi password (length): " + String(password.length()));
+        Serial.println(ssidStr.c_str());
+        Serial.println(("Setting WiFi password (length): " + zap::Str(password.length())).c_str());
         
         // Try to connect with new credentials
         Serial.println("Attempting to connect to WiFi...");
@@ -47,7 +47,7 @@ EndpointResponse WiFiConfigHandler::handle(const String& contents) {
 
 
 // WiFi Reset Handler Implementation
-EndpointResponse WiFiResetHandler::handle(const String& contents) {
+EndpointResponse WiFiResetHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
@@ -67,7 +67,7 @@ EndpointResponse WiFiResetHandler::handle(const String& contents) {
 
 
 // WiFi Status Handler Implementation
-EndpointResponse WiFiStatusHandler::handle(const String& contents) {
+EndpointResponse WiFiStatusHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
@@ -91,7 +91,7 @@ EndpointResponse WiFiStatusHandler::handle(const String& contents) {
 
 
 // WiFi Scan Handler Implementation
-EndpointResponse WiFiScanHandler::handle(const String& contents) {
+EndpointResponse WiFiScanHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     

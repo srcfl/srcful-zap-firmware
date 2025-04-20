@@ -42,13 +42,13 @@ void WebServerHandler::setupEndpoints() {
     // loop through all endpoints and register them
     for (const Endpoint& endpoint : endpointMapper) {
         server.on(endpoint.path, verbToHttpMethod(endpoint.verb), [this, endpoint]() {
-            Serial.println("Handling for  " + EndpointMapper::verbToString(endpoint.verb) + " " + endpoint.path + " request");
+            Serial.println(("Handling for  " + EndpointMapper::verbToString(endpoint.verb) + " " + endpoint.path + " request").c_str());
             EndpointRequest request(endpoint);
-            request.content = server.arg("plain");
+            request.content = server.arg("plain").c_str();
             request.offset = 0;
 
             EndpointResponse response = EndpointMapper::route(request);
-            server.send(response.statusCode, response.contentType, response.data);
+            server.send(response.statusCode, response.contentType.c_str(), response.data.c_str());
         });
     }
 

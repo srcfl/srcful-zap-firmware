@@ -122,7 +122,7 @@ bool P1Meter::update() {
     return dataProcessed;
 }
 
-String P1Meter::getProtocolName() const {
+zap::Str P1Meter::getProtocolName() const {
     // if (_protocolDetected && _reader) {
     //     return _reader->getProtocolName();
     // }

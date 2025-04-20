@@ -5,11 +5,11 @@
 // EndpointFunction strategy implementations
 
 class WiFiConfigEndpoint : public EndpointFunction {
-    EndpointResponse handle(const String& contents) override;
+    EndpointResponse handle(const zap::Str& contents) override;
 };
 
 class SystemInfoEndpoint : public EndpointFunction {
-    EndpointResponse handle(const String& contents) override;
+    EndpointResponse handle(const zap::Str& contents) override;
 };  
 
 

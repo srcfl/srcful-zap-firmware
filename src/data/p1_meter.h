@@ -5,6 +5,7 @@
 #include <HardwareSerial.h>
 #include <vector>
 #include <memory>
+#include "../zap_str.h"
 #include "serial_frame_buffer.h"
 
 // Default pin and rate configuration
@@ -35,7 +36,7 @@ public:
     bool update();
     
     // Get the detected protocol name
-    String getProtocolName() const;
+    zap::Str getProtocolName() const;
     
     // Get buffer size and usage
     int getBufferSize() const;
