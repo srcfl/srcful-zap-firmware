@@ -59,12 +59,20 @@ void WifiStatusTask::taskFunction(void* parameter) {
                     Serial.print("IP address: ");
                     Serial.println(task->wifiManager->getLocalIP());
                     wasConnected = true;
+                    task->connectionAttempts = 0; // Reset connection attempts
                 }
             } else {
                 if (wasConnected) {
                     Serial.println("WiFi connection lost!");
                     wasConnected = false;
                 }
+
+                // Attempt to reconnect TODO: incremental backoff and max attempts
+                task->connectionAttempts++;
+                task->wifiManager->autoConnect();
+                Serial.print("Connection attempt: ");
+                Serial.println(task->connectionAttempts);
+
                 #if defined(DIRECT_CONNECT)
                     // Only try to reconnect automatically in direct connect mode
                     if (task->ledPin >= 0) {

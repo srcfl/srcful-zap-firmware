@@ -120,6 +120,10 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
         enqueueData(p1data);
     } else {
         Debug::addFailedFrame();
+        Debug::clearFaultyFrameData();
+        for (size_t i = 0; i < size; i++) {
+            Debug::addFaultyFrameData(frame.getFrameByte(i));
+        }
         Serial.println("Failed to decode P1 data frame");
     }
 }

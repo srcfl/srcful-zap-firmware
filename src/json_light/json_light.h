@@ -86,6 +86,22 @@ public:
         firstItem = false;
         return *this;
     }
+
+    JsonBuilder& add(const char* key, uint8_t* data, size_t size) {
+        if (!firstItem) buffer += ',';
+        
+        // add data as hex string
+
+        buffer += '"';
+        buffer += key;
+        buffer += "\":\"";
+        for (size_t i = 0; i < size; i++) {
+            buffer += String(data[i], HEX);
+        }
+        buffer += '"';
+        firstItem = false;
+        return *this;
+    }
     
     // Add an array of string values
     JsonBuilder& addArray(const char* key, const std::vector<String>& values) {

@@ -47,5 +47,7 @@ private:
     
     // LED pin
     int ledPin;
+
+    int connectionAttempts = 0; // Number of connection attempts
     
 }; 

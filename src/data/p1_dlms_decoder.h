@@ -9,7 +9,7 @@
 
 // Debug logging control
 // Comment out to disable all debug logs
-#define P1_DLMS_SERIAL_DEBUG
+//#define P1_DLMS_SERIAL_DEBUG
 
 #ifdef P1_DLMS_SERIAL_DEBUG
   #define P1_DLMS_LOG(x) Serial.x
