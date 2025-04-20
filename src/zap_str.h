@@ -512,7 +512,7 @@ private:
         }
         
         char* newPos = newBuf;
-        const char* oldPos = _buffer;
+        char* oldPos = _buffer;
         
         // Copy parts before the first occurrence
         size_t copyLen = pos - _buffer;

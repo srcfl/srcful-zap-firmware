@@ -13,15 +13,17 @@ void tearDown(void) {
 
 void test_json_builder() {
     JsonBuilder json;
+    uint8_t data [] = {0x01, 0xff, 0x00};
     zap::Str result = json
         .beginObject()
         .add("status", "success")
         .add("code", 200)
         .add("enabled", true)
+        .add("hex", data, sizeof(data))
         .end();
     
     TEST_ASSERT_EQUAL_STRING(
-        "{\"status\":\"success\",\"code\":200,\"enabled\":true}",
+        "{\"status\":\"success\",\"code\":200,\"enabled\":true,\"hex\":\"01ff00\"}",
         result.c_str()
     );
 }

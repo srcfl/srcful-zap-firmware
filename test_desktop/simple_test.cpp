@@ -81,6 +81,7 @@ int main() {
 
         circular_buffer_test::run();
         frame_detector_test::run();
+        json_light_test::run();
 
         std::cout << "All tests passed!" << std::endl;
         return 0;

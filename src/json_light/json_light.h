@@ -97,7 +97,6 @@ public:
         buffer += key;
         buffer += "\":\"";
         for (size_t i = 0; i < size; i++) {
-            if (data[i] < 0x10) buffer += '0'; // Add leading zero for single hex digits
             buffer += zap::Str(data[i], 16);
         }
         buffer += '"';
@@ -271,6 +270,20 @@ private:
         
         return true;
     }
+
+    bool getStringValue(zap::Str& value) {
+        if (data[pos] != '"') return false;
+        pos++;
+        
+        size_t i = 0;
+        while (pos < len && data[pos] != '"') {
+            value += data[pos++];
+        }
+        
+        if (pos < len && data[pos] == '"') pos++;
+        
+        return true;
+    }
     
     // Get an integer value
     bool getIntValue(int& value) {
@@ -301,6 +314,11 @@ public:
     bool getString(const char* key, char* value, size_t maxLen) {
         if (!findKey(key)) return false;
         return getStringValue(value, maxLen);
+    }
+
+    bool getString(const char* key, zap::Str& value) {
+        if (!findKey(key)) return false;
+        return getStringValue(value);
     }
     
     // Find an integer value by key
