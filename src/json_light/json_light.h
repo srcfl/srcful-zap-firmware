@@ -77,6 +77,16 @@ public:
         return *this;
     }
 
+    JsonBuilder& add(const char* key, uint64_t value) {
+        if (!firstItem) buffer += ',';
+        buffer += '"';
+        buffer += key;
+        buffer += "\":";
+        buffer += value;
+        firstItem = false;
+        return *this;
+    }
+
 
     JsonBuilder& add(const char* key, bool value) {
         if (!firstItem) buffer += ',';

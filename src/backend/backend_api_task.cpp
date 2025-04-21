@@ -1,13 +1,15 @@
 #include "backend_api_task.h"
-#include <WiFiClientSecure.h>
-#include "../crypto.h"
-#include "../config.h"
-#include "graphql.h"  // Include local graphql.h
+#include "crypto.h"
+#include "config.h"
+#include "./graphql.h"
+#include "json_light/json_light.h"
+#include "firmware_version.h"
+#include <time.h>
 
 BackendApiTask::BackendApiTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
-      wifiManager(nullptr), lastUpdateTime(0), updateInterval(300000), bleActive(false) {
-    // Initialize with 5-minute interval (300,000 ms)
+      wifiManager(nullptr), lastUpdateTime(0), stateUpdateInterval(DEFAULT_STATE_UPDATE_INTERVAL), bleActive(false) {
+    // Initialize with default interval
 }
 
 BackendApiTask::~BackendApiTask() {
@@ -25,6 +27,13 @@ void BackendApiTask::begin(WifiManager* wifiManager) {
     
     // Configure HTTP client once
     http.setTimeout(10000);  // 10 second timeout
+    
+    // Force an immediate state update by setting lastUpdateTime to a value that will
+    // trigger an immediate update in the task loop
+    lastUpdateTime = 0;
+    
+    // Set interval to 0 to trigger immediate update on connection
+    stateUpdateInterval = 0;
     
     xTaskCreatePinnedToCore(
         taskFunction,
@@ -52,7 +61,7 @@ void BackendApiTask::stop() {
 }
 
 void BackendApiTask::setInterval(uint32_t interval) {
-    updateInterval = interval;
+    stateUpdateInterval = interval;
 }
 
 void BackendApiTask::setBleActive(bool active) {
@@ -68,7 +77,12 @@ void BackendApiTask::taskFunction(void* parameter) {
     
     while (task->shouldRun) {
         // Check if it's time to send a state update
-        if (millis() - task->lastUpdateTime > task->updateInterval) {
+        if (millis() - task->lastUpdateTime > task->stateUpdateInterval) {
+            // After first update, restore to default interval if currently zero
+            if (task->stateUpdateInterval == 0) {
+                task->stateUpdateInterval = DEFAULT_STATE_UPDATE_INTERVAL;
+            }
+            
             task->lastUpdateTime = millis();
             
             // Only send state update if WiFi is connected and BLE is not active
@@ -95,57 +109,81 @@ void BackendApiTask::taskFunction(void* parameter) {
 void BackendApiTask::sendStateUpdate() {
     Serial.println("Backend API task: Preparing state update");
     
-    // TODO: Collect state information and prepare JSON payload
-    // For now, just send a simple state message
+   
+    // Use JsonBuilder to create JWT header
+    JsonBuilder headerBuilder;
+    headerBuilder.beginObject()
+        .add("alg", "ES256")
+        .add("typ", "JWT")
+        .add("device", crypto_getId().c_str())
+        .add("subKey", "state");
+    zap::Str header = headerBuilder.end();
     
-    // Create a simple JSON state object
-    String stateJson = "{\"device_status\":\"online\",\"firmware_version\":\"";
+    // Get current epoch time in milliseconds
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t epochTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
     
-    // Check if we have firmware version information
-    #ifdef FIRMWARE_VERSION
-    stateJson += FIRMWARE_VERSION;
-    #else
-    stateJson += "unknown";
-    #endif
+    // Use JsonBuilder to create JWT payload
+    JsonBuilder payloadBuilder;
+    payloadBuilder.beginObject()
+        .beginObject("status")
+            .add("uptime", millis())
+            .add("version", FIRMWARE_VERSION_STRING)
+        .endObject()
+        .add("timestamp", epochTimeMs);
+    zap::Str payload = payloadBuilder.end();
     
-    stateJson += "\",\"timestamp\":";
-    stateJson += millis();
-    stateJson += "}";
+    // External signature key (from config.h)
+    extern const char* PRIVATE_KEY_HEX;
     
-    Serial.print("Backend API task: State data: ");
-    Serial.println(stateJson);
+    // Sign and generate JWT
+    zap::Str jwt = crypto_create_jwt(header.c_str(), payload.c_str(), PRIVATE_KEY_HEX);
     
-    // Close any previous connections and start a new one
-    http.end();
+    if (jwt.length() == 0) {
+        Serial.println("Backend API task: Failed to create JWT");
+        return;
+    }
     
-    // Create the backend API endpoint URL
-    String apiUrl = String(BACKEND_API_URL) + "/state";
+    Serial.println("Backend API task: JWT created successfully");
     
-    Serial.print("Backend API task: Sending state to: ");
-    Serial.println(apiUrl);
+    // Send the JWT using GraphQL
+    GQL::BoolResponse response = GQL::setConfiguration(jwt);
     
-    // Start the request
-    if (http.begin(apiUrl)) {
-        // Add headers
-        http.addHeader("Content-Type", "application/json");
-        
-        // Send POST request with state data as body
-        int httpResponseCode = http.POST(stateJson);
-        
-        if (httpResponseCode > 0) {
-            Serial.print("Backend API task: HTTP Response code: ");
-            Serial.println(httpResponseCode);
-            String response = http.getString();
-            Serial.print("Backend API task: Response: ");
-            Serial.println(response);
-        } else {
-            Serial.print("Backend API task: Error code: ");
-            Serial.println(httpResponseCode);
+    // Handle the response
+    if (response.isSuccess() && response.data) {
+        Serial.println("Backend API task: State update sent successfully");
+        // Update last successful update time
+        lastUpdateTime = millis();
+    } else {
+        // Handle different error cases
+        switch (response.status) {
+            case GQL::Status::NETWORK_ERROR:
+                Serial.println("Backend API task: Network error sending state update");
+                break;
+            case GQL::Status::GQL_ERROR:
+                Serial.println("Backend API task: GraphQL error in state update");
+                break;
+            case GQL::Status::OPERATION_FAILED:
+                Serial.println("Backend API task: Server rejected state update");
+                break;
+            default:
+                Serial.print("Backend API task: Failed to send state update: ");
+                Serial.println(response.error.c_str());
+                break;
         }
         
-        // Note: Don't call http.end() here to reuse the connection
-        // The connection will be closed when needed or in the destructor
+        // Retry sooner on failure (after 1 minute instead of 5)
+        lastUpdateTime = millis() - (stateUpdateInterval - 60000);
+    }
+}
+
+void BackendApiTask::triggerStateUpdate() {
+    // Only send state update if WiFi is connected and BLE is not active
+    if (wifiManager && wifiManager->isConnected() && !bleActive) {
+        Serial.println("Backend API task: Triggering immediate state update...");
+        sendStateUpdate();
     } else {
-        Serial.println("Backend API task: Failed to connect to server");
+        Serial.println("Backend API task: Cannot trigger update - WiFi not connected or BLE active");
     }
 }

@@ -6,65 +6,63 @@
 static uint8_t* sslBuffer = nullptr;
 const size_t SSL_BUFFER_SIZE = 16 * 1024;  // 16KB buffer
 
-// Define static SSL client
-WiFiClientSecure sslClient;
-
-// Add this function
-void initSSL() {
-    // Configure SSL client early to reserve memory
-    sslClient.setInsecure();
-}
-
-zap::Str prepareGraphQLQuery(const zap::Str& rawQuery) {
+zap::Str GQL::prepareGraphQLQuery(const zap::Str& rawQuery) {
     zap::Str prepared = rawQuery;
     prepared.replace("\"", "\\\"");
     prepared.replace("\n", "\\n");
     return prepared;
 }
 
-bool makeGraphQLRequest(const zap::Str& query, zap::Str& responseData, const char* endpoint) {
+GQL::StringResponse GQL::makeGraphQLRequest(const zap::Str& query, const char* endpoint) {
     // Print memory info
     Serial.printf("Free heap before request: %d\n", ESP.getFreeHeap());
     
     HTTPClient http;
     http.setTimeout(10000);
     
-    if (http.begin(sslClient, endpoint)) {
-        http.addHeader("Content-Type", "application/json");
-        
-        // Construct JSON manually to avoid ArduinoJson memory overhead
-        zap::Str preparedQuery = prepareGraphQLQuery(query);
-        zap::Str requestBody = "{\"query\":\"" + preparedQuery + "\"}";
-        
-        Serial.println("Sending GraphQL request:");
-        Serial.println(requestBody.c_str());
-        
-        int httpResponseCode = http.POST(requestBody.c_str());
-        
-        if (httpResponseCode == 200) {
-            // Stream the response instead of loading it all at once
-            WiFiClient* stream = http.getStreamPtr();
-            responseData.reserve(512); // Pre-allocate space
-            
-            while (stream->available()) {
-                responseData += (char)stream->read();
-            }
-            
-            Serial.println("Response received");
-            http.end();
-            return true;
-        } else {
-            Serial.printf("HTTP Error: %d\n", httpResponseCode);
-        }
-        
+    if (!http.begin(endpoint)) {
+        return StringResponse::networkError("Unable to begin HTTP connection");
+    }
+    
+    http.addHeader("Content-Type", "application/json");
+    
+    // Construct JSON manually to avoid ArduinoJson memory overhead
+    zap::Str preparedQuery = prepareGraphQLQuery(query);
+    zap::Str requestBody = "{\"query\":\"" + preparedQuery + "\"}";
+    
+    Serial.println("Sending GraphQL request:");
+    Serial.println(requestBody.c_str());
+    
+    int httpResponseCode = http.POST(requestBody.c_str());
+    
+    if (httpResponseCode != 200) {
+        Serial.printf("HTTP Error: %d\n", httpResponseCode);
         http.end();
+        return StringResponse::networkError("HTTP error: " + zap::Str(httpResponseCode));
+    }
+    
+    // Stream the response instead of loading it all at once
+    WiFiClient* stream = http.getStreamPtr();
+    zap::Str responseData;
+    responseData.reserve(512); // Pre-allocate space
+    
+    while (stream->available()) {
+        responseData += (char)stream->read();
+    }
+    
+    Serial.println("Response received");
+    http.end();
+    
+    // Check for GraphQL errors
+    if (responseData.indexOf("\"errors\":") >= 0) {
+        return StringResponse::gqlError("GraphQL returned errors");
     }
     
     Serial.printf("Free heap after request: %d\n", ESP.getFreeHeap());
-    return false;
+    return StringResponse::ok(responseData);
 }
 
-zap::Str fetchGatewayName(const zap::Str& serialNumber) {
+GQL::StringResponse GQL::fetchGatewayName(const zap::Str& serialNumber) {
     zap::Str query = R"({
         gatewayConfiguration {
           gatewayName(id:")" + serialNumber + R"(") {
@@ -73,20 +71,62 @@ zap::Str fetchGatewayName(const zap::Str& serialNumber) {
         }
     })";
     
-    zap::Str response;
-    if (makeGraphQLRequest(query, response, API_URL)) {
-        // Parse JSON response manually to avoid ArduinoJson
-        int dataPos = response.indexOf("\"data\":");
-        if (dataPos >= 0) {
-            int nameStart = response.indexOf("\"name\":\"", dataPos);
-            if (nameStart >= 0) {
-                nameStart += 8; // Length of "\"name\":\""
-                int nameEnd = response.indexOf("\"", nameStart);
-                if (nameEnd >= 0) {
-                    return response.substring(nameStart, nameEnd);
-                }
-            }
-        }
+    StringResponse response = makeGraphQLRequest(query, API_URL);
+    
+    if (!response.isSuccess()) {
+        return response; // Return the error as is
     }
-    return "";
+    
+    // Parse JSON response manually to avoid ArduinoJson
+    int dataPos = response.data.indexOf("\"data\":");
+    if (dataPos < 0) {
+        return StringResponse::invalidResponse("No data field in response");
+    }
+    
+    int nameStart = response.data.indexOf("\"name\":\"", dataPos);
+    if (nameStart < 0) {
+        return StringResponse::parseError("Name field not found");
+    }
+    
+    nameStart += 8; // Length of "\"name\":\""
+    int nameEnd = response.data.indexOf("\"", nameStart);
+    if (nameEnd < 0) {
+        return StringResponse::parseError("Malformed name field");
+    }
+    
+    return StringResponse::ok(response.data.substring(nameStart, nameEnd));
+}
+
+GQL::BoolResponse GQL::setConfiguration(const zap::Str& jwt) {
+    zap::Str query = R"(mutation SetGatewayConfigurationWithDeviceJWT {
+        setConfiguration(deviceConfigurationInputType: {
+            jwt: ")" + jwt + R"("
+        }) {
+            success
+        }
+    })";
+    
+    StringResponse response = makeGraphQLRequest(query, API_URL);
+    
+    if (!response.isSuccess()) {
+        // Convert StringResponse error to BoolResponse with same status
+        return BoolResponse{response.status, false, response.error};
+    }
+    
+    // Parse JSON response to check success status
+    int successPos = response.data.indexOf("\"success\":");
+    if (successPos < 0) {
+        return BoolResponse::invalidResponse("No success field in response");
+    }
+    
+    successPos += 10; // Length of "\"success\":"
+    
+    // Check if success is true in the GraphQL response
+    bool operationSuccess = (response.data.indexOf("true", successPos) >= 0);
+    
+    if (!operationSuccess) {
+        return BoolResponse::operationFailed("Server reported operation failure");
+    }
+    
+    return BoolResponse::ok(true);
 }

@@ -62,9 +62,6 @@ void setup() {
     Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
     Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
     
-    // Initialize SSL early
-    initSSL();
-    
     #if defined(DIRECT_CONNECT)
         // Connect to WiFi directly
         Serial.println("Connecting to WiFi...");

@@ -69,9 +69,17 @@ EndpointResponse NameInfoHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
+    GQL::StringResponse gqlResponse = GQL::fetchGatewayName(crypto_getId());
+    zap::Str name;
     
-    
-    zap::Str name = fetchGatewayName(crypto_getId());
+    if (gqlResponse.isSuccess()) {
+        name = gqlResponse.data;
+    } else {
+        // Handle error case - use a default name or empty string
+        name = "Unknown Gateway";
+        Serial.print("Error fetching gateway name: ");
+        Serial.println(gqlResponse.error.c_str());
+    }
     
     JsonBuilder json;
     json.beginObject()
@@ -173,4 +181,4 @@ EndpointResponse BLEStopHandler::handle(const zap::Str& contents) {
     response.data = "{\"status\":\"success\",\"message\":\"BLE stopped\"}";
     
     return response;
-} 
+}

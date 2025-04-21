@@ -8,6 +8,9 @@
 
 #include "../wifi/wifi_manager.h"
 
+// Default state update interval (5 minutes = 300,000 ms)
+const uint32_t DEFAULT_STATE_UPDATE_INTERVAL = 300000;
+
 class BackendApiTask {
 public:
     BackendApiTask(uint32_t stackSize = 4096*2, UBaseType_t priority = 5);
@@ -23,6 +26,9 @@ public:
     void setBleActive(bool active);
     bool isBleActive() const;
     
+    // Trigger an immediate state update (if conditions allow)
+    void triggerStateUpdate();
+    
 private:
     static void taskFunction(void* parameter);
     void sendStateUpdate();
@@ -34,7 +40,7 @@ private:
     
     WifiManager* wifiManager;
     unsigned long lastUpdateTime;
-    uint32_t updateInterval;
+    uint32_t stateUpdateInterval;
     bool bleActive;
     
     HTTPClient http;  // Reuse HTTPClient instance

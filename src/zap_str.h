@@ -18,6 +18,35 @@ private:
     size_t _length;     // Current length of string (excluding null terminator)
     size_t _capacity;   // Current allocated capacity (including null terminator)
 
+    // Helper method to convert uint64_t to string without using sprintf
+    static void uint64ToString(uint64_t value, char* buffer, size_t bufferSize) {
+        if (bufferSize == 0) return;
+        
+        // Handle the special case of zero
+        if (value == 0) {
+            buffer[0] = '0';
+            buffer[1] = '\0';
+            return;
+        }
+        
+        // Convert digits in reverse order
+        size_t pos = 0;
+        while (value > 0 && pos < bufferSize - 1) {
+            buffer[pos++] = '0' + (value % 10);
+            value /= 10;
+        }
+        
+        // Null terminate the string
+        buffer[pos] = '\0';
+        
+        // Reverse the string
+        for (size_t i = 0, j = pos - 1; i < j; i++, j--) {
+            char temp = buffer[i];
+            buffer[i] = buffer[j];
+            buffer[j] = temp;
+        }
+    }
+
     public:
     // Helper method to ensure there's enough capacity for a string of given length
     bool reserve(size_t length) {
@@ -106,6 +135,15 @@ private:
         _length = strlen(temp);
         if (reserve(_length + 1)) {
             strcpy(_buffer, temp);
+        }
+    }
+
+    // Constructor with uint64_t
+    explicit Str(uint64_t value) : _buffer(nullptr), _length(0), _capacity(0) {
+        // Allocate enough space for max uint64_t (20 digits + null terminator)
+        if (reserve(21)) {
+            uint64ToString(value, _buffer, 21);
+            _length = strlen(_buffer);
         }
     }
 
@@ -207,6 +245,10 @@ private:
     }
 
     Str& operator+=(unsigned long num) {
+        return *this += Str(num);
+    }
+
+    Str& operator+=(uint64_t num) {
         return *this += Str(num);
     }
 

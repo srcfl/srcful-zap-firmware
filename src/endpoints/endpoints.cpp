@@ -183,7 +183,17 @@ EndpointResponse handleNameInfo(const EndpointRequest& request) {
         return response;
     }
     
-    zap::Str name = fetchGatewayName(crypto_getId());
+    GQL::StringResponse gqlResponse = GQL::fetchGatewayName(crypto_getId());
+    zap::Str name;
+    
+    if (gqlResponse.isSuccess()) {
+        name = gqlResponse.data;
+    } else {
+        // Handle error case - use a default name or empty string
+        name = "Unknown Gateway";
+        Serial.print("Error fetching gateway name: ");
+        Serial.println(gqlResponse.error.c_str());
+    }
     
     JsonBuilder json;
     json.beginObject()
