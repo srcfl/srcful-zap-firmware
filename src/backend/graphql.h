@@ -1,7 +1,6 @@
 #pragma once
 #include "zap_str.h"
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
+
 
 class GQL {
 public:

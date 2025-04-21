@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cstdio>  // Added for sprintf
+#include <limits.h>
 #include <stdint.h>
 #include <ctype.h>  // Added for isspace
 
@@ -138,6 +139,7 @@ private:
         }
     }
 
+    #if ULONG_MAX != UINT64_MAX
     // Constructor with uint64_t
     explicit Str(uint64_t value) : _buffer(nullptr), _length(0), _capacity(0) {
         // Allocate enough space for max uint64_t (20 digits + null terminator)
@@ -146,6 +148,7 @@ private:
             _length = strlen(_buffer);
         }
     }
+    #endif
 
     // Constructor for integer with specified base (for hex, etc.)
     Str(unsigned char value, unsigned char base) : _buffer(nullptr), _length(0), _capacity(0) {
@@ -248,9 +251,11 @@ private:
         return *this += Str(num);
     }
 
+    #if ULONG_MAX != UINT64_MAX
     Str& operator+=(uint64_t num) {
         return *this += Str(num);
     }
+    #endif
 
     // String concatenation
     Str operator+(const Str& other) const {

@@ -1,6 +1,6 @@
 #include "graphql.h"
-#include "esp_heap_caps.h"  // Add this for heap functions
 #include "config.h"
+#include <HTTPClient.h>
 
 // At the top of the file, outside any function
 static uint8_t* sslBuffer = nullptr;
@@ -15,7 +15,6 @@ zap::Str GQL::prepareGraphQLQuery(const zap::Str& rawQuery) {
 
 GQL::StringResponse GQL::makeGraphQLRequest(const zap::Str& query, const char* endpoint) {
     // Print memory info
-    Serial.printf("Free heap before request: %d\n", ESP.getFreeHeap());
     
     HTTPClient http;
     http.setTimeout(10000);
@@ -58,7 +57,6 @@ GQL::StringResponse GQL::makeGraphQLRequest(const zap::Str& query, const char* e
         return StringResponse::gqlError("GraphQL returned errors");
     }
     
-    Serial.printf("Free heap after request: %d\n", ESP.getFreeHeap());
     return StringResponse::ok(responseData);
 }
 

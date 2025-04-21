@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "../src/config.cpp"    // TODO idk if thi is a good idea
 
 #include "../src/data/data_package.h"
 #include "../src/data/p1data.h"
@@ -8,12 +9,16 @@
 #include "frames.h"
 
 #include "../src/data/circular_buffer.cpp"
+#include "../src/debug.cpp"
+#include "../src/backend/graphql.cpp"
 
 
 #include "data/circular_buffer_test.cpp"
 #include "data/frame_detector_test.cpp"
 
 #include "json_light/json_light_test.cpp"
+
+#include "backend/graphql_test.cpp"
 
 
 class FrameData : public IFrameData {
@@ -81,6 +86,7 @@ int main() {
         circular_buffer_test::run();
         frame_detector_test::run();
         json_light_test::run();
+        graphql_test::run();
 
         std::cout << "All tests passed!" << std::endl;
         return 0;
