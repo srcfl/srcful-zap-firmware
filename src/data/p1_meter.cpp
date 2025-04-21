@@ -72,7 +72,6 @@ bool P1Meter::update() {
         Serial.print("Available bytes: "); Serial.println(availableBytes);
         size_t leftInBuffer = bufferSize - readBytes;
         if (leftInBuffer <= 0) {
-            Serial.println("Buffer overflow, processing data");
             break;
         }
 
@@ -85,7 +84,6 @@ bool P1Meter::update() {
         //     dataProcessed = true;
         // }
         _lastDataTime = millis();
-        vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     if (readBytes) {
@@ -98,7 +96,7 @@ bool P1Meter::update() {
 
     
     // Check for timeouts and process any frames that might be complete
-    if (_frameBuffer.update(millis())) {
+    if (_frameBuffer.processBufferForFrames(millis())) {
         dataProcessed = true;
     }
     

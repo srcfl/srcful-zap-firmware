@@ -40,9 +40,8 @@ int test_decoder_frame() {
     P1Data p1data;
     p1data.setDeviceId("12345678901234567890");
     P1DLMSDecoder decoder;
-    
 
-    FrameData frameData(frame_with_extra_trailing_byte, sizeof(frame_with_extra_trailing_byte) - 1);
+    FrameData frameData(faulty_aidon_frame_2, sizeof(faulty_aidon_frame_2));
 
     decoder.decodeBuffer(frameData, p1data);
 
@@ -55,10 +54,10 @@ int test_decoder_frame() {
 
     HDLCParser hdlcParser;
     DataParserContext dpc;
-    dpc.length = sizeof(correct_aidon_frame);
+    dpc.length = sizeof(faulty_aidon_frame_2);
     dpc.type = 0;
     dpc.timestamp = 0;
-    hdlcParser.parse(correct_aidon_frame, dpc);
+    hdlcParser.parse(faulty_aidon_frame_2, dpc);
 
     return 0;
 }

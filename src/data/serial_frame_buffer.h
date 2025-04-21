@@ -69,7 +69,7 @@ public:
      * @param currentTime Current time in milliseconds
      * @return true if a frame was processed during this call
      */
-    bool update(unsigned long currentTime);
+    bool processBufferForFrames(unsigned long currentTime);
     
     /**
      * @brief Clear the buffer
@@ -150,7 +150,7 @@ private:
     
     // Internal methods
     bool processDetectedFrame();
-    bool processBufferForFrames(unsigned long currentTime);
+    
     size_t calculateReadAdvance(const FrameInfo& frameInfo) const;
     void updateCurrentFrame(const FrameInfo& frameInfo);
 };

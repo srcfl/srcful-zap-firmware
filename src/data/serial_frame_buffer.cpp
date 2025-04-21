@@ -31,6 +31,7 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned lon
     }
     
     // Add all bytes to the circular buffer at once
+    // TODO: as we are adding a chunk we can do this more efficiently than adding byte by byte
     for (size_t i = 0; i < length; i++) {
         if (!_circularBuffer.addByte(data[i], currentTime)) {
             // Buffer overflow
@@ -38,13 +39,7 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned lon
         }
     }
     
-    // Process the entire chunk at once after adding all bytes
-    return processBufferForFrames(currentTime);
-}
-
-bool SerialFrameBuffer::update(unsigned long currentTime) {
-    // Process any data in the buffer to check for complete frames or timeouts
-    return processBufferForFrames(currentTime);
+    return true;
 }
 
 bool SerialFrameBuffer::processBufferForFrames(unsigned long currentTime) {
