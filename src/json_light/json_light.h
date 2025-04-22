@@ -3,6 +3,7 @@
 
 #include <ctype.h>
 #include <vector>
+#include <functional>
 class JsonBuilder {
 private:
     zap::Str buffer;
@@ -164,187 +165,485 @@ public:
 };
 
 class JsonParser {
-private:
-    const char* data;
-    size_t pos;
-    size_t len;
-    
-    void skipWhitespace() {
-        while (pos < len && isspace(data[pos])) pos++;
-    }
-    
-    // Find the next key in the JSON
-    bool findKey(const char* key) {
-        // Reset to start of JSON
-        pos = 0;
+    private:
+        const char* data;     // Original JSON buffer (not owned)
+        size_t dataLen;       // Total length of the original buffer
+        size_t startPos;      // Start position of our "view" into the buffer
+        size_t endPos;        // End position of our "view"
+        size_t pos;           // Current parsing position (relative to startPos)
         
-        // Skip opening brace
-        skipWhitespace();
-        if (pos >= len || data[pos] != '{') return false;
-        pos++;
+        // Helper to get absolute position in buffer
+        size_t absPos() const {
+            return startPos + pos;
+        }
         
-        // Search for the key
-        while (pos < len) {
+        // Skip whitespace
+        void skipWhitespace() {
+            while (pos < (endPos - startPos) && isspace(data[startPos + pos])) {
+                pos++;
+            }
+        }
+        
+        // Find a key in the current object
+        bool findKey(const char* key) {
+            size_t savedPos = pos;
             skipWhitespace();
             
-            // Check for end of object
-            if (data[pos] == '}') return false;
+            // If at the start of the view, expect an opening brace
+            if (pos == 0) {
+                if (absPos() >= dataLen || data[absPos()] != '{') {
+                    pos = savedPos;
+                    return false;
+                }
+                pos++;
+                skipWhitespace();
+            }
             
-            // Check for comma (not first item)
-            if (pos > 1 && data[pos] == ',') pos++;
+            while (absPos() < dataLen && absPos() < endPos) {
+                // Check for end of object
+                if (data[absPos()] == '}') {
+                    pos = savedPos;
+                    return false;
+                }
+                
+                // Check for comma
+                if (data[absPos()] == ',') {
+                    pos++;
+                    skipWhitespace();
+                }
+                
+                // Expect a quoted key
+                if (data[absPos()] != '"') {
+                    pos = savedPos;
+                    return false;
+                }
+                pos++;
+                
+                // Compare with the requested key
+                size_t keyLen = strlen(key);
+                if (absPos() + keyLen <= dataLen && 
+                    strncmp(data + absPos(), key, keyLen) == 0 && 
+                    absPos() + keyLen < dataLen && data[absPos() + keyLen] == '"') {
+                    
+                    // Found the key
+                    pos += keyLen + 1;  // Skip key and closing quote
+                    skipWhitespace();
+                    
+                    // Expect a colon
+                    if (absPos() >= dataLen || data[absPos()] != ':') {
+                        pos = savedPos;
+                        return false;
+                    }
+                    pos++;
+                    skipWhitespace();
+                    
+                    return true;
+                }
+                
+                // Not the key we want, skip to the end of this key
+                while (absPos() < dataLen && data[absPos()] != '"') {
+                    pos++;
+                }
+                if (absPos() >= dataLen) {
+                    pos = savedPos;
+                    return false;
+                }
+                pos++;  // Skip closing quote
+                
+                skipWhitespace();
+                
+                // Expect a colon
+                if (absPos() >= dataLen || data[absPos()] != ':') {
+                    pos = savedPos;
+                    return false;
+                }
+                pos++;
+                skipWhitespace();
+                
+                // Skip this value
+                skipValue();
+                skipWhitespace();
+            }
             
-            // Skip whitespace after comma
+            pos = savedPos;
+            return false;
+        }
+        
+        // Skip any JSON value (object, array, string, number, boolean, null)
+        void skipValue() {
             skipWhitespace();
             
-            // Check for opening quote
-            if (data[pos] != '"') return false;
-            pos++;
+            if (absPos() >= dataLen) return;
             
-            // Check if this is our key
-            size_t keyLen = strlen(key);
-            if (pos + keyLen > len) return false;
-            
-            if (strncmp(data + pos, key, keyLen) == 0) {
-                pos += keyLen;
-                
-                // Check for closing quote
-                if (data[pos] != '"') return false;
+            if (data[absPos()] == '{') {
+                // Skip object
+                int depth = 1;
                 pos++;
                 
-                // Skip whitespace and colon
-                skipWhitespace();
-                if (data[pos] != ':') return false;
+                while (absPos() < dataLen && depth > 0) {
+                    if (data[absPos()] == '{') depth++;
+                    else if (data[absPos()] == '}') depth--;
+                    pos++;
+                }
+            }
+            else if (data[absPos()] == '[') {
+                // Skip array
+                int depth = 1;
                 pos++;
                 
-                // Skip whitespace after colon
-                skipWhitespace();
+                while (absPos() < dataLen && depth > 0) {
+                    if (data[absPos()] == '[') depth++;
+                    else if (data[absPos()] == ']') depth--;
+                    pos++;
+                }
+            }
+            else if (data[absPos()] == '"') {
+                // Skip string
+                pos++;
+                while (absPos() < dataLen && data[absPos()] != '"') {
+                    // Handle escaped characters
+                    if (data[absPos()] == '\\' && absPos() + 1 < dataLen) pos++;
+                    pos++;
+                }
+                if (absPos() < dataLen) pos++;  // Skip closing quote
+            }
+            else if (isdigit(data[absPos()]) || data[absPos()] == '-') {
+                // Skip number
+                if (data[absPos()] == '-') pos++;
                 
+                // Skip digits before decimal point
+                while (absPos() < dataLen && isdigit(data[absPos()])) pos++;
+                
+                // Skip decimal point and following digits
+                if (absPos() < dataLen && data[absPos()] == '.') {
+                    pos++;
+                    while (absPos() < dataLen && isdigit(data[absPos()])) pos++;
+                }
+                
+                // Skip exponent
+                if (absPos() < dataLen && (data[absPos()] == 'e' || data[absPos()] == 'E')) {
+                    pos++;
+                    
+                    // Skip optional sign
+                    if (absPos() < dataLen && (data[absPos()] == '+' || data[absPos()] == '-')) pos++;
+                    
+                    // Skip exponent digits
+                    while (absPos() < dataLen && isdigit(data[absPos()])) pos++;
+                }
+            }
+            else if (absPos() + 4 <= dataLen && strncmp(data + absPos(), "true", 4) == 0) {
+                pos += 4;  // Skip "true"
+            }
+            else if (absPos() + 5 <= dataLen && strncmp(data + absPos(), "false", 5) == 0) {
+                pos += 5;  // Skip "false"
+            }
+            else if (absPos() + 4 <= dataLen && strncmp(data + absPos(), "null", 4) == 0) {
+                pos += 4;  // Skip "null"
+            }
+        }
+        
+        // Get string value at current position
+        bool getStringValue(char* value, size_t maxLen) {
+            skipWhitespace();
+            
+            if (absPos() >= dataLen || data[absPos()] != '"') return false;
+            
+            pos++;  // Skip opening quote
+            size_t i = 0;
+            
+            while (absPos() < dataLen && data[absPos()] != '"' && i < maxLen - 1) {
+                // Handle escaped characters
+                if (data[absPos()] == '\\' && absPos() + 1 < dataLen) {
+                    pos++;
+                    // Simple escape sequence handling
+                    switch (data[absPos()]) {
+                        case 'n': value[i++] = '\n'; break;
+                        case 'r': value[i++] = '\r'; break;
+                        case 't': value[i++] = '\t'; break;
+                        default: value[i++] = data[absPos()];
+                    }
+                } else {
+                    value[i++] = data[absPos()];
+                }
+                pos++;
+            }
+            
+            value[i] = '\0';
+            
+            if (absPos() < dataLen && data[absPos()] == '"') pos++;  // Skip closing quote
+            return true;
+        }
+        
+        bool getStringValue(zap::Str& value) {
+            skipWhitespace();
+            
+            if (absPos() >= dataLen || data[absPos()] != '"') return false;
+            
+            pos++;  // Skip opening quote
+            value.clear();
+            
+            while (absPos() < dataLen && data[absPos()] != '"') {
+                // Handle escaped characters
+                if (data[absPos()] == '\\' && absPos() + 1 < dataLen) {
+                    pos++;
+                    // Simple escape sequence handling
+                    switch (data[absPos()]) {
+                        case 'n': value += '\n'; break;
+                        case 'r': value += '\r'; break;
+                        case 't': value += '\t'; break;
+                        default: value += data[absPos()];
+                    }
+                } else {
+                    value += data[absPos()];
+                }
+                pos++;
+            }
+            
+            if (absPos() < dataLen && data[absPos()] == '"') pos++;  // Skip closing quote
+            return true;
+        }
+        
+        // Get integer value at current position
+        bool getIntValue(int& value) {
+            skipWhitespace();
+            
+            if (absPos() >= dataLen) return false;
+            
+            char* endPtr;
+            value = strtol(data + absPos(), &endPtr, 10);
+            
+            if (endPtr == data + absPos()) return false;  // No conversion
+            
+            pos += (endPtr - (data + absPos()));
+            return true;
+        }
+        
+        // Get boolean value at current position
+        bool getBoolValue(bool& value) {
+            skipWhitespace();
+            
+            if (absPos() >= dataLen) return false;
+            
+            if (absPos() + 4 <= dataLen && strncmp(data + absPos(), "true", 4) == 0) {
+                value = true;
+                pos += 4;
+                return true;
+            } 
+            else if (absPos() + 5 <= dataLen && strncmp(data + absPos(), "false", 5) == 0) {
+                value = false;
+                pos += 5;
                 return true;
             }
+            return false;
+        }
+        
+    public:
+        // Constructor for full buffer
+        JsonParser(const char* jsonData) 
+            : data(jsonData), 
+              dataLen(strlen(jsonData)), 
+              startPos(0), 
+              endPos(strlen(jsonData)), 
+              pos(0) {}
+        
+        // Constructor for a view into a buffer
+        JsonParser(const char* jsonData, size_t length, size_t start, size_t end) 
+            : data(jsonData), 
+              dataLen(length), 
+              startPos(start), 
+              endPos(end), 
+              pos(0) {}
+        
+        // Get an object by key as a new view
+        bool getObject(const char* key, JsonParser& result) {
+            size_t savedPos = pos;
             
-            // Skip this key and its value
-            while (pos < len && data[pos] != '"') pos++;
-            if (pos < len) pos++; // Skip closing quote
-            
-            // Skip colon
-            skipWhitespace();
-            if (data[pos] != ':') return false;
-            pos++;
-            
-            // Skip value
-            skipWhitespace();
-            if (data[pos] == '"') {
-                // String value
-                pos++;
-                while (pos < len && data[pos] != '"') pos++;
-                if (pos < len) pos++; // Skip closing quote
-            } else if (data[pos] == '{') {
-                // Object value - skip until matching closing brace
-                int braceCount = 1;
-                pos++;
-                while (pos < len && braceCount > 0) {
-                    if (data[pos] == '{') braceCount++;
-                    else if (data[pos] == '}') braceCount--;
-                    pos++;
-                }
-            } else if (data[pos] == '[') {
-                // Array value - skip until matching closing bracket
-                int bracketCount = 1;
-                pos++;
-                while (pos < len && bracketCount > 0) {
-                    if (data[pos] == '[') bracketCount++;
-                    else if (data[pos] == ']') bracketCount--;
-                    pos++;
-                }
-            } else {
-                // Simple value (number, boolean, null)
-                while (pos < len && data[pos] != ',' && data[pos] != '}') pos++;
+            if (!findKey(key)) {
+                return false;
             }
-        }
-        
-        return false;
-    }
-    
-    // Get a string value
-    bool getStringValue(char* value, size_t maxLen) {
-        if (data[pos] != '"') return false;
-        pos++;
-        
-        size_t i = 0;
-        while (pos < len && data[pos] != '"' && i < maxLen - 1) {
-            value[i++] = data[pos++];
-        }
-        value[i] = '\0';
-        
-        if (pos < len && data[pos] == '"') pos++;
-        
-        return true;
-    }
-
-    bool getStringValue(zap::Str& value) {
-        if (data[pos] != '"') return false;
-        pos++;
-        
-        size_t i = 0;
-        while (pos < len && data[pos] != '"') {
-            value += data[pos++];
-        }
-        
-        if (pos < len && data[pos] == '"') pos++;
-        
-        return true;
-    }
-    
-    // Get an integer value
-    bool getIntValue(int& value) {
-        char* endPtr;
-        value = strtol(data + pos, &endPtr, 10);
-        pos += (endPtr - (data + pos));
-        return true;
-    }
-    
-    // Get a boolean value
-    bool getBoolValue(bool& value) {
-        if (pos + 4 <= len && strncmp(data + pos, "true", 4) == 0) {
-            value = true;
-            pos += 4;
-            return true;
-        } else if (pos + 5 <= len && strncmp(data + pos, "false", 5) == 0) {
-            value = false;
-            pos += 5;
+            
+            // We should now be positioned at the start of an object
+            if (absPos() >= dataLen || data[absPos()] != '{') {
+                pos = savedPos;
+                return false;
+            }
+            
+            // Find object boundaries
+            size_t objectStart = absPos();
+            int depth = 1;
+            pos++;  // Skip opening brace
+            
+            while (absPos() < dataLen && depth > 0) {
+                if (data[absPos()] == '{') depth++;
+                else if (data[absPos()] == '}') depth--;
+                pos++;
+            }
+            
+            if (depth != 0) {
+                pos = savedPos;
+                return false;  // Unbalanced braces
+            }
+            
+            size_t objectEnd = absPos();
+            
+            // Create a new parser as a view into this section of the buffer
+            result = JsonParser(data, dataLen, objectStart, objectEnd);
+            
             return true;
         }
-        return false;
-    }
-    
-public:
-    JsonParser(const char* json) : data(json), pos(0), len(strlen(json)) {}
-    
-    // Find a string value by key
-    bool getString(const char* key, char* value, size_t maxLen) {
-        if (!findKey(key)) return false;
-        return getStringValue(value, maxLen);
-    }
-
-    bool getString(const char* key, zap::Str& value) {
-        if (!findKey(key)) return false;
-        return getStringValue(value);
-    }
-    
-    // Find an integer value by key
-    bool getInt(const char* key, int& value) {
-        if (!findKey(key)) return false;
-        return getIntValue(value);
-    }
-    
-    // Find a boolean value by key
-    bool getBool(const char* key, bool& value) {
-        if (!findKey(key)) return false;
-        return getBoolValue(value);
-    }
-    
-    // Reset parser to start
-    void reset() {
-        pos = 0;
-    }
-};
+        
+        // Get a string value by key
+        bool getString(const char* key, char* value, size_t maxLen) {
+            size_t savedPos = pos;
+            
+            if (findKey(key)) {
+                if (getStringValue(value, maxLen)) {
+                    return true;
+                }
+            }
+            
+            pos = savedPos;
+            return false;
+        }
+        
+        bool getString(const char* key, zap::Str& value) {
+            size_t savedPos = pos;
+            
+            if (findKey(key)) {
+                if (getStringValue(value)) {
+                    return true;
+                }
+            }
+            
+            pos = savedPos;
+            return false;
+        }
+        
+        // Get an integer value by key
+        bool getInt(const char* key, int& value) {
+            size_t savedPos = pos;
+            
+            if (findKey(key)) {
+                if (getIntValue(value)) {
+                    return true;
+                }
+            }
+            
+            pos = savedPos;
+            return false;
+        }
+        
+        // Get a boolean value by key
+        bool getBool(const char* key, bool& value) {
+            size_t savedPos = pos;
+            
+            if (findKey(key)) {
+                if (getBoolValue(value)) {
+                    return true;
+                }
+            }
+            
+            pos = savedPos;
+            return false;
+        }
+        
+        // Get a value using dot notation path
+        bool getValueByPath(const char* path, const std::function<bool()>& valueExtractor) {
+            // Make a working copy of the path
+            char pathCopy[256];
+            strncpy(pathCopy, path, sizeof(pathCopy) - 1);
+            pathCopy[sizeof(pathCopy) - 1] = '\0';
+            
+            // Save initial position
+            size_t savedPos = pos;
+            pos = 0;
+            
+            // Split path by dots
+            char* savePtr = nullptr;
+            char* segment = strtok_r(pathCopy, ".", &savePtr);
+            
+            if (!segment) {
+                pos = savedPos;
+                return false;
+            }
+            
+            JsonParser currentParser = *this;  // Start with a copy of this parser
+            
+            while (true) {
+                char* nextSegment = strtok_r(nullptr, ".", &savePtr);
+                
+                if (!nextSegment) {
+                    // Last segment - get the value
+                    if (!currentParser.findKey(segment)) {
+                        pos = savedPos;
+                        return false;
+                    }
+                    
+                    // Use the current parser's context to extract the value
+                    // Need to temporarily swap 'this' context with currentParser's
+                    size_t thisPos = pos;
+                    size_t thisStartPos = startPos;
+                    size_t thisEndPos = endPos;
+                    
+                    pos = currentParser.pos;
+                    startPos = currentParser.startPos;
+                    endPos = currentParser.endPos;
+                    
+                    bool result = valueExtractor();
+                    
+                    // Restore original context
+                    pos = thisPos;
+                    startPos = thisStartPos;
+                    endPos = thisEndPos;
+                    
+                    return result;
+                }
+                
+                // Not the last segment - navigate to sub-object
+                JsonParser nextParser(nullptr, 0, 0, 0);  // Dummy initialization
+                
+                if (!currentParser.getObject(segment, nextParser)) {
+                    pos = savedPos;
+                    return false;
+                }
+                
+                // Move to the next object
+                currentParser = nextParser;
+                segment = nextSegment;
+            }
+            
+            // Should never reach here
+            pos = savedPos;
+            return false;
+        }
+        
+        // Path-based value getters
+        bool getStringByPath(const char* path, char* value, size_t maxLen) {
+            return getValueByPath(path, [this, value, maxLen]() {
+                return getStringValue(value, maxLen);
+            });
+        }
+        
+        bool getStringByPath(const char* path, zap::Str& value) {
+            return getValueByPath(path, [this, &value]() {
+                return getStringValue(value);
+            });
+        }
+        
+        bool getIntByPath(const char* path, int& value) {
+            return getValueByPath(path, [this, &value]() {
+                return getIntValue(value);
+            });
+        }
+        
+        bool getBoolByPath(const char* path, bool& value) {
+            return getValueByPath(path, [this, &value]() {
+                return getBoolValue(value);
+            });
+        }
+        
+        // Reset parser position (within current view)
+        void reset() {
+            pos = 0;
+        }
+    };

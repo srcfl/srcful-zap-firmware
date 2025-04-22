@@ -1,5 +1,6 @@
 #include "graphql.h"
 #include "config.h"
+#include "json_light/json_light.h"
 #include <HTTPClient.h>
 
 // At the top of the file, outside any function
@@ -74,25 +75,16 @@ GQL::StringResponse GQL::fetchGatewayName(const zap::Str& serialNumber) {
     if (!response.isSuccess()) {
         return response; // Return the error as is
     }
-    
-    // Parse JSON response manually to avoid ArduinoJson
-    int dataPos = response.data.indexOf("\"data\":");
-    if (dataPos < 0) {
-        return StringResponse::invalidResponse("No data field in response");
+
+    // Parse JSON response to check success status
+    zap::Str name;
+
+    JsonParser parser(response.data.c_str());
+    if (!parser.getStringByPath("data.gatewayConfiguration.gatewayName.name", name)) {
+        return StringResponse::invalidResponse("Invalid response structure");;
     }
     
-    int nameStart = response.data.indexOf("\"name\":\"", dataPos);
-    if (nameStart < 0) {
-        return StringResponse::parseError("Name field not found");
-    }
-    
-    nameStart += 8; // Length of "\"name\":\""
-    int nameEnd = response.data.indexOf("\"", nameStart);
-    if (nameEnd < 0) {
-        return StringResponse::parseError("Malformed name field");
-    }
-    
-    return StringResponse::ok(response.data.substring(nameStart, nameEnd));
+    return StringResponse::ok(name);
 }
 
 GQL::BoolResponse GQL::setConfiguration(const zap::Str& jwt) {
@@ -112,17 +104,14 @@ GQL::BoolResponse GQL::setConfiguration(const zap::Str& jwt) {
     }
     
     // Parse JSON response to check success status
-    int successPos = response.data.indexOf("\"success\":");
-    if (successPos < 0) {
+    bool successValue;
+
+    JsonParser parser(response.data.c_str());
+    if (!parser.getBoolByPath("data.setConfiguration.success", successValue)) {
         return BoolResponse::invalidResponse("No success field in response");
     }
     
-    successPos += 10; // Length of "\"success\":"
-    
-    // Check if success is true in the GraphQL response
-    bool operationSuccess = (response.data.indexOf("true", successPos) >= 0);
-    
-    if (!operationSuccess) {
+    if (!successValue) {
         return BoolResponse::operationFailed("Server reported operation failure");
     }
     
