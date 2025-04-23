@@ -9,6 +9,7 @@
 #include "../src/endpoints/handleCryptoSign.cpp"
 #include "../src/endpoints/wifi_endpoint_handlers.cpp"
 #include "../src/wifi/wifi_manager.cpp"
+#include "../src/json_light/json_light.cpp"
 
 
 // Include test files
@@ -33,7 +34,12 @@ void setup() {
     RUN_TEST(test_wifi_status_handler);
     RUN_TEST(test_json_builder);
     RUN_TEST(test_json_parser);
+
+    test_all_json_light();
+
     UNITY_END();
+
+    
 }
 
 void loop() {

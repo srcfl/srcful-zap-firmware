@@ -11,6 +11,7 @@
 #include "../src/data/circular_buffer.cpp"
 #include "../src/debug.cpp"
 #include "../src/backend/graphql.cpp"
+#include "../src/json_light/json_light.cpp"
 
 #include "zap_str_test.cpp"
 

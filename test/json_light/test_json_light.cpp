@@ -119,6 +119,39 @@ void test_json_builder_nested_objects() {
     );
 }
 
+void test_json_parser_request() {
+    // const char * str = "{\"id\": \"MDasHAlXxnrp3HKKzTbwr\", \"body\": \"Hello World!\", \"path\": \"/api/echo\", \"query\": \"{}\", \"method\": \"POST\", \"headers\": \"{}\", \"timestamp\": 1745405662168}";
+    const char * str = "{\"id\": \"MDasHAlXxnrp3HKKzTbwr\", \"body\": \"Hello World!\"}";
+
+
+    JsonParser parser(str);
+
+    // assert((parser.contains("id") && parser.contains("path") && parser.contains("method")));
+
+    zap::Str body; parser.getString("body", body);
+    TEST_ASSERT_EQUAL_STRING("Hello World!", body.c_str());
+
+
+    zap::Str id; parser.getString("id", id);
+    TEST_ASSERT_EQUAL_STRING("MDasHAlXxnrp3HKKzTbwr", id.c_str());
+
+
+    // zap::Str path; parser.getString("path", path);
+    // zap::Str method; parser.getString("method", method);
+    
+    // zap::Str query; parser.getString("query", query);
+    // zap::Str headers; parser.getString("headers", headers);
+    // uint64_t timestamp; parser.getUInt64("timestamp", timestamp);
+
+    // TEST_ASSERT_EQUAL_STRING("/api/echo", path.c_str());
+    // TEST_ASSERT_EQUAL_STRING("POST", method.c_str());
+    // TEST_ASSERT_EQUAL_STRING("{}", query.c_str());
+    // TEST_ASSERT_EQUAL_STRING("{}", headers.c_str());
+    // TEST_ASSERT_EQUAL_UINT64(1745405662168, timestamp);
+
+
+}
+
 void test_json_builder_array() {
     JsonBuilder builder;
     std::vector<zap::Str> items = {"item1", "item2", "item3"};
@@ -131,8 +164,7 @@ void test_json_builder_array() {
     TEST_ASSERT_EQUAL_STRING("{\"title\":\"Test Array\",\"items\":[\"item1\",\"item2\",\"item3\"]}", json.c_str());
 }
 
-int main(int argc, char **argv) {
-    UNITY_BEGIN();
+void test_all_json_light() {
     
     RUN_TEST(test_json_builder);
     RUN_TEST(test_json_parser);
@@ -141,6 +173,6 @@ int main(int argc, char **argv) {
     RUN_TEST(test_json_builder_simple_object);
     RUN_TEST(test_json_builder_nested_objects);
     RUN_TEST(test_json_builder_array);
+    RUN_TEST(test_json_parser_request);
     
-    return UNITY_END();
 }
