@@ -383,19 +383,8 @@ class JsonParser {
             value.clear();
             
             while (absPos() < dataLen && data[absPos()] != '"') {
-                // Handle escaped characters
-                if (data[absPos()] == '\\' && absPos() + 1 < dataLen) {
-                    pos++;
-                    // Simple escape sequence handling
-                    switch (data[absPos()]) {
-                        case 'n': value += '\n'; break;
-                        case 'r': value += '\r'; break;
-                        case 't': value += '\t'; break;
-                        default: value += data[absPos()];
-                    }
-                } else {
-                    value += data[absPos()];
-                }
+                
+                value += data[absPos()];
                 pos++;
             }
             
@@ -640,6 +629,70 @@ class JsonParser {
             return getValueByPath(path, [this, &value]() {
                 return getBoolValue(value);
             });
+        }
+        
+        // Check if a field at the specified path is null
+        bool isFieldNullByPath(const char* path) {
+            // Make a working copy of the path
+            char pathCopy[256];
+            strncpy(pathCopy, path, sizeof(pathCopy) - 1);
+            pathCopy[sizeof(pathCopy) - 1] = '\0';
+            
+            // Save initial position
+            size_t savedPos = pos;
+            pos = 0;
+            
+            // Split path by dots
+            char* savePtr = nullptr;
+            char* segment = strtok_r(pathCopy, ".", &savePtr);
+            
+            if (!segment) {
+                pos = savedPos;
+                return false;
+            }
+            
+            JsonParser currentParser = *this;  // Start with a copy of this parser
+            
+            while (true) {
+                char* nextSegment = strtok_r(nullptr, ".", &savePtr);
+                
+                if (!nextSegment) {
+                    // Last segment - check if the value is null
+                    if (!currentParser.findKey(segment)) {
+                        pos = savedPos;
+                        return false; // Key not found
+                    }
+                    
+                    // Position is now after the key and colon
+                    currentParser.skipWhitespace();
+                    
+                    // Check if the value is "null"
+                    if (currentParser.absPos() + 4 <= currentParser.dataLen && 
+                        strncmp(currentParser.data + currentParser.absPos(), "null", 4) == 0) {
+                        pos = savedPos;
+                        return true; // Found null value
+                    }
+                    
+                    pos = savedPos;
+                    return false; // Value exists but is not null
+                }
+                
+                // Not the last segment - navigate to sub-object
+                JsonParser nextParser(nullptr, 0, 0, 0);  // Dummy initialization
+                
+                if (!currentParser.getObject(segment, nextParser)) {
+                    pos = savedPos;
+                    return false;
+                }
+                
+                // Move to the next object
+                currentParser = nextParser;
+                segment = nextSegment;
+            }
+            
+            // Should never reach here
+            pos = savedPos;
+            return false;
         }
         
         // Reset parser position (within current view)

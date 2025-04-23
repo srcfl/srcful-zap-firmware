@@ -1,6 +1,8 @@
 #include "graphql.h"
 #include "config.h"
 #include "json_light/json_light.h"
+#include "crypto.h"
+#include <time.h>
 #include <HTTPClient.h>
 
 // At the top of the file, outside any function
@@ -50,16 +52,38 @@ GQL::StringResponse GQL::makeGraphQLRequest(const zap::Str& query, const char* e
         responseData += (char)stream->read();
     }
     
+    // this is the raw bytes so it is likely a size, newline the data, a 0 and then two newlines messing things up
+    // but we are expecting a json object so we can pick the data between the first and last }
+
+    //2e
+    //{"data":{"setConfiguration":{"success":true}}}
+    //0
+    //
+    //
+
+    size_t start = responseData.indexOf('{');
+    size_t end = responseData.lastIndexOf('}');
+    if (start < 0 || end < 0 || start >= end) {
+        http.end();
+        return StringResponse::invalidResponse("Invalid response format");
+    }
+    responseData = responseData.substring(start, end + 1);
+
     Serial.println("Response received");
+    Serial.println(responseData.c_str());
     http.end();
     
     // Check for GraphQL errors
     if (responseData.indexOf("\"errors\":") >= 0) {
-        return StringResponse::gqlError("GraphQL returned errors");
+        return StringResponse::gqlError("GraphQL returned errors: " + responseData);
     }
     
     return StringResponse::ok(responseData);
 }
+
+
+
+
 
 GQL::StringResponse GQL::fetchGatewayName(const zap::Str& serialNumber) {
     zap::Str query = R"({
@@ -116,4 +140,65 @@ GQL::BoolResponse GQL::setConfiguration(const zap::Str& jwt) {
     }
     
     return BoolResponse::ok(true);
+}
+
+GQL::StringResponse GQL::getConfiguration(const zap::Str& subKey) {
+    // Create authentication components (device ID, timestamp, signature)
+    zap::Str serialNumber = crypto_getId();
+    
+    // Generate timestamp in UTC format (Y-m-dTH:M:S)
+    time_t now;
+    time(&now);
+    char timestamp[24];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", gmtime(&now));
+    zap::Str timestampStr = zap::Str(timestamp);
+    
+    // Create the message to sign: deviceId|timestamp
+    zap::Str message = serialNumber + ":" + timestampStr;
+
+    Serial.printf("Message to sign: %s\n", message.c_str());
+    
+    // Sign the message
+    extern const char* PRIVATE_KEY_HEX;
+    zap::Str signature = crypto_create_signature_hex(message.c_str(), PRIVATE_KEY_HEX);
+    
+    // Create GraphQL query
+    zap::Str query = R"({
+        gatewayConfiguration {
+            configuration(deviceAuth: {
+                id: ")" + serialNumber + R"(",
+                timestamp: ")" + timestampStr + R"(",
+                signedIdAndTimestamp: ")" + signature + R"(",
+                subKey: ")" + subKey + R"("
+            }) {
+                data
+            }
+        }
+    })";
+    
+    StringResponse response = makeGraphQLRequest(query, API_URL);
+    
+    if (!response.isSuccess()) {
+        return response; // Return the error as is
+    }
+
+    // Parse JSON response to extract configuration data
+    zap::Str configData;
+    JsonParser parser(response.data.c_str());
+
+    if (parser.isFieldNullByPath("data.gatewayConfiguration.configuration.data")) {
+        // Handle null data case - return empty string
+        return StringResponse::ok("");
+    }
+    
+    if (!parser.getStringByPath("data.gatewayConfiguration.configuration.data", configData)) {
+        return StringResponse::invalidResponse("No configuration data in response");
+    }
+    // the configuration data is a json string within the json object, the " are escaped
+    configData.replace("\\u0022", "\"");
+    configData.replace("\\u0027", "'");
+
+    Serial.printf("Configuration data: %s\n", configData.c_str());
+    
+    return StringResponse::ok(configData); 
 }

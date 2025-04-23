@@ -8,8 +8,10 @@
 
 BackendApiTask::BackendApiTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
-      wifiManager(nullptr), lastUpdateTime(0), stateUpdateInterval(DEFAULT_STATE_UPDATE_INTERVAL), bleActive(false) {
-    // Initialize with default interval
+      wifiManager(nullptr), lastUpdateTime(0), lastConfigFetchTime(0), 
+      stateUpdateInterval(DEFAULT_STATE_UPDATE_INTERVAL), 
+      configFetchInterval(DEFAULT_CONFIG_FETCH_INTERVAL), bleActive(false) {
+    // Initialize with default intervals
 }
 
 BackendApiTask::~BackendApiTask() {
@@ -28,9 +30,10 @@ void BackendApiTask::begin(WifiManager* wifiManager) {
     // Configure HTTP client once
     http.setTimeout(10000);  // 10 second timeout
     
-    // Force an immediate state update by setting lastUpdateTime to a value that will
+    // Force immediate state update and config fetch by setting lastUpdateTime to a value that will
     // trigger an immediate update in the task loop
     lastUpdateTime = 0;
+    lastConfigFetchTime = 0;
     
     // Set interval to 0 to trigger immediate update on connection
     stateUpdateInterval = 0;
@@ -64,6 +67,10 @@ void BackendApiTask::setInterval(uint32_t interval) {
     stateUpdateInterval = interval;
 }
 
+void BackendApiTask::setConfigFetchInterval(uint32_t interval) {
+    configFetchInterval = interval;
+}
+
 void BackendApiTask::setBleActive(bool active) {
     bleActive = active;
 }
@@ -76,14 +83,16 @@ void BackendApiTask::taskFunction(void* parameter) {
     BackendApiTask* task = static_cast<BackendApiTask*>(parameter);
     
     while (task->shouldRun) {
+        unsigned long currentTime = millis();
+        
         // Check if it's time to send a state update
-        if (millis() - task->lastUpdateTime > task->stateUpdateInterval) {
+        if (currentTime - task->lastUpdateTime > task->stateUpdateInterval) {
             // After first update, restore to default interval if currently zero
             if (task->stateUpdateInterval == 0) {
                 task->stateUpdateInterval = DEFAULT_STATE_UPDATE_INTERVAL;
             }
             
-            task->lastUpdateTime = millis();
+            task->lastUpdateTime = currentTime;
             
             // Only send state update if WiFi is connected and BLE is not active
             if (task->wifiManager && task->wifiManager->isConnected() && !task->bleActive) {
@@ -98,6 +107,19 @@ void BackendApiTask::taskFunction(void* parameter) {
             }
         }
         
+        // Check if it's time to fetch configuration
+        if (currentTime - task->lastConfigFetchTime > task->configFetchInterval) {
+            task->lastConfigFetchTime = currentTime;
+            
+            // Only fetch configuration if WiFi is connected
+            if (task->wifiManager && task->wifiManager->isConnected()) {
+                Serial.println("Backend API task: Fetching configuration...");
+                task->fetchConfiguration();
+            } else {
+                Serial.println("Backend API task: WiFi not connected, not fetching configuration");
+            }
+        }
+        
         // Small delay to prevent task from hogging CPU
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -109,7 +131,6 @@ void BackendApiTask::taskFunction(void* parameter) {
 void BackendApiTask::sendStateUpdate() {
     Serial.println("Backend API task: Preparing state update");
     
-   
     // Use JsonBuilder to create JWT header
     JsonBuilder headerBuilder;
     headerBuilder.beginObject()
@@ -153,8 +174,6 @@ void BackendApiTask::sendStateUpdate() {
     // Handle the response
     if (response.isSuccess() && response.data) {
         Serial.println("Backend API task: State update sent successfully");
-        // Update last successful update time
-        lastUpdateTime = millis();
     } else {
         // Handle different error cases
         switch (response.status) {
@@ -178,6 +197,27 @@ void BackendApiTask::sendStateUpdate() {
     }
 }
 
+void BackendApiTask::fetchConfiguration() {
+    // First, try to fetch the device configuration
+    GQL::StringResponse configResponse = GQL::getConfiguration("request");
+    if (configResponse.isSuccess()) {
+        Serial.println("Backend API task: Device configuration fetched successfully");
+        processConfiguration(configResponse.data.c_str());
+    } else {
+        Serial.print("Backend API task: Failed to fetch device configuration: ");
+        Serial.println(configResponse.error.c_str());
+    }
+}
+
+void BackendApiTask::processConfiguration(const char* configData) {
+    Serial.println("Backend API task: Processing configuration data");
+    Serial.println(configData);
+    
+    JsonParser parser(configData);
+    
+    Serial.println("Backend API task: Configuration processing completed");
+}
+
 void BackendApiTask::triggerStateUpdate() {
     // Only send state update if WiFi is connected and BLE is not active
     if (wifiManager && wifiManager->isConnected() && !bleActive) {
@@ -185,5 +225,15 @@ void BackendApiTask::triggerStateUpdate() {
         sendStateUpdate();
     } else {
         Serial.println("Backend API task: Cannot trigger update - WiFi not connected or BLE active");
+    }
+}
+
+void BackendApiTask::triggerConfigFetch() {
+    // Only fetch configuration if WiFi is connected
+    if (wifiManager && wifiManager->isConnected()) {
+        Serial.println("Backend API task: Triggering immediate configuration fetch...");
+        fetchConfiguration();
+    } else {
+        Serial.println("Backend API task: Cannot fetch configuration - WiFi not connected");
     }
 }

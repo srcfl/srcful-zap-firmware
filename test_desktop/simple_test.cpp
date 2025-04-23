@@ -12,6 +12,7 @@
 #include "../src/debug.cpp"
 #include "../src/backend/graphql.cpp"
 
+#include "zap_str_test.cpp"
 
 #include "data/circular_buffer_test.cpp"
 #include "data/frame_detector_test.cpp"
@@ -87,6 +88,7 @@ int main() {
         frame_detector_test::run();
         json_light_test::run();
         graphql_test::run();
+        zap_str_test::run();
 
         std::cout << "All tests passed!" << std::endl;
         return 0;

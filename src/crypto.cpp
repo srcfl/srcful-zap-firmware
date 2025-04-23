@@ -371,7 +371,7 @@ static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t 
 
 zap::Str crypto_getId() {
   // Debug flag
-  const bool debug = true;
+  const bool debug = false;
   uint64_t chipId = ESP.getEfuseMac();
   
   if (debug) {

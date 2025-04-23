@@ -464,6 +464,43 @@ private:
         return -1; // Not found
     }
     
+    // lastIndexOf method - finds the last occurrence of a character in the string
+    int lastIndexOf(char c) const {
+        if (!_buffer || _length == 0) {
+            return -1; // Not found in empty string
+        }
+        
+        // Search backwards for the character in the buffer
+        for (int i = _length - 1; i >= 0; i--) {
+            if (_buffer[i] == c) {
+                return i;
+            }
+        }
+        
+        return -1; // Not found
+    }
+    
+    // lastIndexOf method with starting position (search backwards from this position)
+    int lastIndexOf(char c, size_t fromIndex) const {
+        if (!_buffer || _length == 0) {
+            return -1; // Not found in empty string
+        }
+        
+        // Make sure fromIndex is within bounds
+        if (fromIndex >= _length) {
+            fromIndex = _length - 1;
+        }
+        
+        // Search backwards from fromIndex
+        for (int i = fromIndex; i >= 0; i--) {
+            if (_buffer[i] == c) {
+                return i;
+            }
+        }
+        
+        return -1; // Not found
+    }
+
     // Convert string to integer
     int toInt() const {
         if (!_buffer || _length == 0) {

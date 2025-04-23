@@ -31,24 +31,24 @@ public:
             return {Status::SUCCESS, result, ""};
         }
         
-        static Response<T> operationFailed(const zap::Str& errorMsg = "") {
+        static Response<T> operationFailed(const zap::Str& errorMsg) {
             return {Status::OPERATION_FAILED, T(), errorMsg};
         }
         
-        static Response<T> networkError(const zap::Str& errorMsg = "") {
+        static Response<T> networkError(const zap::Str& errorMsg) {
             return {Status::NETWORK_ERROR, T(), errorMsg};
         }
         
-        static Response<T> parseError(const zap::Str& errorMsg = "") {
+        static Response<T> parseError(const zap::Str& errorMsg) {
             return {Status::PARSE_ERROR, T(), errorMsg};
         }
         
-        static Response<T> invalidResponse(const zap::Str& errorMsg = "") {
+        static Response<T> invalidResponse(const zap::Str& errorMsg) {
             return {Status::INVALID_RESPONSE, T(), errorMsg};
         }
         
-        static Response<T> gqlError(const zap::Str& errorMsg = "") {
-            return {Status::GQL_ERROR, T(), errorMsg};
+        static Response<T> gqlError(const zap::Str& errorMsg) {
+            return {Status::GQL_ERROR, "", errorMsg};
         }
     };
     
@@ -59,6 +59,7 @@ public:
     // Updated method signatures
     static BoolResponse setConfiguration(const zap::Str& jwt);
     static StringResponse fetchGatewayName(const zap::Str& serialNumber);
+    static StringResponse getConfiguration(const zap::Str& subKey);
     
 private:
     static StringResponse makeGraphQLRequest(const zap::Str& query, const char* endpoint);
