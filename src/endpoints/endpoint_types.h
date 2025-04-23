@@ -35,6 +35,7 @@ class Endpoint {
         OTA_UPDATE,
         OTA_STATUS,
         DEBUG,
+        ECHO,  // New echo endpoint type
         UNKNOWN
     };
     const Type type;

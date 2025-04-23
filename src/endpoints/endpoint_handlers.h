@@ -16,8 +16,6 @@ extern const char* PRIVATE_KEY_HEX;
 extern const char* AP_SSID;
 extern const char* AP_PASSWORD;
 
-
-
 // System Info Handler
 class SystemInfoHandler : public EndpointFunction {
 public:
@@ -55,6 +53,12 @@ public:
 };
 
 class DebugHandler : public EndpointFunction {
+public:
+    EndpointResponse handle(const zap::Str& contents) override;
+};
+
+// Echo Handler - returns the data it received
+class EchoHandler : public EndpointFunction {
 public:
     EndpointResponse handle(const zap::Str& contents) override;
 };

@@ -23,6 +23,7 @@ public:
     static const char* INITIALIZE_FORM_PATH;
     static const char* INITIALIZE_PATH;
     static const char* DEBUG_PATH;
+    static const char* ECHO_PATH;
     
     // Iterator support
     class Iterator {

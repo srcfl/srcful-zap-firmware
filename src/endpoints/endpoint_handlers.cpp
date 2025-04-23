@@ -182,3 +182,19 @@ EndpointResponse BLEStopHandler::handle(const zap::Str& contents) {
     
     return response;
 }
+
+// Echo Handler Implementation
+EndpointResponse EchoHandler::handle(const zap::Str& contents) {
+    EndpointResponse response;
+    response.contentType = "application/json";
+    
+    // Create JSON response with the echoed data
+    JsonBuilder json;
+    json.beginObject()
+        .add("echo", contents.c_str());
+    
+    response.statusCode = 200;
+    response.data = json.end();
+    
+    return response;
+}

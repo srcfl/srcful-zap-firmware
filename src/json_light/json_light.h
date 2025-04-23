@@ -695,6 +695,58 @@ class JsonParser {
             return false;
         }
         
+        // Check if a key exists in the current object
+        bool contains(const char* key) {
+            size_t savedPos = pos;
+            bool result = findKey(key);
+            pos = savedPos;
+            return result;
+        }
+        
+        // Get a string value by key or return empty string if key doesn't exist
+        zap::Str getStringOrEmpty(const char* key) {
+            zap::Str value;
+            if (getString(key, value)) {
+                return value;
+            }
+            return "";
+        }
+        
+        // Get a uint64_t value by key
+        bool getUInt64(const char* key, uint64_t& value) {
+            size_t savedPos = pos;
+            
+            if (findKey(key)) {
+                skipWhitespace();
+                
+                if (absPos() >= dataLen) {
+                    pos = savedPos;
+                    return false;
+                }
+                
+                char* endPtr;
+                value = strtoull(data + absPos(), &endPtr, 10);
+                
+                if (endPtr == data + absPos()) {
+                    pos = savedPos;
+                    return false;  // No conversion
+                }
+                
+                pos += (endPtr - (data + absPos()));
+                return true;
+            }
+            
+            pos = savedPos;
+            return false;
+        }
+        
+        // Simplified getter that returns the value directly
+        uint64_t getUInt64(const char* key) {
+            uint64_t value = 0;
+            getUInt64(key, value);
+            return value;
+        }
+        
         // Reset parser position (within current view)
         void reset() {
             pos = 0;

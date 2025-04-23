@@ -7,6 +7,7 @@
 #include <HTTPClient.h>
 
 #include "../wifi/wifi_manager.h"
+#include "json_light/json_light.h"
 
 // Default state update interval (5 minutes = 300,000 ms)
 const uint32_t DEFAULT_STATE_UPDATE_INTERVAL = 300000;
@@ -42,6 +43,11 @@ private:
     void sendStateUpdate();
     void fetchConfiguration();
     void processConfiguration(const char* configData);
+    
+    // Request handling methods
+    void handleRequest(const char* configData);
+    void sendResponse(const zap::Str& requestId, int statusCode, const zap::Str& responseData);
+    void sendErrorResponse(const zap::Str& requestId, const char* errorMessage);
     
     TaskHandle_t taskHandle;
     uint32_t stackSize;

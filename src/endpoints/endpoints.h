@@ -38,5 +38,6 @@ extern WiFiScanHandler g_wifiScanHandler;
 extern InitializeHandler g_initializeHandler;
 extern CryptoSignHandler g_cryptoSignHandler;
 extern OTAUpdateHandler g_otaUpdateHandler;
+extern EchoHandler g_echoHandler;
 extern BLEStopHandler g_bleStopHandler;
 extern DebugHandler g_debugHandler;

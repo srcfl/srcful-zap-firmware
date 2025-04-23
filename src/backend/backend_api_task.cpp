@@ -5,6 +5,9 @@
 #include "json_light/json_light.h"
 #include "firmware_version.h"
 #include <time.h>
+#include "endpoints/endpoint_mapper.h"
+#include "endpoints/endpoint_types.h"
+#include "endpoints/endpoints.h"
 
 BackendApiTask::BackendApiTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
@@ -215,7 +218,134 @@ void BackendApiTask::processConfiguration(const char* configData) {
     
     JsonParser parser(configData);
     
+    // Check if this is a request to handle
+    if (parser.contains("id") && parser.contains("path") && parser.contains("method")) {
+        // This appears to be a request, so handle it
+        handleRequest(configData);
+    } else {
+        // This is some other type of configuration data
+        Serial.println("Backend API task: Received non-request configuration");
+        // Process other configuration types here if needed
+    }
+    
     Serial.println("Backend API task: Configuration processing completed");
+}
+
+void BackendApiTask::handleRequest(const char* configData) {
+    JsonParser parser(configData);
+
+    zap::Str body; parser.getString("body", body);parser.reset();
+
+    zap::Str id; parser.getString("id", id);parser.reset();
+    zap::Str path; parser.getString("path", path);parser.reset();
+    zap::Str method; parser.getString("method", method);parser.reset();
+    zap::Str query; parser.getString("query", query);parser.reset();
+    zap::Str headers; parser.getString("headers", headers);parser.reset();
+    uint64_t timestamp; parser.getUInt64("timestamp", timestamp);parser.reset();
+    
+    Serial.print("Backend API task: Processing request id=");
+    Serial.print(id.c_str());
+    Serial.print(", path=");
+    Serial.print(path.c_str());
+    Serial.print(", method=");
+    Serial.print(method.c_str());
+    Serial.print(", body=");
+    Serial.print(body.c_str());
+    Serial.println(", end");
+    
+    // Validate timestamp - reject requests older than 1 minute
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t currentTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
+    if (timestamp < (currentTimeMs / 1000 - 60)) {
+        sendErrorResponse(id, "Request too old");
+        return;
+    }
+    
+    // Use the EndpointMapper to find and execute the appropriate endpoint handler
+    const Endpoint& endpoint = EndpointMapper::toEndpoint(path, method);
+    
+    if (endpoint.type == Endpoint::UNKNOWN) {
+        // No endpoint found for this path/method combination
+        sendErrorResponse(id, "Endpoint not found");
+        return;
+    }
+    
+    // Create an endpoint request
+    EndpointRequest request(endpoint);
+    request.content = body;
+    
+    // Route the request to the appropriate handler
+    EndpointResponse response = EndpointMapper::route(request);
+    
+    // Send the response
+    sendResponse(id, response.statusCode, response.data);
+}
+
+void BackendApiTask::sendResponse(const zap::Str& requestId, int statusCode, const zap::Str& responseData) {
+    Serial.print("Backend API task: Sending response for request ");
+    Serial.println(requestId.c_str());
+    
+    // Get current epoch time in milliseconds
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t epochTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
+    
+    // Use JsonBuilder to create JWT header
+    JsonBuilder headerBuilder;
+    headerBuilder.beginObject()
+        .add("alg", "ES256")
+        .add("typ", "JWT")
+        .add("device", crypto_getId().c_str())
+        .add("subKey", "response");
+    zap::Str header = headerBuilder.end();
+    
+    // Use JsonBuilder to create JWT payload
+
+    zap::Str escapedResponse = responseData;
+    escapedResponse.replace("\"", "\\\""); // Escape double quotes in JSON string
+
+
+    JsonBuilder payloadBuilder;
+    payloadBuilder.beginObject()
+        .add("id", requestId.c_str())
+        .add("timestamp", epochTimeMs)
+        .add("code", statusCode)
+        .add("response", escapedResponse.c_str());
+    zap::Str payload = payloadBuilder.end();
+    
+    // External signature key (from config.h)
+    extern const char* PRIVATE_KEY_HEX;
+    
+    // Sign and generate JWT
+    zap::Str jwt = crypto_create_jwt(header.c_str(), payload.c_str(), PRIVATE_KEY_HEX);
+    
+    if (jwt.length() == 0) {
+        Serial.println("Backend API task: Failed to create JWT for response");
+        return;
+    }
+    
+    // Send the JWT using GraphQL
+    GQL::BoolResponse response = GQL::setConfiguration(jwt);
+    
+    // Handle the response
+    if (response.isSuccess() && response.data) {
+        Serial.print("Backend API task: Response for request ");
+        Serial.print(requestId.c_str());
+        Serial.println(" sent successfully");
+    } else {
+        Serial.print("Backend API task: Failed to send response for request ");
+        Serial.println(requestId.c_str());
+    }
+}
+
+void BackendApiTask::sendErrorResponse(const zap::Str& requestId, const char* errorMessage) {
+    JsonBuilder errorBuilder;
+    errorBuilder.beginObject()
+        .add("error", errorMessage);
+    zap::Str errorJson = errorBuilder.end();
+    
+    sendResponse(requestId, 400, errorJson);
 }
 
 void BackendApiTask::triggerStateUpdate() {

@@ -27,13 +27,12 @@ WiFiScanHandler g_wifiScanHandler(wifiManager);
 InitializeHandler g_initializeHandler;
 CryptoSignHandler g_cryptoSignHandler;
 OTAUpdateHandler g_otaUpdateHandler;
+EchoHandler g_echoHandler;
 DebugHandler g_debugHandler;
-
 
 #if defined(USE_BLE_SETUP)
 BLEStopHandler g_bleStopHandler(bleHandler);
 #endif
-
 
 EndpointResponse handleWiFiConfig(const EndpointRequest& request) {
     EndpointResponse response;

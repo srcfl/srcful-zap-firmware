@@ -17,7 +17,7 @@ const char* EndpointMapper::CRYPTO_SIGN_PATH = "/api/crypto/sign";
 const char* EndpointMapper::OTA_UPDATE_PATH = "/api/ota/update";
 const char* EndpointMapper::OTA_STATUS_PATH = "/api/ota/status";
 const char* EndpointMapper::DEBUG_PATH = "/api/debug";
-
+const char* EndpointMapper::ECHO_PATH = "/api/echo";
 
 // Global instance of OTA handler
 OTAHandler g_otaHandler;
@@ -37,6 +37,7 @@ const Endpoint endpoints[] = {
     Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_bleStopHandler), // Special case handled in route
 #endif
     Endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, EndpointMapper::CRYPTO_SIGN_PATH, g_cryptoSignHandler),
+    Endpoint(Endpoint::ECHO, Endpoint::Verb::POST, EndpointMapper::ECHO_PATH, g_echoHandler), // New Echo endpoint
     Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_nullHandler),   // Will be handled by route()
     Endpoint(Endpoint::OTA_STATUS, Endpoint::Verb::GET, EndpointMapper::OTA_STATUS_PATH, g_nullHandler)     // Will be handled by route()
 };
@@ -107,6 +108,7 @@ void EndpointMapper::printPaths() {
     Serial.println(OTA_UPDATE_PATH);
     Serial.println(OTA_STATUS_PATH);
     Serial.println(DEBUG_PATH);
+    Serial.println(ECHO_PATH);
 }
 
 // Define the global instance

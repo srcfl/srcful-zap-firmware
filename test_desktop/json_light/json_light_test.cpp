@@ -81,6 +81,34 @@ namespace json_light_test {
         return 0;
     }
 
+    int test_json_parser_request() {
+        const char * str = "{\"id\": \"MDasHAlXxnrp3HKKzTbwr\", \"body\": \"Hello World!\", \"path\": \"/api/echo\", \"query\": \"{}\", \"method\": \"POST\", \"headers\": \"{}\", \"timestamp\": 1745405662168}";
+
+
+        JsonParser parser(str);
+
+        assert((parser.contains("id") && parser.contains("path") && parser.contains("method")));
+
+        zap::Str id; parser.getString("id", id);
+        zap::Str path; parser.getString("path", path);
+        zap::Str method; parser.getString("method", method);
+        zap::Str body; parser.getString("body", body);
+        zap::Str query; parser.getString("query", query);
+        zap::Str headers; parser.getString("headers", headers);
+        uint64_t timestamp; parser.getUInt64("timestamp", timestamp);
+
+        assert(id == "MDasHAlXxnrp3HKKzTbwr");
+        assert(path == "/api/echo");
+        assert(method == "POST");
+        assert(body == "Hello World!");
+        assert(query == "{}");
+        assert(headers == "{}");
+        assert(timestamp == 1745405662168);
+
+        return 0;
+
+    }
+
     int run() {
         test_json_parser();
         test_json_builder();
