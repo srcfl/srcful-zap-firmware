@@ -31,7 +31,7 @@ static bool hex_string_to_bytes(const char* hex_string, uint8_t* bytes, size_t l
     return true;
 }
 
-static void bytes_to_hex_string(const uint8_t* bytes, size_t length, char* hex_string) {
+void bytes_to_hex_string(const uint8_t* bytes, size_t length, char* hex_string) {
     for (size_t i = 0; i < length; i++) {
         sprintf(hex_string + 2*i, "%02x", bytes[i]);
     }
@@ -400,14 +400,52 @@ zap::Str crypto_getId() {
   
   zap::Str id = "zap-" + zap::Str(serial);
   
-  // Ensure exactly 18 characters
-  if (id.length() > 18) {
-    // Truncate to 18 chars if longer
-    id = id.substring(0, 18);
-  } else while (id.length() < 18) {
+  while (id.length() < 18) {
     // Pad with 'e' if shorter
     id += 'e';
   }
   
   return id;
+}
+
+bool crypto_create_private_key(uint8_t* privateKey) {
+    // Use mbedtls to generate a new private key
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_ecp_keypair keypair;
+    int ret;
+
+    // Initialize the structures
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    mbedtls_ecp_keypair_init(&keypair);
+
+    // Set up the random number generator
+    const char *pers = "ecdsa_genkey";
+    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *)pers, strlen(pers));
+    if (ret != 0) {
+        Serial.println("Failed to seed random number generator");
+        return false;
+    }
+
+    // Generate the key pair
+    ret = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP256R1, &keypair, mbedtls_ctr_drbg_random, &ctr_drbg);
+    if (ret != 0) {
+        Serial.println("Failed to generate key pair");
+        return false;
+    }
+
+    // Export the private key
+    ret = mbedtls_mpi_write_binary(&keypair.d, privateKey, 32);
+    if (ret != 0) {
+        Serial.println("Failed to export private key");
+        return false;
+    }
+
+    // Clean up
+    mbedtls_ecp_keypair_free(&keypair);
+    mbedtls_entropy_free(&entropy);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
+
+    return true;    
 }

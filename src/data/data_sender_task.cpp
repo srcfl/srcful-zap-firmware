@@ -81,6 +81,9 @@ QueueHandle_t DataSenderTask::getQueueHandle() {
 
 void DataSenderTask::taskFunction(void* parameter) {
     DataSenderTask* task = static_cast<DataSenderTask*>(parameter);
+
+    // sleep for a bit to allow other tasks to initialize
+    vTaskDelay(pdMS_TO_TICKS(10000));
     
     while (task->shouldRun) {
         // Check WiFi status periodically
@@ -90,12 +93,12 @@ void DataSenderTask::taskFunction(void* parameter) {
             if (task->wifiManager && task->wifiManager->isConnected() && !task->bleActive) {
                 // Check if there are packages in the queue
                 if (uxQueueMessagesWaiting(task->p1DataQueue) > 0) {
-                    Serial.println("Data sender task: Found data in queue to send");
+                    // Serial.println("Data sender task: Found data in queue to send");
                     
                     // Get the oldest package from the queue (FIFO behavior)
                     DataPackage package;
                     if (xQueueReceive(task->p1DataQueue, &package, 0) == pdTRUE) {
-                        Serial.println("Data sender task: Retrieved package from queue");
+                        // Serial.println("Data sender task: Retrieved package from queue");
                         
                         // Convert char array back to zap::Str for sending
                         zap::Str dataStr(package.data);
@@ -104,7 +107,7 @@ void DataSenderTask::taskFunction(void* parameter) {
                         task->sendJWT(dataStr);
                     }
                 } else {
-                    Serial.println("Data sender task: No data in queue to send");
+                    // Serial.println("Data sender task: No data in queue to send");
                 }
             } else {
                 if (task->wifiManager && task->wifiManager->isConnected()) {

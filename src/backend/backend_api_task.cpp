@@ -83,11 +83,11 @@ void BackendApiTask::taskFunction(void* parameter) {
     while (task->shouldRun) {
         
 
+        unsigned long currentTime = millis();
 
         if (task->wifiManager && task->wifiManager->isConnected() && !task->bleActive) {
             static bool firstRun = true;
 
-            unsigned long currentTime = millis();
 
             // if (firstRun && !task->requestSubscription.isConnected()) {
 
@@ -120,14 +120,13 @@ void BackendApiTask::taskFunction(void* parameter) {
             }
 
             firstRun = false; // Reset first run flag after the first iteration
-        } else {
+        } else if (task->isTimeForStateUpdate(currentTime)) {
             if (task->wifiManager && task->wifiManager->isConnected()) {
                 Serial.println("Backend API task: WiFi connected but BLE is active, not sending state update");
             } else {
                 Serial.println("Backend API task: WiFi not connected, not sending state update");
             }
         }
-        
         
         // Small delay to prevent task from hogging CPU
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -139,6 +138,10 @@ void BackendApiTask::taskFunction(void* parameter) {
     
     // Task cleanup
     vTaskDelete(NULL);
+}
+
+bool BackendApiTask::isTimeForStateUpdate(unsigned long currentTime) const {
+    return (currentTime - lastUpdateTime > stateUpdateInterval);
 }
 
 void BackendApiTask::sendStateUpdate() {

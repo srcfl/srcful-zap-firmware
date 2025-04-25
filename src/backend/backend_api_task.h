@@ -36,6 +36,7 @@ public:
     void triggerStateUpdate();
     
 private:
+    bool isTimeForStateUpdate(unsigned long currentTime) const;
     static void taskFunction(void* parameter);
     void sendStateUpdate();
     

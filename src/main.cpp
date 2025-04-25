@@ -43,8 +43,6 @@ const unsigned long LONG_PRESS_DURATION = 5000; // 5 seconds for long press
     unsigned long lastBLECheck = 0;  // Track last BLE check time
 #endif
 
-// Function declarations
-void setupSSL();
 
 void setup() {
     pinMode(LED_PIN, OUTPUT);
@@ -61,6 +59,36 @@ void setup() {
     Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
     Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
     Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
+
+    {   // get the private key from the Preferences
+        Preferences preferences;
+        preferences.begin("crypto", false);
+        uint8_t privateKeyBytes[32];
+        
+        if (preferences.getBytes("private_key", privateKeyBytes, sizeof(privateKeyBytes)) == sizeof(privateKeyBytes)) {
+            // convert to hex string
+            char* privateKeyHex = new char [sizeof(privateKeyBytes) * 2 + 1];
+            bytes_to_hex_string(privateKeyBytes, sizeof(privateKeyBytes), privateKeyHex);
+            PRIVATE_KEY_HEX = privateKeyHex;
+        } else {
+            Serial.println("No private key found in Preferences");
+            uint8_t privateKey[32];
+            if (crypto_create_private_key(privateKey)) {
+                // convert to hex string
+                char* privateKeyHex = new char [sizeof(privateKey) * 2 + 1];
+                bytes_to_hex_string(privateKey, sizeof(privateKey), privateKeyHex);
+                PRIVATE_KEY_HEX = privateKeyHex;
+                
+                // Store the private key in Preferences
+                preferences.putBytes("private_key", privateKey, sizeof(privateKey));
+            } else {
+                Serial.println("Failed to create private key");
+            }
+        }
+        preferences.end();
+        Serial.printf("serial number: %s\n", crypto_getId().c_str());
+        Serial.printf("Public key: %s\n", crypto_get_public_key(PRIVATE_KEY_HEX).c_str());
+    }
     
     #if defined(DIRECT_CONNECT)
         // Connect to WiFi directly
