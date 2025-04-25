@@ -28,6 +28,4 @@ jobs:
         name: firmware
         path: |
           .pio/build/*/firmware.bin
-          .pio/build/*/firmware.elf
-          .pio/build/*/*.hex
         if-no-files-found: warn
