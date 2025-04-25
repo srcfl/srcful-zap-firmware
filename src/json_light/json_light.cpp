@@ -145,282 +145,294 @@ void JsonBuilder::clear() {
 
 // JsonParser implementation
 
-size_t JsonParser::absPos() const {
-    return startPos + pos;
+size_t JsonParser::absPos(size_t relPos) const {
+    return startPos + relPos;
 }
 
-void JsonParser::skipWhitespace() {
+size_t JsonParser::skipWhitespace(size_t pos) const {
     while (pos < (endPos - startPos) && isspace(data[startPos + pos])) {
         pos++;
     }
+    return pos;
 }
 
-bool JsonParser::findKey(const char* key) {
-    size_t savedPos = pos;
-    skipWhitespace();
+size_t JsonParser::findKey(const char* key, size_t pos) const {
+    pos = skipWhitespace(pos);
     
     // If at the start of the view, expect an opening brace
     if (pos == 0) {
-        if (absPos() >= dataLen || data[absPos()] != '{') {
-            pos = savedPos;
-            return false;
+        if (absPos(pos) >= dataLen || data[absPos(pos)] != '{') {
+            return 0;
         }
         pos++;
-        skipWhitespace();
+        pos = skipWhitespace(pos);
     }
     
-    while (absPos() < dataLen && absPos() < endPos) {
+    while (absPos(pos) < dataLen && absPos(pos) < endPos) {
         // Check for end of object
-        if (data[absPos()] == '}') {
-            pos = savedPos;
-            return false;
+        if (data[absPos(pos)] == '}') {
+            return 0;
         }
         
         // Check for comma
-        if (data[absPos()] == ',') {
+        if (data[absPos(pos)] == ',') {
             pos++;
-            skipWhitespace();
+            pos = skipWhitespace(pos);
         }
         
         // Expect a quoted key
-        if (data[absPos()] != '"') {
-            pos = savedPos;
-            return false;
+        if (data[absPos(pos)] != '"') {
+            return 0;
         }
         pos++;
         
         // Compare with the requested key
         size_t keyLen = strlen(key);
-        if (absPos() + keyLen <= dataLen && 
-            strncmp(data + absPos(), key, keyLen) == 0 && 
-            absPos() + keyLen < dataLen && data[absPos() + keyLen] == '"') {
+        if (absPos(pos) + keyLen <= dataLen && 
+            strncmp(data + absPos(pos), key, keyLen) == 0 && 
+            absPos(pos) + keyLen < dataLen && data[absPos(pos) + keyLen] == '"') {
             
             // Found the key
             pos += keyLen + 1;  // Skip key and closing quote
-            skipWhitespace();
+            pos = skipWhitespace(pos);
             
             // Expect a colon
-            if (absPos() >= dataLen || data[absPos()] != ':') {
-                pos = savedPos;
-                return false;
+            if (absPos(pos) >= dataLen || data[absPos(pos)] != ':') {
+                return 0;
             }
             pos++;
-            skipWhitespace();
+            pos = skipWhitespace(pos);
             
-            return true;
+            return pos;
         }
         
         // Not the key we want, skip to the end of this key
-        while (absPos() < dataLen && data[absPos()] != '"') {
+        while (absPos(pos) < dataLen && data[absPos(pos)] != '"') {
             pos++;
         }
-        if (absPos() >= dataLen) {
-            pos = savedPos;
-            return false;
+        if (absPos(pos) >= dataLen) {
+            return 0;
         }
         pos++;  // Skip closing quote
         
-        skipWhitespace();
+        pos = skipWhitespace(pos);
         
         // Expect a colon
-        if (absPos() >= dataLen || data[absPos()] != ':') {
-            pos = savedPos;
-            return false;
+        if (absPos(pos) >= dataLen || data[absPos(pos)] != ':') {
+            return 0;
         }
         pos++;
-        skipWhitespace();
+        pos = skipWhitespace(pos);
         
         // Skip this value
-        skipValue();
-        skipWhitespace();
+        pos = skipValue(pos);
+        pos = skipWhitespace(pos);
     }
     
-    pos = savedPos;
-    return false;
+    return 0;
 }
 
-void JsonParser::skipValue() {
-    skipWhitespace();
+size_t JsonParser::skipValue(size_t pos) const {
+    pos = skipWhitespace(pos);
     
-    if (absPos() >= dataLen) return;
+    if (absPos(pos) >= dataLen) return pos;
     
-    if (data[absPos()] == '{') {
+    if (data[absPos(pos)] == '{') {
         // Skip object
         int depth = 1;
         pos++;
         
-        while (absPos() < dataLen && depth > 0) {
-            if (data[absPos()] == '{') depth++;
-            else if (data[absPos()] == '}') depth--;
+        while (absPos(pos) < dataLen && depth > 0) {
+            if (data[absPos(pos)] == '{') depth++;
+            else if (data[absPos(pos)] == '}') depth--;
             pos++;
         }
     }
-    else if (data[absPos()] == '[') {
+    else if (data[absPos(pos)] == '[') {
         // Skip array
         int depth = 1;
         pos++;
         
-        while (absPos() < dataLen && depth > 0) {
-            if (data[absPos()] == '[') depth++;
-            else if (data[absPos()] == ']') depth--;
+        while (absPos(pos) < dataLen && depth > 0) {
+            if (data[absPos(pos)] == '[') depth++;
+            else if (data[absPos(pos)] == ']') depth--;
             pos++;
         }
     }
-    else if (data[absPos()] == '"') {
+    else if (data[absPos(pos)] == '"') {
         // Skip string
         pos++;
-        while (absPos() < dataLen && data[absPos()] != '"') {
+        while (absPos(pos) < dataLen && data[absPos(pos)] != '"') {
             // Handle escaped characters
-            if (data[absPos()] == '\\' && absPos() + 1 < dataLen) pos++;
+            if (data[absPos(pos)] == '\\' && absPos(pos) + 1 < dataLen) pos++;
             pos++;
         }
-        if (absPos() < dataLen) pos++;  // Skip closing quote
+        if (absPos(pos) < dataLen) pos++;  // Skip closing quote
     }
-    else if (isdigit(data[absPos()]) || data[absPos()] == '-') {
+    else if (isdigit(data[absPos(pos)]) || data[absPos(pos)] == '-') {
         // Skip number
-        if (data[absPos()] == '-') pos++;
+        if (data[absPos(pos)] == '-') pos++;
         
         // Skip digits before decimal point
-        while (absPos() < dataLen && isdigit(data[absPos()])) pos++;
+        while (absPos(pos) < dataLen && isdigit(data[absPos(pos)])) pos++;
         
         // Skip decimal point and following digits
-        if (absPos() < dataLen && data[absPos()] == '.') {
+        if (absPos(pos) < dataLen && data[absPos(pos)] == '.') {
             pos++;
-            while (absPos() < dataLen && isdigit(data[absPos()])) pos++;
+            while (absPos(pos) < dataLen && isdigit(data[absPos(pos)])) pos++;
         }
         
         // Skip exponent
-        if (absPos() < dataLen && (data[absPos()] == 'e' || data[absPos()] == 'E')) {
+        if (absPos(pos) < dataLen && (data[absPos(pos)] == 'e' || data[absPos(pos)] == 'E')) {
             pos++;
             
             // Skip optional sign
-            if (absPos() < dataLen && (data[absPos()] == '+' || data[absPos()] == '-')) pos++;
+            if (absPos(pos) < dataLen && (data[absPos(pos)] == '+' || data[absPos(pos)] == '-')) pos++;
             
             // Skip exponent digits
-            while (absPos() < dataLen && isdigit(data[absPos()])) pos++;
+            while (absPos(pos) < dataLen && isdigit(data[absPos(pos)])) pos++;
         }
     }
-    else if (absPos() + 4 <= dataLen && strncmp(data + absPos(), "true", 4) == 0) {
+    else if (absPos(pos) + 4 <= dataLen && strncmp(data + absPos(pos), "true", 4) == 0) {
         pos += 4;  // Skip "true"
     }
-    else if (absPos() + 5 <= dataLen && strncmp(data + absPos(), "false", 5) == 0) {
+    else if (absPos(pos) + 5 <= dataLen && strncmp(data + absPos(pos), "false", 5) == 0) {
         pos += 5;  // Skip "false"
     }
-    else if (absPos() + 4 <= dataLen && strncmp(data + absPos(), "null", 4) == 0) {
+    else if (absPos(pos) + 4 <= dataLen && strncmp(data + absPos(pos), "null", 4) == 0) {
         pos += 4;  // Skip "null"
     }
+    
+    return pos;
 }
 
-bool JsonParser::getStringValue(char* value, size_t maxLen) {
-    skipWhitespace();
+bool JsonParser::getStringValue(size_t pos, char* value, size_t maxLen, size_t& endPos) const {
+    pos = skipWhitespace(pos);
     
-    if (absPos() >= dataLen || data[absPos()] != '"') return false;
+    if (absPos(pos) >= dataLen || data[absPos(pos)] != '"') {
+        endPos = pos;
+        return false;
+    }
     
     pos++;  // Skip opening quote
     size_t i = 0;
     
-    while (absPos() < dataLen && data[absPos()] != '"' && i < maxLen - 1) {
-        // Handle escaped characters
-        if (data[absPos()] == '\\' && absPos() + 1 < dataLen) {
-            pos++;
-            // Simple escape sequence handling
-            switch (data[absPos()]) {
-                case 'n': value[i++] = '\n'; break;
-                case 'r': value[i++] = '\r'; break;
-                case 't': value[i++] = '\t'; break;
-                default: value[i++] = data[absPos()];
-            }
-        } else {
-            value[i++] = data[absPos()];
-        }
+    while (absPos(pos) < dataLen && data[absPos(pos)] != '"' && i < maxLen - 1) {
+        // We do NOT Handle escaped characters
+        value[i++] = data[absPos(pos)];
+        
         pos++;
     }
     
     value[i] = '\0';
     
-    if (absPos() < dataLen && data[absPos()] == '"') pos++;  // Skip closing quote
+    if (absPos(pos) < dataLen && data[absPos(pos)] == '"') pos++;  // Skip closing quote
+    
+    endPos = pos;
     return true;
 }
 
-bool JsonParser::getStringValue(zap::Str& value) {
-    skipWhitespace();
+bool JsonParser::getStringValue(size_t pos, zap::Str& value, size_t& endPos) const {
+    pos = skipWhitespace(pos);
     
-    if (absPos() >= dataLen || data[absPos()] != '"') return false;
+    if (absPos(pos) >= dataLen || data[absPos(pos)] != '"') {
+        endPos = pos;
+        return false;
+    }
     
     pos++;  // Skip opening quote
     value.clear();
     
-    while (absPos() < dataLen && data[absPos()] != '"') {
-        value += data[absPos()];
+    while (absPos(pos) < dataLen && data[absPos(pos)] != '"') {
+        // We do NOT Handle escaped characters
+        value += data[absPos(pos)];
         pos++;
     }
     
-    if (absPos() < dataLen && data[absPos()] == '"') pos++;  // Skip closing quote
+    if (absPos(pos) < dataLen && data[absPos(pos)] == '"') pos++;  // Skip closing quote
+    
+    endPos = pos;
     return true;
 }
 
-bool JsonParser::getIntValue(int& value) {
-    skipWhitespace();
+
+
+bool JsonParser::getIntValue(size_t pos, int& value, size_t& endPos) const {
+    pos = skipWhitespace(pos);
     
-    if (absPos() >= dataLen) return false;
+    if (absPos(pos) >= dataLen) {
+        endPos = pos;
+        return false;
+    }
     
     char* endPtr;
-    value = strtol(data + absPos(), &endPtr, 10);
+    value = strtol(data + absPos(pos), &endPtr, 10);
     
-    if (endPtr == data + absPos()) return false;  // No conversion
+    if (endPtr == data + absPos(pos)) {
+        endPos = pos;
+        return false;  // No conversion
+    }
     
-    pos += (endPtr - (data + absPos()));
+    size_t charsRead = endPtr - (data + absPos(pos));
+    pos += charsRead;
+    
+    endPos = pos;
     return true;
 }
 
-bool JsonParser::getBoolValue(bool& value) {
-    skipWhitespace();
+bool JsonParser::getBoolValue(size_t pos, bool& value, size_t& endPos) const {
+    pos = skipWhitespace(pos);
     
-    if (absPos() >= dataLen) return false;
+    if (absPos(pos) >= dataLen) {
+        endPos = pos;
+        return false;
+    }
     
-    if (absPos() + 4 <= dataLen && strncmp(data + absPos(), "true", 4) == 0) {
+    if (absPos(pos) + 4 <= dataLen && strncmp(data + absPos(pos), "true", 4) == 0) {
         value = true;
         pos += 4;
+        endPos = pos;
         return true;
     } 
-    else if (absPos() + 5 <= dataLen && strncmp(data + absPos(), "false", 5) == 0) {
+    else if (absPos(pos) + 5 <= dataLen && strncmp(data + absPos(pos), "false", 5) == 0) {
         value = false;
         pos += 5;
+        endPos = pos;
         return true;
     }
+    
+    endPos = pos;
     return false;
 }
 
 bool JsonParser::getObject(const char* key, JsonParser& result) {
-    size_t savedPos = pos;
+    size_t pos = findKey(key);
     
-    if (!findKey(key)) {
+    if (pos == 0) {
         return false;
     }
     
     // We should now be positioned at the start of an object
-    if (absPos() >= dataLen || data[absPos()] != '{') {
-        pos = savedPos;
+    if (absPos(pos) >= dataLen || data[absPos(pos)] != '{') {
         return false;
     }
     
     // Find object boundaries
-    size_t objectStart = absPos();
+    size_t objectStart = absPos(pos);
     int depth = 1;
     pos++;  // Skip opening brace
     
-    while (absPos() < dataLen && depth > 0) {
-        if (data[absPos()] == '{') depth++;
-        else if (data[absPos()] == '}') depth--;
+    while (absPos(pos) < dataLen && depth > 0) {
+        if (data[absPos(pos)] == '{') depth++;
+        else if (data[absPos(pos)] == '}') depth--;
         pos++;
     }
     
     if (depth != 0) {
-        pos = savedPos;
         return false;  // Unbalanced braces
     }
     
-    size_t objectEnd = absPos();
+    size_t objectEnd = absPos(pos);
     
     // Create a new parser as a view into this section of the buffer
     result = JsonParser(data, dataLen, objectStart, objectEnd);
@@ -428,74 +440,93 @@ bool JsonParser::getObject(const char* key, JsonParser& result) {
     return true;
 }
 
-bool JsonParser::getString(const char* key, char* value, size_t maxLen) {
-    size_t savedPos = pos;
+bool JsonParser::getObjectValue(size_t pos, JsonParser& result, size_t& endPos) const {
+    pos = skipWhitespace(pos);
+    const size_t objectStart = absPos(pos);
     
-    if (findKey(key)) {
-        if (getStringValue(value, maxLen)) {
-            return true;
-        }
+    if (absPos(pos) >= dataLen || data[absPos(pos)] != '{') {
+        endPos = pos;
+        return false;
     }
     
-    pos = savedPos;
-    return false;
+    // Find object boundaries
+    int depth = 1;
+    pos++;  // Skip opening brace
+    
+    while (absPos(pos) < dataLen && depth > 0) {
+        if (data[absPos(pos)] == '{') depth++;
+        else if (data[absPos(pos)] == '}') depth--;
+        pos++;
+    }
+    
+    if (depth != 0) {
+        return false;  // Unbalanced braces
+    }
+    
+    size_t objectEnd = absPos(pos);
+    
+    // Create a new parser as a view into this section of the buffer
+    result = JsonParser(data, dataLen, objectStart, objectEnd);
+    
+    endPos = pos;
+    return true;
+}
+
+bool JsonParser::getString(const char* key, char* value, size_t maxLen) {
+    size_t pos = findKey(key);
+    
+    if (pos == 0) {
+        return false;
+    }
+    
+    size_t endPos;
+    return getStringValue(pos, value, maxLen, endPos);
 }
 
 bool JsonParser::getString(const char* key, zap::Str& value) {
-    size_t savedPos = pos;
+    size_t pos = findKey(key);
     
-    if (findKey(key)) {
-        if (getStringValue(value)) {
-            return true;
-        }
+    if (pos == 0) {
+        return false;
     }
     
-    pos = savedPos;
-    return false;
+    size_t endPos;
+    return getStringValue(pos, value, endPos);
 }
 
 bool JsonParser::getInt(const char* key, int& value) {
-    size_t savedPos = pos;
+    size_t pos = findKey(key);
     
-    if (findKey(key)) {
-        if (getIntValue(value)) {
-            return true;
-        }
+    if (pos == 0) {
+        return false;
     }
     
-    pos = savedPos;
-    return false;
+    size_t endPos;
+    return getIntValue(pos, value, endPos);
 }
 
 bool JsonParser::getBool(const char* key, bool& value) {
-    size_t savedPos = pos;
+    size_t pos = findKey(key);
     
-    if (findKey(key)) {
-        if (getBoolValue(value)) {
-            return true;
-        }
+    if (pos == 0) {
+        return false;
     }
     
-    pos = savedPos;
-    return false;
+    size_t endPos;
+    return getBoolValue(pos, value, endPos);
 }
 
-bool JsonParser::getValueByPath(const char* path, const std::function<bool()>& valueExtractor) {
+bool JsonParser::getValueByPath(const char* path, std::function<bool(const JsonParser&, size_t, size_t&)> valueExtractor) {
     // Make a working copy of the path
     char pathCopy[256];
     strncpy(pathCopy, path, sizeof(pathCopy) - 1);
     pathCopy[sizeof(pathCopy) - 1] = '\0';
-    
-    // Save initial position
-    size_t savedPos = pos;
-    pos = 0;
     
     // Split path by dots
     char* savePtr = nullptr;
     char* segment = strtok_r(pathCopy, ".", &savePtr);
     
     if (!segment) {
-        pos = savedPos;
         return false;
     }
     
@@ -506,36 +537,19 @@ bool JsonParser::getValueByPath(const char* path, const std::function<bool()>& v
         
         if (!nextSegment) {
             // Last segment - get the value
-            if (!currentParser.findKey(segment)) {
-                pos = savedPos;
+            size_t pos = currentParser.findKey(segment);
+            if (pos == 0) {
                 return false;
             }
             
-            // Use the current parser's context to extract the value
-            // Need to temporarily swap 'this' context with currentParser's
-            size_t thisPos = pos;
-            size_t thisStartPos = startPos;
-            size_t thisEndPos = endPos;
-            
-            pos = currentParser.pos;
-            startPos = currentParser.startPos;
-            endPos = currentParser.endPos;
-            
-            bool result = valueExtractor();
-            
-            // Restore original context
-            pos = thisPos;
-            startPos = thisStartPos;
-            endPos = thisEndPos;
-            
-            return result;
+            size_t endPos;
+            return valueExtractor(currentParser, pos, endPos);
         }
         
         // Not the last segment - navigate to sub-object
         JsonParser nextParser(nullptr, 0, 0, 0);  // Dummy initialization
         
         if (!currentParser.getObject(segment, nextParser)) {
-            pos = savedPos;
             return false;
         }
         
@@ -545,31 +559,36 @@ bool JsonParser::getValueByPath(const char* path, const std::function<bool()>& v
     }
     
     // Should never reach here
-    pos = savedPos;
     return false;
 }
 
+bool JsonParser::getObjectByPath(const char* path, JsonParser& result) {
+    return getValueByPath(path, [this, &result](const JsonParser& parser, size_t pos, size_t& endPos) {
+        return parser.getObjectValue(pos, result, endPos);
+    });
+}
+
 bool JsonParser::getStringByPath(const char* path, char* value, size_t maxLen) {
-    return getValueByPath(path, [this, value, maxLen]() {
-        return getStringValue(value, maxLen);
+    return getValueByPath(path, [this, value, maxLen](const JsonParser& parser, size_t pos, size_t& endPos) {
+        return parser.getStringValue(pos, value, maxLen, endPos);
     });
 }
 
 bool JsonParser::getStringByPath(const char* path, zap::Str& value) {
-    return getValueByPath(path, [this, &value]() {
-        return getStringValue(value);
+    return getValueByPath(path, [this, &value](const JsonParser& parser, size_t pos, size_t& endPos) {
+        return parser.getStringValue(pos, value, endPos);
     });
 }
 
 bool JsonParser::getIntByPath(const char* path, int& value) {
-    return getValueByPath(path, [this, &value]() {
-        return getIntValue(value);
+    return getValueByPath(path, [this, &value](const JsonParser& parser, size_t pos, size_t& endPos) {
+        return parser.getIntValue(pos, value, endPos);
     });
 }
 
 bool JsonParser::getBoolByPath(const char* path, bool& value) {
-    return getValueByPath(path, [this, &value]() {
-        return getBoolValue(value);
+    return getValueByPath(path, [this, &value](const JsonParser& parser, size_t pos, size_t& endPos) {
+        return parser.getBoolValue(pos, value, endPos);
     });
 }
 
@@ -579,16 +598,11 @@ bool JsonParser::isFieldNullByPath(const char* path) {
     strncpy(pathCopy, path, sizeof(pathCopy) - 1);
     pathCopy[sizeof(pathCopy) - 1] = '\0';
     
-    // Save initial position
-    size_t savedPos = pos;
-    pos = 0;
-    
     // Split path by dots
     char* savePtr = nullptr;
     char* segment = strtok_r(pathCopy, ".", &savePtr);
     
     if (!segment) {
-        pos = savedPos;
         return false;
     }
     
@@ -599,22 +613,20 @@ bool JsonParser::isFieldNullByPath(const char* path) {
         
         if (!nextSegment) {
             // Last segment - check if the value is null
-            if (!currentParser.findKey(segment)) {
-                pos = savedPos;
+            size_t pos = currentParser.findKey(segment);
+            if (pos == 0) {
                 return false; // Key not found
             }
             
             // Position is now after the key and colon
-            currentParser.skipWhitespace();
+            pos = currentParser.skipWhitespace(pos);
             
             // Check if the value is "null"
-            if (currentParser.absPos() + 4 <= currentParser.dataLen && 
-                strncmp(currentParser.data + currentParser.absPos(), "null", 4) == 0) {
-                pos = savedPos;
+            if (currentParser.absPos(pos) + 4 <= currentParser.dataLen && 
+                strncmp(currentParser.data + currentParser.absPos(pos), "null", 4) == 0) {
                 return true; // Found null value
             }
             
-            pos = savedPos;
             return false; // Value exists but is not null
         }
         
@@ -622,7 +634,6 @@ bool JsonParser::isFieldNullByPath(const char* path) {
         JsonParser nextParser(nullptr, 0, 0, 0);  // Dummy initialization
         
         if (!currentParser.getObject(segment, nextParser)) {
-            pos = savedPos;
             return false;
         }
         
@@ -632,15 +643,11 @@ bool JsonParser::isFieldNullByPath(const char* path) {
     }
     
     // Should never reach here
-    pos = savedPos;
     return false;
 }
 
 bool JsonParser::contains(const char* key) {
-    size_t savedPos = pos;
-    bool result = findKey(key);
-    pos = savedPos;
-    return result;
+    return findKey(key) != 0;
 }
 
 zap::Str JsonParser::getStringOrEmpty(const char* key) {
@@ -652,38 +659,30 @@ zap::Str JsonParser::getStringOrEmpty(const char* key) {
 }
 
 bool JsonParser::getUInt64(const char* key, uint64_t& value) {
-    size_t savedPos = pos;
+    size_t pos = findKey(key);
     
-    if (findKey(key)) {
-        skipWhitespace();
-        
-        if (absPos() >= dataLen) {
-            pos = savedPos;
-            return false;
-        }
-        
-        char* endPtr;
-        value = strtoull(data + absPos(), &endPtr, 10);
-        
-        if (endPtr == data + absPos()) {
-            pos = savedPos;
-            return false;  // No conversion
-        }
-        
-        pos += (endPtr - (data + absPos()));
-        return true;
+    if (pos == 0) {
+        return false;
     }
     
-    pos = savedPos;
-    return false;
+    pos = skipWhitespace(pos);
+    
+    if (absPos(pos) >= dataLen) {
+        return false;
+    }
+    
+    char* endPtr;
+    value = strtoull(data + absPos(pos), &endPtr, 10);
+    
+    if (endPtr == data + absPos(pos)) {
+        return false;  // No conversion
+    }
+    
+    return true;
 }
 
 uint64_t JsonParser::getUInt64(const char* key) {
     uint64_t value = 0;
     getUInt64(key, value);
     return value;
-}
-
-void JsonParser::reset() {
-    pos = 0;
 }

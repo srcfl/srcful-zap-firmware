@@ -9,10 +9,10 @@
 #include "../wifi/wifi_manager.h"
 #include "json_light/json_light.h"
 
+#include "config_subscription.h"
+
 // Default state update interval (5 minutes = 300,000 ms)
 const uint32_t DEFAULT_STATE_UPDATE_INTERVAL = 300000;
-
-const uint32_t DEFAULT_CONFIG_FETCH_INTERVAL = 30 * 1000; // 30 seconds
 
 class BackendApiTask {
 public:
@@ -35,19 +35,10 @@ public:
     // Trigger an immediate state update (if conditions allow)
     void triggerStateUpdate();
     
-    // Trigger an immediate configuration fetch (if conditions allow)
-    void triggerConfigFetch();
-    
 private:
     static void taskFunction(void* parameter);
     void sendStateUpdate();
-    void fetchConfiguration();
-    void processConfiguration(const char* configData);
     
-    // Request handling methods
-    void handleRequest(const char* configData);
-    void sendResponse(const zap::Str& requestId, int statusCode, const zap::Str& responseData);
-    void sendErrorResponse(const zap::Str& requestId, const char* errorMessage);
     
     TaskHandle_t taskHandle;
     uint32_t stackSize;
@@ -56,12 +47,12 @@ private:
     
     WifiManager* wifiManager;
     unsigned long lastUpdateTime;
-    unsigned long lastConfigFetchTime;
     uint32_t stateUpdateInterval;
-    uint32_t configFetchInterval;
     bool bleActive;
     
     HTTPClient http;  // Reuse HTTPClient instance
+
+    GraphQLSubscriptionClient requestSubscription;
 };
 
 #endif // BACKEND_API_TASK_H

@@ -80,11 +80,6 @@ void test_json_parser_reset() {
     
     TEST_ASSERT_TRUE(parser.getString("status", status, sizeof(status)));
     TEST_ASSERT_TRUE(parser.getInt("code", code));
-    
-    // Reset and parse again
-    parser.reset();
-    TEST_ASSERT_TRUE(parser.getString("status", status, sizeof(status)));
-    TEST_ASSERT_TRUE(parser.getInt("code", code));
 }
 
 void test_json_builder_simple_object() {

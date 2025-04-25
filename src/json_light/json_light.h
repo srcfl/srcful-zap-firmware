@@ -51,29 +51,32 @@ private:
     size_t dataLen;       // Total length of the original buffer
     size_t startPos;      // Start position of our "view" into the buffer
     size_t endPos;        // End position of our "view"
-    size_t pos;           // Current parsing position (relative to startPos)
     
     // Helper to get absolute position in buffer
-    size_t absPos() const;
+    size_t absPos(size_t relPos) const;
     
     // Skip whitespace
-    void skipWhitespace();
+    size_t skipWhitespace(size_t pos) const;
     
     // Find a key in the current object
-    bool findKey(const char* key);
+    // Returns the position of the value after the key, or 0 if not found
+    size_t findKey(const char* key, size_t pos = 0) const;
     
     // Skip any JSON value (object, array, string, number, boolean, null)
-    void skipValue();
+    size_t skipValue(size_t pos) const;
     
     // Get string value at current position
-    bool getStringValue(char* value, size_t maxLen);
-    bool getStringValue(zap::Str& value);
+    bool getStringValue(size_t pos, char* value, size_t maxLen, size_t& endPos) const;
+    bool getStringValue(size_t pos, zap::Str& value, size_t& endPos) const;
     
     // Get integer value at current position
-    bool getIntValue(int& value);
+    bool getIntValue(size_t pos, int& value, size_t& endPos) const;
     
     // Get boolean value at current position
-    bool getBoolValue(bool& value);
+    bool getBoolValue(size_t pos, bool& value, size_t& endPos) const;
+
+    // Get object value at current position
+    bool getObjectValue(size_t pos, JsonParser& result, size_t& endPos) const;
     
 public:
     // Constructor for full buffer
@@ -81,16 +84,14 @@ public:
         : data(jsonData), 
           dataLen(strlen(jsonData)), 
           startPos(0), 
-          endPos(strlen(jsonData)), 
-          pos(0) {}
+          endPos(strlen(jsonData)) {}
     
     // Constructor for a view into a buffer
     JsonParser(const char* jsonData, size_t length, size_t start, size_t end) 
         : data(jsonData), 
           dataLen(length), 
           startPos(start), 
-          endPos(end), 
-          pos(0) {}
+          endPos(end) {}
     
     // Get an object by key as a new view
     bool getObject(const char* key, JsonParser& result);
@@ -106,9 +107,10 @@ public:
     bool getBool(const char* key, bool& value);
     
     // Get a value using dot notation path
-    bool getValueByPath(const char* path, const std::function<bool()>& valueExtractor);
+    bool getValueByPath(const char* path, std::function<bool(const JsonParser&, size_t, size_t&)> valueExtractor);
     
     // Path-based value getters
+    bool getObjectByPath(const char* path, JsonParser& result);
     bool getStringByPath(const char* path, char* value, size_t maxLen);
     bool getStringByPath(const char* path, zap::Str& value);
     bool getIntByPath(const char* path, int& value);
@@ -128,7 +130,4 @@ public:
     
     // Simplified getter that returns the value directly
     uint64_t getUInt64(const char* key);
-    
-    // Reset parser position (within current view)
-    void reset();
 };

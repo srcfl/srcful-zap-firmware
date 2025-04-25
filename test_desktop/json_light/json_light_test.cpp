@@ -55,6 +55,24 @@ namespace json_light_test {
         return 0;
     }
 
+    int test_json_parser_get_object_by_path() {
+        // Test JSON light parsing with sub-object
+        const char* json = "{\"key\": {\"subobject\": {\"subsubobject\": {\"subsubkey\": \"hello\"}, \"subsubkey\": \"world\"}, \"key2\": 17}";
+        JsonParser parser(json);
+        JsonParser subParser("");
+        zap::Str ret;
+        assert(parser.getObjectByPath("key.subobject", subParser));
+        assert(subParser.getString("subsubkey", ret));
+        assert(ret == "world");
+
+        assert(parser.getObjectByPath("key.subobject.subsubobject", subParser));
+        assert(subParser.getString("subsubkey", ret));
+        assert(ret == "hello");
+
+
+        return 0;
+    }
+
     int test_json_builder() {
         // Test JSON light building
         JsonBuilder builder;
@@ -97,15 +115,53 @@ namespace json_light_test {
         assert(id == "MDasHAlXxnrp3HKKzTbwr");
 
         return 0;
+    }
 
+    int test_json_parser_value_with_curly_brace() {
+        const char * str = "{\"id\": \"\\u0022\", \"body\": \"Hello World!\"}";
+
+
+        JsonParser parser(str);
+    
+        // assert((parser.contains("id") && parser.contains("path") && parser.contains("method")));
+    
+        zap::Str body;
+        assert(parser.getString("body", body));
+        assert(body == "Hello World!");
+    
+    
+        zap::Str id; parser.getString("id", id);
+        assert(id == "\\u0022");
+
+        return 0;
+    }
+
+    int test_json_parser_test_websocket_data() {
+        const char* str = "{\"type\":\"data\",\"id\":\"1\",\"payload\":{\"data\":{\"configurationDataChanges\":{\"data\":\"{\\u0022id\\u0022: \\u0022njnMiKW6PmcVxxZOp-ErA\\u0022, \\u0022body\\u0022: \\u0022Wabisabi\\u0022, \\u0022path\\u0022: \\u0022/api/echo\\u0022, \\u0022query\\u0022: \\u0022{}\\u0022, \\u0022method\\u0022: \\u0022POST\\u0022, \\u0022headers\\u0022: \\u0022{}\\u0022, \\u0022timestamp\\u0022: 1745506313254}\",\"subKey\":\"request\"}}}}";
+        
+
+        JsonParser parser(str);
+        zap::Str res;
+
+        assert(parser.getString("type", res));
+        assert(res == "data");
+        JsonParser subParser("");
+        assert(parser.getObjectByPath("payload.data.configurationDataChanges", subParser));
+        assert(subParser.getString("subKey", res));
+        assert(res == "request");
+
+        return 0;
     }
 
     int run() {
         test_json_parser();
+        test_json_parser_value_with_curly_brace();
         test_json_builder();
         test_json_parser_sub_object();
         test_json_parser_sub_sub_object();
         test_json_parser_request();
+        test_json_parser_get_object_by_path();
+        test_json_parser_test_websocket_data();
         return 0;
     }
     
