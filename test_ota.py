@@ -27,7 +27,7 @@ print(f"Firmware URL: {FIRMWARE_URL}")
 
 # Create the OTA update request
 payload = {
-    "url": "https://sleipner.srcful.dev/api/firmwares/fw-v1.0.0/binary",
+    "url": "https://github.com/srcfl/srcful-zap-firmware/releases/download/v1.0.0/firmware.bin",
     "version": "1.0.3"  # Increment this for each test
 }
 

@@ -25,7 +25,7 @@ typedef struct {
 
 class OTATask {
 public:
-    OTATask(uint32_t stackSize = 1024, UBaseType_t priority = 3);
+    OTATask(uint32_t stackSize = 1024 * 8, UBaseType_t priority = 3);
     ~OTATask();
     
     // Start the OTA task
