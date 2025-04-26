@@ -26,6 +26,7 @@ public:
     
     // Add a key-value pair
     JsonBuilder& add(const char* key, const char* value);
+    JsonBuilder& add(const char* key, const zap::Str& value);
     JsonBuilder& add(const char* key, int value);
     JsonBuilder& add(const char* key, uint32_t value);
     JsonBuilder& add(const char* key, uint64_t value);
@@ -39,7 +40,7 @@ public:
     JsonBuilder& addArray(const char* key, const char* const* values, size_t count);
     
     // End all objects and get the result
-    zap::Str end();
+    const zap::Str& end();
     
     // Clear the buffer and reset state
     void clear();

@@ -1,5 +1,6 @@
 #pragma once
 #include "json_light/json_light.h"
+#include "data/circular_buffer.h"
 
 class Debug {
     public:
@@ -14,6 +15,10 @@ class Debug {
         static void clearFaultyFrameData() {
             faultyFrameDataSize = 0;
         }
+
+        static void setMeterDataBuffer(CircularBuffer *pBuffer) {
+            pMeterDatabuffer = pBuffer;
+        }
     
     private:
         static int failedFrames;
@@ -23,4 +28,7 @@ class Debug {
 
         static uint8_t faultyFrameData[1024];
         static size_t faultyFrameDataSize;
+
+        static CircularBuffer *pMeterDatabuffer;
+        
 };

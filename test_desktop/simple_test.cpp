@@ -14,6 +14,7 @@
 #include "../src/json_light/json_light.cpp"
 
 #include "zap_str_test.cpp"
+#include "debug_test.cpp"
 
 #include "data/circular_buffer_test.cpp"
 #include "data/frame_detector_test.cpp"
@@ -90,6 +91,7 @@ int main() {
         json_light_test::run();
         graphql_test::run();
         zap_str_test::run();
+        debug_test::run();
 
         std::cout << "All tests passed!" << std::endl;
         return 0;

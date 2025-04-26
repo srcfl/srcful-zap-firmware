@@ -44,6 +44,17 @@ JsonBuilder& JsonBuilder::add(const char* key, const char* value) {
     return *this;
 }
 
+JsonBuilder& JsonBuilder::add(const char* key, const zap::Str& value) {
+    if (!firstItem) buffer += ',';
+    buffer += '"';
+    buffer += key;
+    buffer += "\":\"";
+    buffer += value;
+    buffer += '"';
+    firstItem = false;
+    return *this;
+}
+
 JsonBuilder& JsonBuilder::add(const char* key, int value) {
     if (!firstItem) buffer += ',';
     buffer += '"';
@@ -127,7 +138,7 @@ JsonBuilder& JsonBuilder::addArray(const char* key, const char* const* values, s
     return *this;
 }
 
-zap::Str JsonBuilder::end() {
+const zap::Str& JsonBuilder::end() {
     while (inObject && !objectStack.empty()) {
         buffer += '}';
         objectStack.pop_back();

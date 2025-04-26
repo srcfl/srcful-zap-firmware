@@ -1,4 +1,5 @@
 #include "serial_frame_buffer.h"
+#include "debug.h"
 
 SerialFrameBuffer::SerialFrameBuffer(
     unsigned long currentTime,
@@ -11,6 +12,8 @@ SerialFrameBuffer::SerialFrameBuffer(
     _currentFrameSize(0),
     _currentFrameStartIndex(0),
     _frameCallback(nullptr) {
+
+    Debug::setMeterDataBuffer(&_circularBuffer);
     
     // Clear the buffer to initialize
     clear(currentTime);

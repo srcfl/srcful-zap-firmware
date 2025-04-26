@@ -7,6 +7,7 @@ char Debug::deviceId[32] = {0};
 char Debug::deviceModel[32] = {0};
 uint8_t Debug::faultyFrameData[1024] = {0};
 size_t Debug::faultyFrameDataSize = 0;
+CircularBuffer *Debug::pMeterDatabuffer = nullptr;
 
 void Debug::addFailedFrame() {
     failedFrames++;
@@ -34,6 +35,20 @@ void Debug::addFaultyFrameData(const uid_t byte) {
     }
 }
 
+zap::Str toHexString(CircularBuffer *pBuffer) {
+    zap::Str hexString;
+    hexString.reserve(pBuffer->available() * 2); // Reserve space for hex string
+    char temp[3]; // 2 hex digits + null terminator
+    temp[2] = '\0'; // Null terminator for sprintf
+    for (size_t i = 0; i < pBuffer->available(); i++) {
+        uint8_t byte = pBuffer->getByte(i);
+        sprintf(temp, "%02x", byte);
+        hexString += temp;
+    }
+
+    return hexString;
+}
+
 JsonBuilder& Debug::getJsonReport(JsonBuilder& jb) {
     
     jb.beginObject("report")
@@ -46,6 +61,11 @@ JsonBuilder& Debug::getJsonReport(JsonBuilder& jb) {
 
     if (faultyFrameDataSize > 0) {
         jb.add("faultyFrameData", faultyFrameData, faultyFrameDataSize);
+    }
+
+    if (pMeterDatabuffer) {
+        zap::Str hexString = toHexString(pMeterDatabuffer);
+        jb.add("meterDataBuffer", hexString);
     }
 
     jb.endObject();
