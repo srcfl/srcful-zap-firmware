@@ -9,12 +9,18 @@ SerialFrameBuffer::SerialFrameBuffer(
     uint8_t endDelimiter,
     unsigned long interFrameTimeout
 ) : _circularBuffer(bufferSize),
-    _frameDetector({{startDelimiter, endDelimiter}}, interFrameTimeout), // Correctly initialize FrameDetector with a vector
+    _frameDetector(interFrameTimeout), // Correctly initialize FrameDetector with a vector
     _currentFrameSize(0),
     _currentFrameStartIndex(0),
     _frameCallback(nullptr) {
 
     Debug::setMeterDataBuffer(&_circularBuffer);
+
+    std::vector<FrameDelimiterInfo> delims = {
+        FrameDelimiterInfo('/', '!', 0, true), // Start and end delimiter for ascii
+        FrameDelimiterInfo(0x7e, 0x7e, 1, false) // Start and end delimiter for aidon
+    };
+    _frameDetector.setFrameDelimiters(delims);
     
     clear(0); // Passing 0 as placeholder time
 }

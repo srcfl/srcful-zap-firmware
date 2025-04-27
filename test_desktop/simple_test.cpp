@@ -70,6 +70,8 @@ int test_decoder_frame() {
     return 0;
 }
 
+
+
 int main() {
     std::cout << "==== P1 DLMS Decoder Desktop Tests ====" << std::endl;
     

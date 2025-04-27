@@ -1,33 +1,31 @@
 #include "frame_detector.h"
-#include <vector>   // Include vector
-#include <utility>  // Include pair
+#include <vector>
+#include <cstdint>
 
 FrameDetector::FrameDetector(
-    const std::vector<std::pair<uint8_t, uint8_t>>& delimiterPairs,
+    const std::vector<FrameDelimiterInfo>& delimiterConfigs,
     unsigned long interFrameTimeout
-) : _delimiterPairs(delimiterPairs),
+) : _delimiterConfigs(delimiterConfigs),
     _interFrameTimeout(interFrameTimeout),
     _frameInProgress(false),
     _frameStartIndex(0),
-    _activeEndDelimiter(0), // Initialize active end delimiter
+    _activeDelimiterInfo(nullptr),
     _frameCount(0) {
-    // Nothing else to initialize
 }
 
-void FrameDetector::setFrameDelimiters(const std::vector<std::pair<uint8_t, uint8_t>>& delimiterPairs) {
-    _delimiterPairs = delimiterPairs;
-    reset(); // Reset state when delimiters change
+void FrameDetector::setFrameDelimiters(const std::vector<FrameDelimiterInfo>& delimiterConfigs) {
+    _delimiterConfigs = delimiterConfigs;
+    reset();
 }
 
 void FrameDetector::reset() {
     _frameInProgress = false;
     _frameStartIndex = 0;
-    _activeEndDelimiter = 0; // Reset active end delimiter
+    _activeDelimiterInfo = nullptr;
 }
 
-// Finds the next occurrence of any start delimiter
-bool FrameDetector::findNextFrameStart(const CircularBuffer& buffer, size_t& startPos, uint8_t& foundStartDelimiter) {
-    if (buffer.available() == 0 || _delimiterPairs.empty()) {
+bool FrameDetector::findNextFrameStart(const CircularBuffer& buffer, size_t& startPos) {
+    if (buffer.available() == 0 || _delimiterConfigs.empty()) {
         return false;
     }
     
@@ -36,13 +34,10 @@ bool FrameDetector::findNextFrameStart(const CircularBuffer& buffer, size_t& sta
     
     while (bytesSearched < bufferUsed) {
         uint8_t current = buffer.getByte(bytesSearched);
-        // Check against all configured start delimiters
-        for (const auto& pair : _delimiterPairs) {
-            if (current == pair.first) {
-                // Found a start delimiter
+        for (const auto& config : _delimiterConfigs) {
+            if (current == config.startDelimiter) {
                 startPos = (buffer.getReadIndex() + bytesSearched) % buffer.getBufferSize();
-                foundStartDelimiter = pair.first; // Return the specific start delimiter found
-                _activeEndDelimiter = pair.second; // Set the corresponding end delimiter we're looking for
+                _activeDelimiterInfo = &config;
                 _frameInProgress = true;
                 return true;
             }
@@ -53,66 +48,74 @@ bool FrameDetector::findNextFrameStart(const CircularBuffer& buffer, size_t& sta
     return false;
 }
 
-// Extracts a frame defined by the active start/end delimiters, starting search from _frameStartIndex
 bool FrameDetector::extractCompleteFrame(const CircularBuffer& buffer, FrameInfo& frameInfo) {
-    if (buffer.available() < 2 || !_frameInProgress) {
-        return false;
+    if (buffer.available() < 2 || !_frameInProgress || !_activeDelimiterInfo) {
+        return false; 
     }
     
-    // Start our search from the frame start index
     size_t searchPos = _frameStartIndex;
     size_t bytesSearched = 0;
     size_t bufferSize = buffer.getBufferSize();
     size_t bufferUsed = buffer.available();
-    
-    // Search for the active end delimiter
-    // We already know the start delimiter was at _frameStartIndex
+    uint8_t endDelimiter = _activeDelimiterInfo->endDelimiter;
+    bool isLineBased = _activeDelimiterInfo->isLineBased;
+
     while (bytesSearched < bufferUsed) {
-        // Ensure we don't re-evaluate the start byte as the end byte immediately
         if (searchPos == _frameStartIndex && bytesSearched > 0) {
-             // Wrap around or completed search without finding end delimiter yet
-             // This condition might need refinement depending on exact circular buffer behavior
-        } 
-        
+            // Optional: Add logic here if start/end can be the same and frame size > 1
+        }
+
         uint8_t current = buffer.getByteAt(searchPos);
         
-        if (current == _activeEndDelimiter && searchPos != _frameStartIndex) { // Make sure end is not the same as start unless frame is > 1 byte
-            // Found the active end delimiter
+        if (current == endDelimiter && searchPos != _frameStartIndex) { 
             size_t endPos = searchPos;
-            
-            // Calculate frame size (including delimiters)
             size_t frameLength;
+
+            if (isLineBased) {
+                while (bytesSearched + 1 < bufferUsed) { 
+                    uint8_t nextByte = buffer.getByteAt(searchPos);
+                    if (nextByte == '\r' || nextByte == '\n') {
+                        endPos = searchPos - 1; // Exclude the return character typical \r\n
+                        break;
+                    } else {
+                        searchPos = (searchPos + 1) % bufferSize;
+                        bytesSearched++; 
+                    }
+                }
+                // no newline found so frame is not complete (yet)
+                if (!(bytesSearched + 1 < bufferUsed)) {
+                     frameInfo.complete = false;
+                     return false;
+                }
+            }
+
             if (endPos >= _frameStartIndex) {
                 frameLength = endPos - _frameStartIndex + 1;
             } else {
                 frameLength = bufferSize - _frameStartIndex + endPos + 1;
             }
             
-            // Only proceed if we have a reasonable frame size
-            if (frameLength >= 2) {
-                // Fill the frame info structure
+            size_t minSize = isLineBased ? 3 : 2;
+            if (frameLength >= minSize) {
                 frameInfo.startIndex = _frameStartIndex;
                 frameInfo.endIndex = endPos;
                 frameInfo.size = frameLength;
                 frameInfo.complete = true;
+                frameInfo.frameTypeId = _activeDelimiterInfo->id;
                 
-                // Reset frame tracking state for the next frame
                 _frameInProgress = false;
-                _activeEndDelimiter = 0;
+                _activeDelimiterInfo = nullptr;
                 
-                // Increment frame counter
                 _frameCount++;
                 
                 return true;
             }
         }
         
-        // Move to next position in circular buffer
         searchPos = (searchPos + 1) % bufferSize;
         bytesSearched++;
     }
     
-    // No complete frame found
     frameInfo.complete = false;
     return false;
 }
@@ -122,25 +125,17 @@ bool FrameDetector::detect(
     unsigned long currentTime,
     FrameInfo& frameInfo
 ) {
-    // First check for frame timeout if a frame was in progress
     if (_frameInProgress && _interFrameTimeout > 0 && (currentTime - buffer.getLastByteTime() > _interFrameTimeout)) {
-        // Frame timed out, reset state
         reset();
     }
     
-    // Check if we need to find the start of a frame
     if (!_frameInProgress) {
         size_t startPos;
-        uint8_t foundStartDelimiter; // To store which start delimiter was found
-        if (!findNextFrameStart(buffer, startPos, foundStartDelimiter)) {
-            // No start delimiter found in the buffer
+        if (!findNextFrameStart(buffer, startPos)) {
             return false;
         }
         _frameStartIndex = startPos;
-        // _frameInProgress and _activeEndDelimiter are set within findNextFrameStart
     }
     
-    // Now that we have a frame in progress (found a start delimiter),
-    // check if we can extract a complete frame using the corresponding end delimiter.
     return extractCompleteFrame(buffer, frameInfo);
 }

@@ -92,8 +92,10 @@ public:
      * @param endDelimiter End delimiter byte
      */
     void setFrameDelimiters(uint8_t startDelimiter, uint8_t endDelimiter) {
-        std::vector<std::pair<uint8_t, uint8_t>> delimiterPair = {{startDelimiter, endDelimiter}};
-        _frameDetector.setFrameDelimiters(delimiterPair); // Pass the vector
+        // Create a FrameDelimiterInfo with default ID 0 and isLineBased=false
+        FrameDelimiterInfo config = {startDelimiter, endDelimiter, 0, false};
+        std::vector<FrameDelimiterInfo> delimiterConfigs = {config};
+        _frameDetector.setFrameDelimiters(delimiterConfigs);
     }
     
     /**

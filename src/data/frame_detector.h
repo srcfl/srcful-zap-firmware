@@ -2,8 +2,21 @@
 #define FRAME_DETECTOR_H
 
 #include "circular_buffer.h"
-#include <vector>   // Include vector
-#include <utility>  // Include pair
+#include <vector>
+#include <cstdint> // For uint8_t
+
+/**
+ * @brief Configuration for a specific frame delimiter type
+ */
+struct FrameDelimiterInfo {
+    uint8_t startDelimiter; // Byte marking the start of the frame
+    uint8_t endDelimiter;   // Byte marking the end of the frame
+    int id;                 // Identifier for this frame type
+    bool isLineBased;       // If true, the actual frame ends with a newline after the endDelimiter
+
+    FrameDelimiterInfo(uint8_t start, uint8_t end, int id, bool lineBased)
+        : startDelimiter(start), endDelimiter(end), id(id), isLineBased(lineBased) {}
+};
 
 /**
  * @brief Frame information structure
@@ -13,29 +26,32 @@
 struct FrameInfo {
     size_t startIndex;        // Start position of the frame in the buffer
     size_t endIndex;          // End position of the frame in the buffer 
-    size_t size;              // Total size of the frame including delimiters
+    size_t size;              // Total size of the frame including delimiters (and newline if line-based)
     bool complete;            // Whether the frame is complete
+    int frameTypeId;          // ID of the detected frame type (from FrameDelimiterInfo)
 };
 
 /**
  * @brief A class to detect framed data in a circular buffer
  * 
  * This class detects frames delimited by start and end markers in a circular buffer.
- * It supports multiple delimiter pairs.
- * When a complete frame is found, it returns information about the frame location.
+ * It supports multiple delimiter configurations defined by FrameDelimiterInfo.
+ * When a complete frame is found, it returns information about the frame location and type.
  */
 class FrameDetector {
 public:
     /**
      * @brief Construct a new Frame Detector
      * 
-     * @param delimiterPairs A vector of pairs, where each pair contains a start and end delimiter.
+     * @param delimiterConfigs A vector of FrameDelimiterInfo structs defining the supported frame types.
      * @param interFrameTimeout Maximum time (ms) between bytes in the same frame
      */
     FrameDetector(
-        const std::vector<std::pair<uint8_t, uint8_t>>& delimiterPairs,
+        const std::vector<FrameDelimiterInfo>& delimiterConfigs,
         unsigned long interFrameTimeout = 500
     );
+    FrameDetector(unsigned long interFrameTimeout = 500)
+        : FrameDetector({}, interFrameTimeout) {} // Default constructor with empty delimiters
     
     /**
      * @brief Process a chunk of data and check if it completes a frame
@@ -51,18 +67,17 @@ public:
         FrameInfo& frameInfo
     );
     
-   
     /**
      * @brief Reset the detector state
      */
     void reset();
     
     /**
-     * @brief Set the frame delimiter pairs
+     * @brief Set the frame delimiter configurations
      * 
-     * @param delimiterPairs A vector of pairs, where each pair contains a start and end delimiter.
+     * @param delimiterConfigs A vector of FrameDelimiterInfo structs.
      */
-    void setFrameDelimiters(const std::vector<std::pair<uint8_t, uint8_t>>& delimiterPairs);
+    void setFrameDelimiters(const std::vector<FrameDelimiterInfo>& delimiterConfigs);
     
     /**
      * @brief Set the inter-frame timeout
@@ -80,21 +95,21 @@ public:
 
 private:
     // Frame detection configuration
-    std::vector<std::pair<uint8_t, uint8_t>> _delimiterPairs;
+    std::vector<FrameDelimiterInfo> _delimiterConfigs;
     unsigned long _interFrameTimeout;
 
     // Frame detection state
     bool _frameInProgress;
     size_t _frameStartIndex;
-    uint8_t _activeEndDelimiter; // The end delimiter we are currently looking for
+    const FrameDelimiterInfo* _activeDelimiterInfo; // Pointer to the active config
 
     // Statistics
     uint32_t _frameCount;
     
     // Internal methods
     // Finds the next occurrence of any start delimiter
-    bool findNextFrameStart(const CircularBuffer& buffer, size_t& startPos, uint8_t& foundStartDelimiter); 
-    // Extracts a frame defined by the active start/end delimiters, starting search from _frameStartIndex
+    bool findNextFrameStart(const CircularBuffer& buffer, size_t& startPos); 
+    // Extracts a frame defined by the active delimiter config
     bool extractCompleteFrame(const CircularBuffer& buffer, FrameInfo& frameInfo); 
 };
 
