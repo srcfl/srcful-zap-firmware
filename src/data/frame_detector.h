@@ -2,6 +2,8 @@
 #define FRAME_DETECTOR_H
 
 #include "circular_buffer.h"
+#include <vector>   // Include vector
+#include <utility>  // Include pair
 
 /**
  * @brief Frame information structure
@@ -19,6 +21,7 @@ struct FrameInfo {
  * @brief A class to detect framed data in a circular buffer
  * 
  * This class detects frames delimited by start and end markers in a circular buffer.
+ * It supports multiple delimiter pairs.
  * When a complete frame is found, it returns information about the frame location.
  */
 class FrameDetector {
@@ -26,17 +29,13 @@ public:
     /**
      * @brief Construct a new Frame Detector
      * 
-     * @param startDelimiter Character that marks the start of a frame
-     * @param endDelimiter Character that marks the end of a frame
+     * @param delimiterPairs A vector of pairs, where each pair contains a start and end delimiter.
      * @param interFrameTimeout Maximum time (ms) between bytes in the same frame
      */
     FrameDetector(
-        uint8_t startDelimiter = '/',  // Default for many P1 protocols
-        uint8_t endDelimiter = '!',    // Default for many P1 protocols
+        const std::vector<std::pair<uint8_t, uint8_t>>& delimiterPairs,
         unsigned long interFrameTimeout = 500
     );
-    
-
     
     /**
      * @brief Process a chunk of data and check if it completes a frame
@@ -59,15 +58,11 @@ public:
     void reset();
     
     /**
-     * @brief Set the frame delimiters
+     * @brief Set the frame delimiter pairs
      * 
-     * @param startDelimiter Character that marks the start of a frame
-     * @param endDelimiter Character that marks the end of a frame
+     * @param delimiterPairs A vector of pairs, where each pair contains a start and end delimiter.
      */
-    void setFrameDelimiters(uint8_t startDelimiter, uint8_t endDelimiter) {
-        _startDelimiter = startDelimiter;
-        _endDelimiter = endDelimiter;
-    }
+    void setFrameDelimiters(const std::vector<std::pair<uint8_t, uint8_t>>& delimiterPairs);
     
     /**
      * @brief Set the inter-frame timeout
@@ -84,19 +79,23 @@ public:
     uint32_t getFrameCount() const { return _frameCount; }
 
 private:
-    // Frame detection
-    uint8_t _startDelimiter;
-    uint8_t _endDelimiter;
+    // Frame detection configuration
+    std::vector<std::pair<uint8_t, uint8_t>> _delimiterPairs;
+    unsigned long _interFrameTimeout;
+
+    // Frame detection state
     bool _frameInProgress;
     size_t _frameStartIndex;
-    unsigned long _interFrameTimeout;
-    
+    uint8_t _activeEndDelimiter; // The end delimiter we are currently looking for
+
     // Statistics
     uint32_t _frameCount;
     
     // Internal methods
-    bool findNextFrameStart(const CircularBuffer& buffer, size_t& startPos);
-    bool extractCompleteFrame(const CircularBuffer& buffer, FrameInfo& frameInfo);
+    // Finds the next occurrence of any start delimiter
+    bool findNextFrameStart(const CircularBuffer& buffer, size_t& startPos, uint8_t& foundStartDelimiter); 
+    // Extracts a frame defined by the active start/end delimiters, starting search from _frameStartIndex
+    bool extractCompleteFrame(const CircularBuffer& buffer, FrameInfo& frameInfo); 
 };
 
 #endif // FRAME_DETECTOR_H

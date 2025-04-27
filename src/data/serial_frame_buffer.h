@@ -5,6 +5,8 @@
 #include "circular_buffer.h"
 #include "frame_detector.h"
 #include "IFrameData.h"
+#include <vector> // Include vector
+#include <utility> // Include pair
 
 /**
  * @brief A robust buffer for handling serial data frames
@@ -25,14 +27,12 @@ public:
     /**
      * @brief Construct a new SerialFrameBuffer
      * 
-     * @param currentTime Current time in milliseconds
      * @param bufferSize Size of the buffer in bytes
      * @param startDelimiter Character that marks the start of a frame
      * @param endDelimiter Character that marks the end of a frame
      * @param interFrameTimeout Maximum time (ms) between bytes in the same frame
      */
     SerialFrameBuffer(
-        unsigned long currentTime,
         size_t bufferSize = 1024,
         uint8_t startDelimiter = '/',  // Default for many P1 protocols
         uint8_t endDelimiter = '!',    // Default for many P1 protocols
@@ -88,11 +88,12 @@ public:
     /**
      * @brief Set the frame delimiters
      * 
-     * @param startDelimiter Character that marks the start of a frame
-     * @param endDelimiter Character that marks the end of a frame
+     * @param startDelimiter Start delimiter byte
+     * @param endDelimiter End delimiter byte
      */
     void setFrameDelimiters(uint8_t startDelimiter, uint8_t endDelimiter) {
-        _frameDetector.setFrameDelimiters(startDelimiter, endDelimiter);
+        std::vector<std::pair<uint8_t, uint8_t>> delimiterPair = {{startDelimiter, endDelimiter}};
+        _frameDetector.setFrameDelimiters(delimiterPair); // Pass the vector
     }
     
     /**

@@ -1,22 +1,22 @@
 #include "serial_frame_buffer.h"
 #include "debug.h"
+#include <vector> // Include vector
+#include <utility> // Include pair
 
 SerialFrameBuffer::SerialFrameBuffer(
-    unsigned long currentTime,
     size_t bufferSize,
     uint8_t startDelimiter,
     uint8_t endDelimiter,
     unsigned long interFrameTimeout
 ) : _circularBuffer(bufferSize),
-    _frameDetector(startDelimiter, endDelimiter, interFrameTimeout),
+    _frameDetector({{startDelimiter, endDelimiter}}, interFrameTimeout), // Correctly initialize FrameDetector with a vector
     _currentFrameSize(0),
     _currentFrameStartIndex(0),
     _frameCallback(nullptr) {
 
     Debug::setMeterDataBuffer(&_circularBuffer);
     
-    // Clear the buffer to initialize
-    clear(currentTime);
+    clear(0); // Passing 0 as placeholder time
 }
 
 SerialFrameBuffer::~SerialFrameBuffer() {

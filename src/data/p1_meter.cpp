@@ -15,7 +15,7 @@ P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate)
       _dtrPin(dtrPin),
       _baudRate(baudRate),
       _serial(1), // Use UART1
-      _frameBuffer(millis(), P1_DEFAULT_BUFFER_SIZE, P1_DEFAULT_START_CHAR, P1_DEFAULT_END_CHAR, P1_FRAME_TIMEOUT),
+      _frameBuffer(P1_DEFAULT_BUFFER_SIZE, P1_DEFAULT_START_CHAR, P1_DEFAULT_END_CHAR, P1_FRAME_TIMEOUT), // Removed serialPortSpeed from this call
       _lastDataTime(0),
       _frameCallback(nullptr) {
     
