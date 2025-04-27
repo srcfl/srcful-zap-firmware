@@ -140,6 +140,11 @@ public:
         return 0;
     }
 
+    // Implementation for the new virtual function
+    virtual uint8_t getFrameTypeId() const override {
+        return _currentFrameTypeId;
+    }
+
 private:
     CircularBuffer _circularBuffer;
     FrameDetector _frameDetector;
@@ -147,6 +152,7 @@ private:
     // Frame information for IFrameData interface
     size_t _currentFrameSize;
     size_t _currentFrameStartIndex;
+    uint8_t _currentFrameTypeId; // Added member to store type ID
     
     // Callback for frame processing
     FrameCallback _frameCallback;

@@ -1,5 +1,6 @@
 #include "data_reader_task.h"
 #include "p1_dlms_decoder.h"
+#include "p1_ascii_decoder.h"
 #include "p1data_funcs.h"
 #include "debug.h"
 
@@ -109,14 +110,32 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     
     // Decode the frame
     P1DLMSDecoder decoder;
+    P1AsciiDecoder asciiDecoder;
     P1Data p1data;
+    bool isDecoded = false;
+
+    switch (frame.getFrameTypeId()) {
+        case 1: // TODO: Hard coded sucks
+            Serial.println("Data reader task: DLMS frame detected");
+            if (decoder.decodeBuffer(frame, p1data)) {
+                Serial.println("DLMS data decoded successfully");
+                isDecoded = true;
+            }
+            break;
+        case 0: // TODO: Hard coded sucks
+            Serial.println("Data reader task: ASCII frame detected");
+            if (asciiDecoder.decodeBuffer(frame, p1data)) {
+                Serial.println("ASCII data decoded successfully");
+                isDecoded = true;
+            }
+            break;
+        default:
+            Serial.println("Data reader task: Unknown frame type");
+            break;
+    }
     
-    if (decoder.decodeBuffer(frame, p1data)) {
+    if (isDecoded) {
         Debug::addFrame();
-        Serial.println("P1 data decoded successfully");
-        if (p1data.szDeviceId[0] != '\0') {
-           Debug::setDeviceId(p1data.szDeviceId);
-        }
         enqueueData(p1data);
     } else {
         Debug::addFailedFrame();

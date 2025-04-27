@@ -110,4 +110,5 @@ size_t SerialFrameBuffer::calculateReadAdvance(const FrameInfo& frameInfo) const
 void SerialFrameBuffer::updateCurrentFrame(const FrameInfo& frameInfo) {
     _currentFrameSize = frameInfo.size;
     _currentFrameStartIndex = frameInfo.startIndex;
+    _currentFrameTypeId = frameInfo.frameTypeId; // Store the frame type ID
 }

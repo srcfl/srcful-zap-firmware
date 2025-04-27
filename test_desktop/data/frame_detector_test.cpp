@@ -1,5 +1,4 @@
 
-#include "../src/data/frame_detector.cpp"
 #include "../frames.h"
 
 #include <assert.h>
@@ -45,8 +44,8 @@ namespace frame_detector_test {
         FrameInfo frameInfo;
         unsigned long currentTime = 1000;
 
-        for (int i = 0; i < sizeof(ascii_frame); i++) {
-            buffer.addByte(ascii_frame[i], currentTime);
+        for (int i = 0; i < sizeof(ascii_frame_multi); i++) {
+            buffer.addByte(ascii_frame_multi[i], currentTime);
             currentTime += 100;
         }
 

@@ -30,24 +30,15 @@ zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const P1D
     JsonBuilder dataObj;
     dataObj.beginObject();
 
-    // Find the 42 7 code and print the value
-    for (int i = 0; i < p1data.obisCount; i++) {
-        if (p1data.obisValues[i].C == 1 && p1data.obisValues[i].D == 7) {
-            Serial.print("Found 1.7 code (+Inst Power kW): ");
-            Serial.println(p1data.obisValues[i].value);
-            break;
-        }
-    }
-
     dataObj.add("serial_number", "LGF5E360");
 
     // Use a vector of Str instead of an array of C-style strings
     std::vector<zap::Str> rows;
 
-    for (int i = 0; i < p1data.obisCount; i++) {
-        char buffer[64];
-        p1data.obisValues[i].toString(buffer, sizeof(buffer));
-        rows.push_back(zap::Str(buffer));
+    // Iterate through the obisStrings array
+    for (int i = 0; i < p1data.obisStringCount; i++) {
+        // Directly add the string from the obisStrings array
+        rows.push_back(zap::Str(p1data.obisStrings[i]));
     }
     
     // Format timestamp

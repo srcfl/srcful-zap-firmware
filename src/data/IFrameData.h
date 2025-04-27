@@ -32,6 +32,13 @@ public:
      * @return size_t The frame size
      */
     virtual size_t getFrameSize() const = 0;
+
+    /**
+     * @brief Get the type ID of the frame
+     * 
+     * @return uint8_t The type ID of the frame (e.g., ASCII or DLMS)
+     */
+    virtual uint8_t getFrameTypeId() const = 0;
 };
 
 #endif // IFRAME_DATA_H

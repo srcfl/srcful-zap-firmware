@@ -3,6 +3,7 @@
 
 
 void P1Data::setDeviceId(const char *szDeviceId) {
-
-    strncpy(this->szDeviceId, szDeviceId, BUFFER_SIZE);
+    // Use DEVICE_ID_LEN instead of BUFFER_SIZE
+    strncpy(this->szDeviceId, szDeviceId, DEVICE_ID_LEN - 1);
+    this->szDeviceId[DEVICE_ID_LEN - 1] = '\0'; // Ensure null termination
 }

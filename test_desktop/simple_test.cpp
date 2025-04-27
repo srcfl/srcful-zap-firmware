@@ -12,12 +12,15 @@
 #include "../src/debug.cpp"
 #include "../src/backend/graphql.cpp"
 #include "../src/json_light/json_light.cpp"
+#include "../src/data/p1_ascii_decoder.cpp"
+#include "../src/data/frame_detector.cpp"
 
 #include "zap_str_test.cpp"
 #include "debug_test.cpp"
 
 #include "data/circular_buffer_test.cpp"
 #include "data/frame_detector_test.cpp"
+#include "data/ascii_decoder_test.cpp"
 
 #include "json_light/json_light_test.cpp"
 
@@ -26,7 +29,8 @@
 
 class FrameData : public IFrameData {
 public:
-    FrameData(const uint8_t* data, size_t size) : data_(data), size_(size) {}
+    // Constructor now takes typeId
+    FrameData(const uint8_t* data, size_t size, uint8_t typeId) : data_(data), size_(size), typeId_(typeId) {}
 
     uint8_t getFrameByte(size_t index) const override {
         if (index < size_) {
@@ -38,9 +42,15 @@ public:
     size_t getFrameSize() const override {
         return size_;
     }
+
+    // Implementation for the new virtual function
+    uint8_t getFrameTypeId() const override {
+        return typeId_;
+    }
 private:
     const uint8_t* data_;
     size_t size_;
+    uint8_t typeId_; // Added member to store type ID
 };
 
 int test_decoder_frame() {
@@ -49,15 +59,14 @@ int test_decoder_frame() {
     p1data.setDeviceId("12345678901234567890");
     P1DLMSDecoder decoder;
 
-    FrameData frameData(faulty_aidon_frame_2, sizeof(faulty_aidon_frame_2));
+    // Provide a type ID (e.g., 0 for DLMS, 1 for ASCII - adjust as needed)
+    FrameData frameData(faulty_aidon_frame_2, sizeof(faulty_aidon_frame_2), 0); 
 
     decoder.decodeBuffer(frameData, p1data);
 
-
-    for (int i = 0; i < p1data.obisCount; i++) {
-        char buffer[64];
-        p1data.obisValues[i].toString(buffer, sizeof(buffer));
-        std::cout << "OBIS Value: " << buffer << std::endl;
+    // Iterate through the new obisStrings array
+    for (int i = 0; i < p1data.obisStringCount; i++) {
+        std::cout << "OBIS String: " << p1data.obisStrings[i] << std::endl;
     }
 
     HDLCParser hdlcParser;
@@ -90,6 +99,7 @@ int main() {
 
         circular_buffer_test::run();
         frame_detector_test::run();
+        ascii_decoder_test::run();
         json_light_test::run();
         graphql_test::run();
         zap_str_test::run();
