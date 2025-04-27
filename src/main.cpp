@@ -17,6 +17,7 @@
 #include "data/data_reader_task.h"
 #include "backend/backend_api_task.h" // Include BackendApiTask
 #include "ota_handler.h"  // Include OTA handler
+#include "debug.h" // Include Debug header
 
 #define LED_PIN 3
 #define IO_BUTTON 9
@@ -45,6 +46,16 @@ const unsigned long LONG_PRESS_DURATION = 5000; // 5 seconds for long press
 
 
 void setup() {
+    Serial.begin(115200);
+    while (!Serial) { delay(10); } // Wait for serial connection
+    Serial.println("\n\n--- Srcful ZAP Firmware Booting ---");
+
+    // --- Get and store the reset reason ---
+    esp_reset_reason_t reason = esp_reset_reason();
+    Debug::setResetReason(reason);
+    Serial.printf("Last reset reason: %d\n", reason); // Log reason to serial for local debugging
+    // --- 
+
     pinMode(LED_PIN, OUTPUT);
     pinMode(IO_BUTTON, INPUT_PULLUP); // Initialize button pin with internal pull-up
     digitalWrite(LED_PIN, LOW); // Quick blink on startup

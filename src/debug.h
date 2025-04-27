@@ -1,6 +1,7 @@
 #pragma once
 #include "json_light/json_light.h"
 #include "data/circular_buffer.h"
+#include <esp_system.h> // Include for esp_reset_reason_t
 
 class Debug {
     public:
@@ -19,6 +20,10 @@ class Debug {
         static void setMeterDataBuffer(CircularBuffer *pBuffer) {
             pMeterDatabuffer = pBuffer;
         }
+
+        // Methods for reset reason
+        static void setResetReason(esp_reset_reason_t reason);
+        static esp_reset_reason_t getResetReason();
     
     private:
         static int failedFrames;
@@ -30,5 +35,6 @@ class Debug {
         static size_t faultyFrameDataSize;
 
         static CircularBuffer *pMeterDatabuffer;
-        
+
+        static esp_reset_reason_t lastResetReason; // Member to store reset reason
 };

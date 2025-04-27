@@ -1,5 +1,7 @@
 #include "debug.h"
 #include <Arduino.h>
+#include <esp_heap_caps.h> // Include for heap functions
+#include <esp_system.h> // Ensure it's included here too
 
 int Debug::failedFrames = 0;
 int Debug::frames = 0;
@@ -8,6 +10,7 @@ char Debug::deviceModel[32] = {0};
 uint8_t Debug::faultyFrameData[1024] = {0};
 size_t Debug::faultyFrameDataSize = 0;
 CircularBuffer *Debug::pMeterDatabuffer = nullptr;
+esp_reset_reason_t Debug::lastResetReason = ESP_RST_UNKNOWN; // Initialize static member
 
 void Debug::addFailedFrame() {
     failedFrames++;
@@ -35,6 +38,14 @@ void Debug::addFaultyFrameData(const uid_t byte) {
     }
 }
 
+void Debug::setResetReason(esp_reset_reason_t reason) {
+    lastResetReason = reason;
+}
+
+esp_reset_reason_t Debug::getResetReason() {
+    return lastResetReason;
+}
+
 zap::Str toHexString(CircularBuffer *pBuffer) {
     zap::Str hexString;
     hexString.reserve(pBuffer->available() * 2); // Reserve space for hex string
@@ -57,7 +68,11 @@ JsonBuilder& Debug::getJsonReport(JsonBuilder& jb) {
         .add("successFrames", frames)
         .add("totalFrames", failedFrames + frames)
         .add("deviceId", deviceId)
-        .add("deviceModel", deviceModel);
+        .add("deviceModel", deviceModel)
+        // Add heap information
+        .add("freeHeap", esp_get_free_heap_size())
+        .add("minFreeHeap", esp_get_minimum_free_heap_size())
+        .add("resetReason", (int)lastResetReason); // Add reset reason as integer
 
     if (faultyFrameDataSize > 0) {
         jb.add("faultyFrameData", faultyFrameData, faultyFrameDataSize);
