@@ -3,6 +3,7 @@
 #include <esp_heap_caps.h> // Include for heap functions
 #include <esp_system.h> // Ensure it's included here too
 
+
 int Debug::failedFrames = 0;
 int Debug::frames = 0;
 char Debug::deviceId[32] = {0};
