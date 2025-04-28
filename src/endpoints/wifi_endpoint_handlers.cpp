@@ -1,6 +1,8 @@
 #include "wifi_endpoint_handlers.h"
 #include "endpoint_handlers.h"
 #include "json_light/json_light.h"
+#include "firmware_version.h"
+#include "crypto.h"
 
 // WiFi Config Handler Implementation
 EndpointResponse WiFiConfigHandler::handle(const zap::Str& contents) {
@@ -108,6 +110,41 @@ EndpointResponse WiFiScanHandler::handle(const zap::Str& contents) {
         json.add("connected", nullptr);  // JSON null if not connected
     }
     
+    response.data = json.end();
+    return response;
+}
+
+
+// System Info Handler Implementation
+EndpointResponse SystemInfoHandler::handle(const zap::Str& contents) {
+    EndpointResponse response;
+    response.contentType = "application/json";
+    
+
+    JsonBuilder json;
+    zap::Str deviceId = crypto_getId();
+    
+    json.beginObject()
+        .add("deviceId", deviceId.c_str())
+        .add("heap", (int)ESP.getFreeHeap())
+        .add("cpuFreq", ESP.getCpuFreqMHz())
+        .add("flashSize", ESP.getFlashChipSize())
+        .add("sdkVersion", ESP.getSdkVersion())
+        .add("firmwareVersion", getFirmwareVersion());
+    
+    zap::Str publicKey = crypto_get_public_key(PRIVATE_KEY_HEX);
+    json.add("publicKey", publicKey.c_str());
+    
+    if (wifiManager.isConnected()) {
+        json.add("wifiStatus", "connected")
+            .add("localIP", wifiManager.getLocalIP().c_str())
+            .add("ssid", wifiManager.getConfiguredSSID().c_str())
+            .add("rssi", WiFi.RSSI()); // Still need direct WiFi access for RSSI
+    } else {
+        json.add("wifiStatus", "disconnected");
+    }
+    
+    response.statusCode = 200;
     response.data = json.end();
     return response;
 }

@@ -18,7 +18,7 @@
 
 class DataReaderTask {
 public:
-    DataReaderTask(uint32_t stackSize = 1024 * 9, UBaseType_t priority = 4);
+    DataReaderTask(uint32_t stackSize = 1024 * 10, UBaseType_t priority = 4);
     ~DataReaderTask();
     
     void begin(QueueHandle_t dataQueue);

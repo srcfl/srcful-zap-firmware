@@ -18,7 +18,7 @@ extern BLEHandler bleHandler;
 #endif
 
 WiFiConfigHandler g_wifiConfigHandler(wifiManager);
-SystemInfoHandler g_systemInfoHandler;
+SystemInfoHandler g_systemInfoHandler(wifiManager);
 WiFiResetHandler g_wifiResetHandler(wifiManager);
 CryptoInfoHandler g_cryptoInfoHandler;
 NameInfoHandler g_nameInfoHandler;

@@ -17,10 +17,7 @@ extern const char* AP_SSID;
 extern const char* AP_PASSWORD;
 
 // System Info Handler
-class SystemInfoHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const zap::Str& contents) override;
-};
+
 
 // Crypto Info Handler
 class CryptoInfoHandler : public EndpointFunction {
