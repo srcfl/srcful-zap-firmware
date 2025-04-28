@@ -1,6 +1,6 @@
 #include "data_reader_task.h"
-#include "p1_dlms_decoder.h"
-#include "p1_ascii_decoder.h"
+#include "decoding/dlms_decoder.h"
+#include "decoding/ascii_decoder.h"
 #include "p1data_funcs.h"
 #include "debug.h"
 
@@ -109,8 +109,8 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     Serial.println();
     
     // Decode the frame
-    P1DLMSDecoder decoder;
-    P1AsciiDecoder asciiDecoder;
+    DLMSDecoder decoder;
+    AsciiDecoder asciiDecoder;
     P1Data p1data;
     bool isDecoded = false;
 

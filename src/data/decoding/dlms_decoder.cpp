@@ -1,4 +1,4 @@
-#include "p1_dlms_decoder.h"
+#include "dlms_decoder.h"
 #include <time.h>
 #include <cstdio> 
 
@@ -12,20 +12,20 @@
 #endif
 
 // Define the static OBIS codes https://onemeter.com/docs/device/obis/
-const char* P1DLMSDecoder::OBIS_ELECTRICITY_DELIVERED_TARIFF1 = "1-0:1.8.1";
-const char* P1DLMSDecoder::OBIS_ELECTRICITY_DELIVERED_TARIFF2 = "1-0:1.8.2";
-const char* P1DLMSDecoder::OBIS_ELECTRICITY_RETURNED_TARIFF1 = "1-0:2.8.1";
-const char* P1DLMSDecoder::OBIS_ELECTRICITY_RETURNED_TARIFF2 = "1-0:2.8.2";
-const char* P1DLMSDecoder::OBIS_CURRENT_POWER_DELIVERY = "1-0:1.7.0";
-const char* P1DLMSDecoder::OBIS_CURRENT_POWER_RETURN = "1-0:2.7.0";
-const char* P1DLMSDecoder::OBIS_DEVICE_ID = "0-0:96.1.1";
-const char* P1DLMSDecoder::OBIS_GAS_DELIVERED = "0-1:24.2.1";
-const char* P1DLMSDecoder::OBIS_VOLTAGE_L1 = "1-0:32.7.0";
-const char* P1DLMSDecoder::OBIS_VOLTAGE_L2 = "1-0:52.7.0";
-const char* P1DLMSDecoder::OBIS_VOLTAGE_L3 = "1-0:72.7.0";
-const char* P1DLMSDecoder::OBIS_CURRENT_L1 = "1-0:31.7.0";
-const char* P1DLMSDecoder::OBIS_CURRENT_L2 = "1-0:51.7.0";
-const char* P1DLMSDecoder::OBIS_CURRENT_L3 = "1-0:71.7.0";
+const char* DLMSDecoder::OBIS_ELECTRICITY_DELIVERED_TARIFF1 = "1-0:1.8.1";
+const char* DLMSDecoder::OBIS_ELECTRICITY_DELIVERED_TARIFF2 = "1-0:1.8.2";
+const char* DLMSDecoder::OBIS_ELECTRICITY_RETURNED_TARIFF1 = "1-0:2.8.1";
+const char* DLMSDecoder::OBIS_ELECTRICITY_RETURNED_TARIFF2 = "1-0:2.8.2";
+const char* DLMSDecoder::OBIS_CURRENT_POWER_DELIVERY = "1-0:1.7.0";
+const char* DLMSDecoder::OBIS_CURRENT_POWER_RETURN = "1-0:2.7.0";
+const char* DLMSDecoder::OBIS_DEVICE_ID = "0-0:96.1.1";
+const char* DLMSDecoder::OBIS_GAS_DELIVERED = "0-1:24.2.1";
+const char* DLMSDecoder::OBIS_VOLTAGE_L1 = "1-0:32.7.0";
+const char* DLMSDecoder::OBIS_VOLTAGE_L2 = "1-0:52.7.0";
+const char* DLMSDecoder::OBIS_VOLTAGE_L3 = "1-0:72.7.0";
+const char* DLMSDecoder::OBIS_CURRENT_L1 = "1-0:31.7.0";
+const char* DLMSDecoder::OBIS_CURRENT_L2 = "1-0:51.7.0";
+const char* DLMSDecoder::OBIS_CURRENT_L3 = "1-0:71.7.0";
 
 // DLMS/OBIS binary format defines
 #define FRAME_FLAG 0x7E
@@ -107,16 +107,16 @@ const char* getObisUnitString(uint8_t C, uint8_t D) {
     return "UNKNOWN"; // Return "UNKNOWN" if no match found
 }
 
-P1DLMSDecoder::P1DLMSDecoder() {
+DLMSDecoder::DLMSDecoder() {
     // Constructor implementation - nothing to initialize currently
 }
 
 // Helper functions for binary decoding
-uint16_t P1DLMSDecoder::swap_uint16(uint16_t val) {
+uint16_t DLMSDecoder::swap_uint16(uint16_t val) {
     return ((val & 0xFF) << 8) | ((val >> 8) & 0xFF);
 }
 
-uint32_t P1DLMSDecoder::swap_uint32(uint32_t val) {
+uint32_t DLMSDecoder::swap_uint32(uint32_t val) {
     return ((val & 0xFF) << 24) | 
            (((val >> 8) & 0xFF) << 16) |
            (((val >> 16) & 0xFF) << 8) |
@@ -128,7 +128,7 @@ bool is_obis_cd(const uint8_t* obisCode, const uint8_t* pattern) {
 }
 
 // Helper function to extract numeric value with appropriate scaling
-float P1DLMSDecoder::extractNumericValue(const IFrameData& frame, int position, uint8_t dataType) {
+float DLMSDecoder::extractNumericValue(const IFrameData& frame, int position, uint8_t dataType) {
     float result = 0.0f;
     int8_t scale = 0;
     uint8_t unit = 0;
@@ -220,7 +220,7 @@ float P1DLMSDecoder::extractNumericValue(const IFrameData& frame, int position, 
 }
 
 // Helper to get value size based on data type
-int P1DLMSDecoder::getDataTypeSize(uint8_t dataType) {
+int DLMSDecoder::getDataTypeSize(uint8_t dataType) {
     switch (dataType) {
         case DATA_NULL: return 0;
         case DATA_UNSIGNED: return 1;
@@ -233,7 +233,7 @@ int P1DLMSDecoder::getDataTypeSize(uint8_t dataType) {
 }
 
 // Process OBIS value and update P1Data accordingly
-bool P1DLMSDecoder::processObisValue(const uint8_t* obisCode, const IFrameData& frame, int position, 
+bool DLMSDecoder::processObisValue(const uint8_t* obisCode, const IFrameData& frame, int position, 
                                      uint8_t dataType, P1Data& p1data) {
     bool known = false;
     
@@ -362,14 +362,14 @@ uint16_t crc16(const IFrameData& frame, int position, int len) {
     return crc;
 }
 
-uint16_t P1DLMSDecoder::_ntohs(uint16_t netshort) {
+uint16_t DLMSDecoder::_ntohs(uint16_t netshort) {
     // Split into bytes and reconstruct in reverse order
     return ((netshort & 0xFF00) >> 8) | 
            ((netshort & 0x00FF) << 8);
 }
 
 
-bool P1DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) {
+bool DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) {
     // Validate frame
     if (frame.getFrameByte(0) != FRAME_FLAG || frame.getFrameByte(frame.getFrameSize() -1) != FRAME_FLAG) {
         return false; // Invalid frame start/end
@@ -478,7 +478,7 @@ bool P1DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) 
     return dataFound;
 }
 
-bool P1DLMSDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
+bool DLMSDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
     // Try binary decoding first
     if (decodeBinaryBuffer(frame, p1data)) {
         return true;

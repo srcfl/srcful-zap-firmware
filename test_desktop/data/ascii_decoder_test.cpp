@@ -1,4 +1,4 @@
-#include "../src/data/p1_ascii_decoder.h"    
+#include "../src/data/decoding/ascii_decoder.h"    
     
 #include <assert.h>
 #include "../frames.h"
@@ -34,7 +34,7 @@ namespace ascii_decoder_test {
     int test_ascii_decoder() {
         P1Data p1data;
         p1data.setDeviceId("12345678901234567890");
-        P1AsciiDecoder decoder;
+        AsciiDecoder decoder;
 
         FrameData frameData(ascii_frame_single, sizeof(ascii_frame_single), 1); 
 

@@ -1,5 +1,4 @@
-#ifndef FRAME_DETECTOR_H
-#define FRAME_DETECTOR_H
+#pragma once
 
 #include "circular_buffer.h"
 #include <vector>
@@ -112,5 +111,3 @@ private:
     // Extracts a frame defined by the active delimiter config
     bool extractCompleteFrame(const CircularBuffer& buffer, FrameInfo& frameInfo); 
 };
-
-#endif // FRAME_DETECTOR_H

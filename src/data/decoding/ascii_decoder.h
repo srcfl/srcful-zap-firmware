@@ -4,9 +4,9 @@
 #include "p1data.h"
 #include "IFrameData.h"
 
-class P1AsciiDecoder {
+class AsciiDecoder {
 public:
-    P1AsciiDecoder();
+    AsciiDecoder();
 
     /**
      * @brief Decodes a buffer containing a P1 ASCII telegram.

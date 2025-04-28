@@ -3,8 +3,8 @@
 #include "../src/config.cpp"    // TODO idk if thi is a good idea
 
 #include "../src/data/data_package.h"
-#include "../src/data/p1data.h"
-#include "../src/data/p1_dlms_decoder.h"
+#include "../src/data/decoding/p1data.h"
+#include "../src/data/decoding/dlms_decoder.h"
 #include "ams/HdlcParser.h"
 #include "frames.h"
 
@@ -12,7 +12,9 @@
 #include "../src/debug.cpp"
 #include "../src/backend/graphql.cpp"
 #include "../src/json_light/json_light.cpp"
-#include "../src/data/p1_ascii_decoder.cpp"
+#include "../src/data/decoding/ascii_decoder.cpp"
+#include "../src/data/decoding/dlms_decoder.cpp"
+#include "../src/data/decoding/p1data.cpp"
 #include "../src/data/frame_detector.cpp"
 
 #include "zap_str_test.cpp"
@@ -57,7 +59,7 @@ int test_decoder_frame() {
     
     P1Data p1data;
     p1data.setDeviceId("12345678901234567890");
-    P1DLMSDecoder decoder;
+    DLMSDecoder decoder;
 
     // Provide a type ID (e.g., 0 for DLMS, 1 for ASCII - adjust as needed)
     FrameData frameData(faulty_aidon_frame_2, sizeof(faulty_aidon_frame_2), 0); 
@@ -90,7 +92,7 @@ int main() {
 
         P1Data p1data;
         p1data.setDeviceId("12345678901234567890");
-        P1DLMSDecoder decoder;
+        DLMSDecoder decoder;
         uint8_t buffer[] = {0x00, 0x01};
 
         // decoder.decodeBuffer(buffer, 2, p1data);

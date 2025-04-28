@@ -8,13 +8,13 @@
 #include <freertos/queue.h>
 #include "../zap_str.h"
 
-#include "p1data.h" // Local include since p1data is now in the data directory
+#include "decoding/p1data.h" // Local include since p1data is now in the data directory
 #include "../crypto.h"
 #include "../config.h"
 #include "data_package.h"  // Include the new data package header
 
 #include "p1_meter.h"  // Include P1Meter class for reading data
-#include "IFrameData.h"  // Include IFrameData interface for frame data handling
+#include "decoding/IFrameData.h"  // Include IFrameData interface for frame data handling
 
 class DataReaderTask {
 public:

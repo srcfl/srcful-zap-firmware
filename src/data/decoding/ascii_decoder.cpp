@@ -1,4 +1,4 @@
-#include "p1_ascii_decoder.h"
+#include "ascii_decoder.h"
 #include <cstring> // For strncmp, strchr, strncpy, strlen
 #include <cstdio>  // For sscanf
 #include <ctime>   // For struct tm, mktime
@@ -7,7 +7,7 @@
 // Define a reasonable maximum line length expected in P1 ASCII frames
 #define MAX_LINE_LENGTH 128 
 
-P1AsciiDecoder::P1AsciiDecoder() {
+AsciiDecoder::AsciiDecoder() {
     // Constructor implementation (currently empty)
 }
 
@@ -21,7 +21,7 @@ P1AsciiDecoder::P1AsciiDecoder() {
  * @param p1data The P1Data object to store the parsed timestamp in.
  * @return true if the timestamp was successfully parsed and stored, false otherwise.
  */
-bool P1AsciiDecoder::parseTimestamp(const char* line, P1Data& p1data) {
+bool AsciiDecoder::parseTimestamp(const char* line, P1Data& p1data) {
     const char* openParen = strchr(line, '(');
     const char* closeParen = strchr(line, ')');
 
@@ -67,7 +67,7 @@ bool P1AsciiDecoder::parseTimestamp(const char* line, P1Data& p1data) {
  * @param p1data The P1Data object to add the OBIS string to.
  * @return true if the line was added successfully, false otherwise (e.g., buffer full).
  */
-bool P1AsciiDecoder::parseObisLine(const char* line, P1Data& p1data) {
+bool AsciiDecoder::parseObisLine(const char* line, P1Data& p1data) {
     // Basic check: does it contain an opening parenthesis?
     if (strchr(line, '(') == nullptr) {
         return false; // Not a standard OBIS value line
@@ -87,7 +87,7 @@ bool P1AsciiDecoder::parseObisLine(const char* line, P1Data& p1data) {
  * @param p1data A P1Data object to populate with the decoded data.
  * @return true if the buffer was successfully decoded (at least partially), false otherwise.
  */
-bool P1AsciiDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
+bool AsciiDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
     bool dataFound = false;
     char currentLine[MAX_LINE_LENGTH];
     size_t linePos = 0;
@@ -169,7 +169,7 @@ bool P1AsciiDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
 }
 
 // TODO: Implement checksum verification if needed
-// bool P1AsciiDecoder::verifyChecksum(const IFrameData& frame) { 
+// bool AsciiDecoder::verifyChecksum(const IFrameData& frame) { 
 //     // 1. Find start ('/') and end ('!') markers.
 //     // 2. Calculate CRC16 (often CRC16-IBM/ANSI) over the bytes between / and ! (inclusive of /).
 //     // 3. Extract the received CRC value after '!'.

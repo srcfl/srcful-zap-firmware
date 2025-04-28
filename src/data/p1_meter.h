@@ -1,5 +1,4 @@
-#ifndef P1_METER_H
-#define P1_METER_H
+#pragma once
 
 #include <Arduino.h>
 #include <HardwareSerial.h>
@@ -74,5 +73,3 @@ private:
     // Attempt to auto-detect protocol if needed
     bool detectProtocol();
 };
-
-#endif // P1_METER_H

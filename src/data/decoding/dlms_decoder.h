@@ -21,10 +21,10 @@
 
 
 
-class P1DLMSDecoder {
+class DLMSDecoder {
 public:
     // Constructor
-    P1DLMSDecoder();
+    DLMSDecoder();
     
     // Main decode function - decodes a complete P1 frame
     bool decodeBuffer(const IFrameData& frame, P1Data& p1data);
