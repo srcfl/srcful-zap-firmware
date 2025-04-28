@@ -10,7 +10,7 @@
 
 class WifiManager {
 public:
-    WifiManager();
+    WifiManager(const char* mdnsHostname); // Update constructor signature
     ~WifiManager();
 
     // Setup methods
@@ -58,6 +58,7 @@ private:
     std::vector<zap::Str> _lastScanResults;
     unsigned long _lastScanTime;
     Preferences _preferences;  // Preferences instance for NVS operations
+    const char* _mdnsHostname; // Store mDNS hostname
     static const unsigned long SCAN_CACHE_TIME = 10000; // Cache scan results for 10 seconds
     
     // Constants for NVS storage

@@ -24,7 +24,7 @@
 
 // Global variables
 ServerTask serverTask(80); // Create a server task instance
-WifiManager wifiManager; // Create a WiFi manager instance
+WifiManager wifiManager(MDNS_NAME); // Create a WiFi manager instance, pass mDNS name
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 DataSenderTask dataSenderTask; // Create a data sender task instance
 DataReaderTask *dataReaderTask; // Create a data reader task instance
@@ -46,8 +46,6 @@ const unsigned long LONG_PRESS_DURATION = 5000; // 5 seconds for long press
 
 
 void setup() {
-    Serial.begin(115200);
-    while (!Serial) { delay(10); } // Wait for serial connection
     Serial.println("\n\n--- Srcful ZAP Firmware Booting ---");
 
     // --- Get and store the reset reason ---
@@ -56,14 +54,16 @@ void setup() {
     Serial.printf("Last reset reason: %d\n", reason); // Log reason to serial for local debugging
     // --- 
 
+    Serial.begin(115200);
+    delay(1000); // Give some time for serial connection but no loop as we are not using the serial port in the actual meters
+
     pinMode(LED_PIN, OUTPUT);
     pinMode(IO_BUTTON, INPUT_PULLUP); // Initialize button pin with internal pull-up
     digitalWrite(LED_PIN, LOW); // Quick blink on startup
     delay(500);
     digitalWrite(LED_PIN, HIGH);
 
-    Serial.begin(115200);
-    delay(1000);
+
     Serial.println("Starting setup...");
 
     Serial.printf("Total heap: %d\n", ESP.getHeapSize());
@@ -105,16 +105,19 @@ void setup() {
         // Connect to WiFi directly
         Serial.println("Connecting to WiFi...");
         WiFi.mode(WIFI_STA);
-        if (wifiManager.connectToWiFi(WIFI_SSID, WIFI_PSK)) {
+        // Use the manager's connect method which now handles mDNS
+        if (wifiManager.connectToWiFi(WIFI_SSID, WIFI_PSK)) { 
             digitalWrite(LED_PIN, HIGH); // Solid LED when connected
         } else {
             Serial.println("WiFi connection failed");
             digitalWrite(LED_PIN, LOW);
         }
     #else
-        // Try to connect using saved credentials first
+        // Try to connect using saved credentials first. 
+        // autoConnect now handles conditional scanning and connectToWiFi handles mDNS.
         if (!wifiManager.autoConnect()) {
-            Serial.println("No saved credentials or connection failed");
+            Serial.println("Auto-connect failed or no saved credentials.");
+            // Scan is already done inside autoConnect if it failed.
             
             // Fall back to regular setup modes if auto-connect fails
             #if defined(USE_SOFTAP_SETUP)
@@ -132,22 +135,10 @@ void setup() {
         }
     #endif
     
-    // Perform initial WiFi scan
-    Serial.println("Starting WiFi scan...");
-    wifiManager.scanWiFiNetworks();
-    Serial.println("WiFi scan completed");
-    
     #if !defined(USE_SOFTAP_SETUP) && !defined(USE_BLE_SETUP) && !defined(DIRECT_CONNECT)
         Serial.println("ERROR: No connection mode defined!");
         #error "Must define either USE_SOFTAP_SETUP, USE_BLE_SETUP, or DIRECT_CONNECT"
     #endif
-    
-    Serial.println("Setting up MDNS...");
-    if (wifiManager.setupMDNS(MDNS_NAME)) {
-        Serial.println("MDNS responder started");
-    } else {
-        Serial.println("Error setting up MDNS responder!");
-    }
     
     // Configure and start the WiFi status task
     wifiStatusTask.setWifiManager(&wifiManager);

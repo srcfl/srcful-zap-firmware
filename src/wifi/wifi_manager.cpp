@@ -7,9 +7,10 @@ const char* WifiManager::KEY_SSID = "ssid";
 const char* WifiManager::KEY_PASSWORD = "password";
 const char* WifiManager::KEY_PROVISIONED = "provisioned";
 
-WifiManager::WifiManager() 
+WifiManager::WifiManager(const char* mdnsHostname) 
     : _isProvisioned(false), 
-      _lastScanTime(0) {
+      _lastScanTime(0),
+      _mdnsHostname(mdnsHostname) {
     
     Serial.println("Initializing WiFi Manager...");
     
@@ -103,6 +104,14 @@ bool WifiManager::connectToWiFi(const zap::Str& ssid, const zap::Str& password, 
             initNTP();
             Serial.print("NTP initialized, Epoch:");
             Serial.println(time(nullptr));
+
+            // Setup mDNS now that we are connected
+            Serial.println("Setting up MDNS...");
+            if (setupMDNS(_mdnsHostname)) {
+                 Serial.println("MDNS responder started");
+            } else {
+                 Serial.println("Error setting up MDNS responder!");
+            }
             
             // Configure low power WiFi
             WiFi.setSleep(true);  // Enable modem sleep
@@ -133,7 +142,11 @@ void WifiManager::scanWiFiNetworks() {
     Serial.println("Scanning WiFi networks...");
     
     // Set WiFi to station mode to perform scan
-    WiFi.mode(WIFI_STA);
+    WiFiMode_t currentMode = WiFi.getMode(); // Store current mode
+    if (currentMode != WIFI_STA && currentMode != WIFI_AP_STA) {
+        WiFi.mode(WIFI_STA);
+        delay(100); // Give mode change time
+    }
     
     int n = WiFi.scanNetworks();
     Serial.println("Scan completed");
@@ -164,11 +177,12 @@ void WifiManager::scanWiFiNetworks() {
     
     _lastScanTime = millis();
     
-    // Return to original mode if we were in AP mode
-    if (_isProvisioned) {
-        WiFi.mode(WIFI_STA);
-    } else {
-        setupAP(AP_SSID, AP_PASSWORD);
+    // Restore original mode if it wasn't STA or AP_STA
+    if (currentMode != WIFI_STA && currentMode != WIFI_AP_STA) {
+         WiFi.mode(currentMode); 
+         delay(100);
+    } else if (currentMode == WIFI_MODE_NULL) {
+         // Decide desired state - leaving STA for now if it was off.
     }
 }
 
@@ -186,10 +200,8 @@ int WifiManager::getStatus() const {
 
 bool WifiManager::setupMDNS(const char* hostname) {
     if (MDNS.begin(hostname)) {
-        Serial.println("MDNS responder started");
         return true;
     } else {
-        Serial.println("Error setting up MDNS responder!");
         return false;
     }
 }
@@ -318,18 +330,26 @@ bool WifiManager::autoConnect() {
     // Force reload credentials from NVS to ensure we have the latest
     loadCredentials();
     
+    bool connected = false;
     // Try to connect using saved credentials
     if (_isProvisioned && _configuredSSID.length() > 0) {
         Serial.print("Found saved credentials for SSID: ");
         Serial.println(_configuredSSID.c_str());
-        Serial.print("Password length: ");
-        Serial.println(_configuredPassword.length());
         
-        return connectToWiFi(_configuredSSID, _configuredPassword, false);
+        connected = connectToWiFi(_configuredSSID, _configuredPassword, false); // Attempt connection
+    } else {
+         Serial.println("No saved credentials found.");
     }
     
-    Serial.println("No saved credentials to auto-connect");
-    return false;
+    // If connection failed or no credentials existed, perform a scan
+    if (!connected) {
+        Serial.println("Auto-connect failed or no credentials, performing WiFi scan...");
+        scanWiFiNetworks(); 
+    } else {
+        Serial.println("Auto-connect successful.");
+    }
+
+    return connected; // Return true only if connection succeeded
 }
 
 const zap::Str& WifiManager::getString(Preferences &pref, const char* key, const char* defaultValue) {
