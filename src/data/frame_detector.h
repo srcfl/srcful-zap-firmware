@@ -4,17 +4,20 @@
 #include <vector>
 #include <cstdint> // For uint8_t
 
+#include "data/decoding/IFrameData.h"
+
 /**
  * @brief Configuration for a specific frame delimiter type
  */
 struct FrameDelimiterInfo {
+
     uint8_t startDelimiter; // Byte marking the start of the frame
     uint8_t endDelimiter;   // Byte marking the end of the frame
-    int id;                 // Identifier for this frame type
+    IFrameData::Type frameType;                 // Identifier for this frame type
     bool isLineBased;       // If true, the actual frame ends with a newline after the endDelimiter
 
-    FrameDelimiterInfo(uint8_t start, uint8_t end, int id, bool lineBased)
-        : startDelimiter(start), endDelimiter(end), id(id), isLineBased(lineBased) {}
+    FrameDelimiterInfo(uint8_t start, uint8_t end, IFrameData::Type type, bool lineBased)
+        : startDelimiter(start), endDelimiter(end), frameType(type), isLineBased(lineBased) {}
 };
 
 /**
@@ -27,7 +30,7 @@ struct FrameInfo {
     size_t endIndex;          // End position of the frame in the buffer 
     size_t size;              // Total size of the frame including delimiters (and newline if line-based)
     bool complete;            // Whether the frame is complete
-    int frameTypeId;          // ID of the detected frame type (from FrameDelimiterInfo)
+    IFrameData::Type frameTypeId;          // ID of the detected frame type (from FrameDelimiterInfo)
 };
 
 /**

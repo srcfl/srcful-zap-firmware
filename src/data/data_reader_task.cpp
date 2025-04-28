@@ -115,14 +115,14 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     bool isDecoded = false;
 
     switch (frame.getFrameTypeId()) {
-        case 1: // TODO: Hard coded sucks
+        case IFrameData::Type::FRAME_TYPE_DLMS:
             Serial.println("Data reader task: DLMS frame detected");
             if (decoder.decodeBuffer(frame, p1data)) {
                 Serial.println("DLMS data decoded successfully");
                 isDecoded = true;
             }
             break;
-        case 0: // TODO: Hard coded sucks
+        case IFrameData::Type::FRAME_TYPE_ASCII:
             Serial.println("Data reader task: ASCII frame detected");
             if (asciiDecoder.decodeBuffer(frame, p1data)) {
                 Serial.println("ASCII data decoded successfully");

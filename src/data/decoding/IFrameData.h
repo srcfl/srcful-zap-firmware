@@ -1,5 +1,4 @@
-#ifndef IFRAME_DATA_H
-#define IFRAME_DATA_H
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -13,6 +12,14 @@
  */
 class IFrameData {
 public:
+
+    typedef enum {
+        FRAME_TYPE_UNKNOWN = -1,
+        FRAME_TYPE_ASCII = 0,
+        FRAME_TYPE_DLMS = 1,
+    } Type;
+
+
     /**
      * @brief Virtual destructor
      */
@@ -38,7 +45,5 @@ public:
      * 
      * @return uint8_t The type ID of the frame (e.g., ASCII or DLMS)
      */
-    virtual uint8_t getFrameTypeId() const = 0;
+    virtual Type getFrameTypeId() const = 0;
 };
-
-#endif // IFRAME_DATA_H

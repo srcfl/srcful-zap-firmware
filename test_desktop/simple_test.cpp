@@ -32,7 +32,7 @@
 class FrameData : public IFrameData {
 public:
     // Constructor now takes typeId
-    FrameData(const uint8_t* data, size_t size, uint8_t typeId) : data_(data), size_(size), typeId_(typeId) {}
+    FrameData(const uint8_t* data, size_t size) : data_(data), size_(size) {}
 
     uint8_t getFrameByte(size_t index) const override {
         if (index < size_) {
@@ -46,13 +46,12 @@ public:
     }
 
     // Implementation for the new virtual function
-    uint8_t getFrameTypeId() const override {
-        return typeId_;
+    IFrameData::Type getFrameTypeId() const override {
+        return IFrameData::Type::FRAME_TYPE_UNKNOWN; // Assuming this is a DLMS frame
     }
 private:
     const uint8_t* data_;
     size_t size_;
-    uint8_t typeId_; // Added member to store type ID
 };
 
 int test_decoder_frame() {
@@ -62,7 +61,7 @@ int test_decoder_frame() {
     DLMSDecoder decoder;
 
     // Provide a type ID (e.g., 0 for DLMS, 1 for ASCII - adjust as needed)
-    FrameData frameData(faulty_aidon_frame_2, sizeof(faulty_aidon_frame_2), 0); 
+    FrameData frameData(faulty_aidon_frame_2, sizeof(faulty_aidon_frame_2)); 
 
     decoder.decodeBuffer(frameData, p1data);
 

@@ -84,19 +84,7 @@ public:
      */
     void setFrameCallback(FrameCallback callback) { _frameCallback = callback; }
     
-    /**
-     * @brief Set the frame delimiters
-     * 
-     * @param startDelimiter Start delimiter byte
-     * @param endDelimiter End delimiter byte
-     */
-    void setFrameDelimiters(uint8_t startDelimiter, uint8_t endDelimiter) {
-        // Create a FrameDelimiterInfo with default ID 0 and isLineBased=false
-        FrameDelimiterInfo config = {startDelimiter, endDelimiter, 0, false};
-        std::vector<FrameDelimiterInfo> delimiterConfigs = {config};
-        _frameDetector.setFrameDelimiters(delimiterConfigs);
-    }
-    
+  
     /**
      * @brief Set the inter-frame timeout
      * 
@@ -140,7 +128,7 @@ public:
     }
 
     // Implementation for the new virtual function
-    virtual uint8_t getFrameTypeId() const override {
+    virtual IFrameData::Type getFrameTypeId() const override {
         return _currentFrameTypeId;
     }
 
@@ -151,7 +139,7 @@ private:
     // Frame information for IFrameData interface
     size_t _currentFrameSize;
     size_t _currentFrameStartIndex;
-    uint8_t _currentFrameTypeId; // Added member to store type ID
+    IFrameData::Type _currentFrameTypeId; // Added member to store type ID
     
     // Callback for frame processing
     FrameCallback _frameCallback;

@@ -1,5 +1,4 @@
-#ifndef P1DATA_H
-#define P1DATA_H
+#pragma once
 
 #include <time.h>
 #include <cstdint>
@@ -60,5 +59,3 @@ public:
         return true;
     }
 };
-
-#endif

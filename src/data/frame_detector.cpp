@@ -101,7 +101,7 @@ bool FrameDetector::extractCompleteFrame(const CircularBuffer& buffer, FrameInfo
                 frameInfo.endIndex = endPos;
                 frameInfo.size = frameLength;
                 frameInfo.complete = true;
-                frameInfo.frameTypeId = _activeDelimiterInfo->id;
+                frameInfo.frameTypeId = _activeDelimiterInfo->frameType;
                 
                 _frameInProgress = false;
                 _activeDelimiterInfo = nullptr;
