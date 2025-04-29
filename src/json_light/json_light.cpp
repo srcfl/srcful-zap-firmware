@@ -110,6 +110,17 @@ JsonBuilder& JsonBuilder::add(const char* key, uint8_t* data, size_t size) {
     return *this;
 }
 
+JsonBuilder& JsonBuilder::add(const char* key, float value) {
+    if (!firstItem) buffer += ',';
+    buffer += '"';
+    buffer += key;
+    buffer += "\":";
+    
+    buffer += zap::Str(value);
+    firstItem = false;
+    return *this;
+}
+
 JsonBuilder& JsonBuilder::addArray(const char* key, const std::vector<zap::Str>& values) {
     if (!firstItem) buffer += ',';
     buffer += '"';

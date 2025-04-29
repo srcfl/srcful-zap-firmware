@@ -175,6 +175,7 @@ void GraphQLSubscriptionClient::loop() {
         uint8_t buffer[1024]; // Adjust buffer size as needed
         size_t length = client.read(buffer, sizeof(buffer));
         
+        
         if (length > 0) {
             processWebSocketData(buffer, length);
         }
@@ -268,6 +269,7 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
                     Serial.println("Connection acknowledged, sending subscription");
                     subscribeToSettings();
                 } else if (type == "data") {
+                    // Serial.print("Received data:"); Serial.println(payload);
                     JsonParser configChanges("");
                     if (doc.getObjectByPath("payload.data.configurationDataChanges", configChanges)) {
 

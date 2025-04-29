@@ -49,7 +49,7 @@ void WifiStatusTask::taskFunction(void* parameter) {
     static bool wasConnected = false;
 
     // sleep for a bit to allow other tasks to initialize
-    vTaskDelay(pdMS_TO_TICKS(10000));
+    vTaskDelay(pdMS_TO_TICKS(1000));
     
     while (task->shouldRun) {
         // Check WiFi status every 5 seconds

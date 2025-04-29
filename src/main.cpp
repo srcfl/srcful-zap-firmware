@@ -19,6 +19,7 @@
 #include "ota_handler.h"  // Include OTA handler
 #include "debug.h" // Include Debug header
 
+
 #define LED_PIN 3
 #define IO_BUTTON 9
 
@@ -48,6 +49,7 @@ const unsigned long LONG_PRESS_DURATION = 5000; // 5 seconds for long press
 void setup() {
     Serial.println("\n\n--- Srcful ZAP Firmware Booting ---");
 
+
     // --- Get and store the reset reason ---
     esp_reset_reason_t reason = esp_reset_reason();
     Debug::setResetReason(reason);
@@ -70,6 +72,8 @@ void setup() {
     Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
     Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
     Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
+
+
 
     {   // get the private key from the Preferences
         Preferences preferences;

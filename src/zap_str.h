@@ -109,6 +109,36 @@ private:
         }
     }
 
+    // Constructor with float
+    explicit Str(float value) : _buffer(nullptr), _length(0), _capacity(0) {
+        // Determine the required buffer size using snprintf with a NULL buffer.
+        // Using %g often gives a more compact representation than %f.
+        int required_len = snprintf(NULL, 0, "%g", value);
+
+        if (required_len < 0) {
+            // Handle snprintf encoding error, initialize to empty.
+            reserve(1);
+            return;
+        }
+
+        // Reserve enough space for the string plus the null terminator.
+        if (reserve(static_cast<size_t>(required_len) + 1)) {
+            // Format the float directly into the allocated buffer.
+            // Pass the actual capacity to snprintf for safety.
+            int written_len = snprintf(_buffer, _capacity, "%g", value);
+
+            if (written_len >= 0 && static_cast<size_t>(written_len) < _capacity) {
+                // Successfully written, update the length.
+                _length = static_cast<size_t>(written_len);
+            } else {
+                // Handle potential snprintf error during writing. Clear the string.
+                if (_buffer) _buffer[0] = '\0';
+                _length = 0;
+            }
+        }
+        // If reserve fails, the string remains in its default empty state.
+    }
+
     // Constructor with unsigned int
     explicit Str(unsigned int value) : _buffer(nullptr), _length(0), _capacity(0) {
         char temp[12]; // Enough for uint32_t

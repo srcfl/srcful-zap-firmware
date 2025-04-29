@@ -32,6 +32,7 @@ public:
     JsonBuilder& add(const char* key, uint64_t value);
     JsonBuilder& add(const char* key, bool value);
     JsonBuilder& add(const char* key, uint8_t* data, size_t size);
+    JsonBuilder& add(const char* key, float value);
     
     // Add an array of string values
     JsonBuilder& addArray(const char* key, const std::vector<zap::Str>& values);

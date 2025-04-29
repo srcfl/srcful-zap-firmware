@@ -35,7 +35,7 @@ void WebServerHandler::setupEndpoints() {
         Serial.println("Handling root request");
         
         // If already provisioned, redirect to system info
-        server.sendHeader("Location", "/api/system/info", true);
+        server.sendHeader("Location", EndpointMapper::SYSTEM_INFO_PATH, true);
         server.send(302, "text/plain", "");
     });
 

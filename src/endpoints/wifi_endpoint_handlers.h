@@ -45,7 +45,7 @@ class WiFiScanHandler : public EndpointFunction, protected WifiHandler {
 
 class SystemInfoHandler : public EndpointFunction {
     public:
-    SystemInfoHandler(const WifiManager& wifiManager) : wifiManager(wifiManager) {}
+    SystemInfoHandler(const WifiManager& wifiManager);
         EndpointResponse handle(const zap::Str& contents) override;
         
     private:

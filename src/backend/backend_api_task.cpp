@@ -79,6 +79,9 @@ bool BackendApiTask::isBleActive() const {
 
 void BackendApiTask::taskFunction(void* parameter) {
     BackendApiTask* task = static_cast<BackendApiTask*>(parameter);
+
+    // sleep for a bit to allow other tasks to initialize
+    vTaskDelay(pdMS_TO_TICKS(2000));
     
     while (task->shouldRun) {
         

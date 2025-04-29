@@ -6,7 +6,7 @@
 
 // Define path constants
 const char* EndpointMapper::WIFI_CONFIG_PATH = "/api/wifi";
-const char* EndpointMapper::SYSTEM_INFO_PATH = "/api/system/info";
+const char* EndpointMapper::SYSTEM_INFO_PATH = "/api/system";
 const char* EndpointMapper::WIFI_RESET_PATH = "/api/wifi";
 const char* EndpointMapper::CRYPTO_INFO_PATH = "/api/crypto";
 const char* EndpointMapper::NAME_INFO_PATH = "/api/name";
