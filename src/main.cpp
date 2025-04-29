@@ -18,18 +18,24 @@
 #include "backend/backend_api_task.h" // Include BackendApiTask
 #include "ota_handler.h"  // Include OTA handler
 #include "debug.h" // Include Debug header
+#include "main_action_manager.h" // Include the action manager
+#include "main_actions.h" // Include actions for triggering
 
 
 #define LED_PIN 3
 #define IO_BUTTON 9
 
 // Global variables
-ServerTask serverTask(80); // Create a server task instance
 WifiManager wifiManager(MDNS_NAME); // Create a WiFi manager instance, pass mDNS name
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 DataSenderTask dataSenderTask; // Create a data sender task instance
 DataReaderTask *dataReaderTask; // Create a data reader task instance
 BackendApiTask backendApiTask; // Create a backend API task instance
+ServerTask serverTask(80); // Create a server task instance
+
+
+// Instantiate MainActionManager directly
+MainActionManager mainActionManager(wifiManager);
 
 String configuredSSID = "";
 String configuredPassword = "";
@@ -37,7 +43,8 @@ String configuredPassword = "";
 // Button press detection variables
 unsigned long buttonPressStartTime = 0;
 bool buttonPressed = false;
-const unsigned long LONG_PRESS_DURATION = 5000; // 5 seconds for long press
+const unsigned long CLEAR_WIFI_PRESS_DURATION = 5000; // 5 seconds for long press
+const unsigned long REBOOT_PRESS_DURATION = 2000; // 2 seconds for reboot
 
 #if defined(USE_BLE_SETUP)
     #include "ble_handler.h"
@@ -182,6 +189,9 @@ void setup() {
 }
 
 void loop() {
+    // --- Check for deferred actions FIRST ---
+    mainActionManager.checkAndExecute(); // Call method on the instance
+
     // Handle button press for WiFi reset
     int buttonState = digitalRead(IO_BUTTON);
     
@@ -203,9 +213,12 @@ void loop() {
             unsigned long pressDuration = millis() - buttonPressStartTime;
             
             // When we reach 5 seconds threshold, start continuous fast blinking
-            if (pressDuration > LONG_PRESS_DURATION) {
+            if (pressDuration > CLEAR_WIFI_PRESS_DURATION) {
                 // Reached long press threshold - continuous fast blinking as feedback
                 digitalWrite(LED_PIN, (pressDuration / 100) % 2 ? HIGH : LOW); // Fast blink (5Hz)
+            } else if (pressDuration > REBOOT_PRESS_DURATION) {
+                // Reached reboot threshold - slow blinking as feedback
+                digitalWrite(LED_PIN, (pressDuration / 250) % 2 ? HIGH : LOW); // Slow blink (2Hz)
             }
         }
     } else if (buttonPressed) {
@@ -213,29 +226,31 @@ void loop() {
         unsigned long pressDuration = millis() - buttonPressStartTime;
         buttonPressed = false;
         
-        if (pressDuration > LONG_PRESS_DURATION) {
+        if (pressDuration > CLEAR_WIFI_PRESS_DURATION) {
             // Long press confirmed and button released, now reset WiFi and restart
             Serial.println("Long press confirmed! Resetting WiFi settings...");
             
             // Clear WiFi credentials
             wifiManager.clearCredentials();
-            
-            // Disconnect from WiFi
-            WiFi.disconnect(true);
-            WiFi.mode(WIFI_OFF);
-            delay(500);
-            
-            #if defined(USE_BLE_SETUP)
-                // Initialize BLE for fresh setup
-                Serial.println("Initializing BLE...");
-                bleHandler.init();
-            #endif
-            
-            // Restart the ESP32
-            Serial.println("Restarting the board...");
-            delay(250);
-            ESP.restart();
         }
+
+        // no else here as we want to reboot even if the button was pressed for less than 5 seconds
+        // i.e. this is a reboot without wifi credentials clearing.
+        if (pressDuration > REBOOT_PRESS_DURATION) {
+            // Short press confirmed, trigger a reboot
+            Serial.println("Short press confirmed! Rebooting...");
+            
+            // Trigger a deferred reboot using the new system (e.g., 1 second delay)
+            MainActions::triggerAction(MainActions::Type::REBOOT, 10); // Request reboot in 1000ms
+        }
+
+         // Restore LED state after button release (if not rebooting)
+         // This might be handled by wifiStatusTask anyway, but ensures LED is back on if connected.
+         if (wifiManager.isConnected()) {
+             digitalWrite(LED_PIN, HIGH);
+         } else {
+             // Or handle blinking via wifiStatusTask if not connected
+         }
     }
 
     // Check if the server task is running

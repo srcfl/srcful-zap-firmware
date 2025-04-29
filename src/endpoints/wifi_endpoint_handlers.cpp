@@ -4,6 +4,7 @@
 #include <time.h> // For time()
 #include "esp_timer.h" // For esp_timer_get_time()
 #include "esp_system.h" // For ESP system info functions
+#include "main_actions.h"
 
 // WiFi Config Handler Implementation
 EndpointResponse WiFiConfigHandler::handle(const zap::Str& contents) {
@@ -57,11 +58,10 @@ EndpointResponse WiFiResetHandler::handle(const zap::Str& contents) {
     // Clear saved credentials from persistent storage
     wifiManager.clearCredentials();
     
-    // Disconnect from WiFi
-    WiFi.disconnect();
+    MainActions::triggerAction(MainActions::Type::WIFI_DISCONNECT, 5000);   
     
     response.statusCode = 200;
-    response.data = "{\"status\":\"success\",\"message\":\"WiFi reset, credentials cleared\"}";
+    response.data = "{\"status\":\"success\",\"message\":\"WiFi credentials cleared, disconnecting in 5 seconds\"}";
     return response;
 }
 

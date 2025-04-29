@@ -45,6 +45,7 @@ public:
     
     // Automatic connection using saved credentials
     bool autoConnect();
+    bool disconnect();
 
 private:
     void initNTP();

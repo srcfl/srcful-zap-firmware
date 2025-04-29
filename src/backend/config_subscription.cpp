@@ -192,6 +192,12 @@ void GraphQLSubscriptionClient::loop() {
 
 // Process WebSocket frames
 void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t length) {
+
+    for (size_t i = 0; i < length; i++) {
+        Serial.print(buffer[i], HEX);
+        Serial.print(" ");
+    }
+
     // Very basic WebSocket frame parsing
     if (length < 2) return;
     

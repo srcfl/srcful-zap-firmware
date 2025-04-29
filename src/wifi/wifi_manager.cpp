@@ -352,6 +352,20 @@ bool WifiManager::autoConnect() {
     return connected; // Return true only if connection succeeded
 }
 
+bool WifiManager::disconnect() {
+    Serial.println("Disconnecting from WiFi...");
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        WiFi.disconnect(true);  // true = disconnect and clear settings
+        delay(1000);  // Give it time to complete
+        Serial.println("Disconnected from WiFi");
+        return true;
+    } else {
+        Serial.println("Not connected to WiFi");
+        return false;
+    }
+}
+
 const zap::Str& WifiManager::getString(Preferences &pref, const char* key, const char* defaultValue) {
     static zap::Str result;
     char buffer[64] = {0};

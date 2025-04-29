@@ -4,6 +4,7 @@
 #include "wifi/wifi_manager.h"
 #include "json_light/json_light.h"
 #include "config.h"
+#include "main_actions.h"
 
 #include <driver/temp_sensor.h>
 // temp_sensor_config_t internal_temp_sensor_config = TSENS_CONFIG_DEFAULT();
@@ -98,7 +99,10 @@ EndpointResponse SystemRebootHandler::handle(const zap::Str& contents) {
     response.contentType = "application/json";
 
     // Reboot the system
-    esp_restart();
+    MainActions::triggerAction(MainActions::Type::REBOOT, 5000);
+
+    response.statusCode = 200;
+    response.data = "{\"status\":\"success\",\"message\":\"System is rebooting in 5 seconds\"}";
 
     return response;
 }
