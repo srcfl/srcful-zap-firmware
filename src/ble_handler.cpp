@@ -9,6 +9,7 @@
 #include "endpoints/endpoint_mapper.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
+#include "config.h"
 
 // Define Queue properties
 #define REQUEST_QUEUE_LENGTH 5
@@ -104,6 +105,7 @@ void BLEHandler::hardStop() {
         Serial.println("NimBLE stopped and resources released");
         stopTimer = 0;
     }
+    digitalWrite(LED_PIN, HIGH); // Turn off
 }
 
 void BLEHandler::stop() {

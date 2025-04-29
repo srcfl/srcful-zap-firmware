@@ -347,6 +347,18 @@ bool WifiManager::autoConnect() {
         scanWiFiNetworks(); 
     } else {
         Serial.println("Auto-connect successful.");
+
+        // two quick blinks to indicate success
+        digitalWrite(LED_PIN, HIGH);    // Turn off
+        delay(150);
+        digitalWrite(LED_PIN, LOW);
+        delay(150);
+        digitalWrite(LED_PIN, HIGH);
+        delay(150);
+        digitalWrite(LED_PIN, LOW);
+        delay(150);
+        digitalWrite(LED_PIN, HIGH); // Turn off
+
     }
 
     return connected; // Return true only if connection succeeded

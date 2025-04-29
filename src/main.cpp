@@ -22,7 +22,6 @@
 #include "main_actions.h" // Include actions for triggering
 
 
-#define LED_PIN 3
 #define IO_BUTTON 9
 
 // Global variables
@@ -255,13 +254,18 @@ void loop() {
 
     // Check if the server task is running
     if (wifiManager.isConnected()) {
-        digitalWrite(LED_PIN, HIGH); // Solid LED when connected
+        
         
         // Check if the server task is running, restart if needed
         if (!serverTask.isRunning()) {
             Serial.println("Server task not running, restarting...");
             serverTask.begin();
         }
+    }
+
+    if (!buttonPressed && bleHandler.isActive()) {
+        // If BLE is active and button is not pressed, turn on the LED
+        digitalWrite(LED_PIN, LOW);
     }
     
     #if defined(USE_BLE_SETUP)

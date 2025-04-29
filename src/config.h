@@ -15,3 +15,6 @@ extern const char* DATA_URL;
 // Cryptographic Configuration
 extern const char* PRIVATE_KEY_HEX;
 extern const char* EXPECTED_PUBLIC_KEY_HEX;
+
+#define LED_PIN 3
+
