@@ -16,10 +16,3 @@
 inline const char* getFirmwareVersion() {
     return FIRMWARE_VERSION_STRING;
 }
-
-// Function to get version as integer (for easy comparison)
-inline uint32_t getFirmwareVersionInt() {
-    return (FIRMWARE_VERSION_MAJOR << 16) | 
-           (FIRMWARE_VERSION_MINOR << 8) | 
-           FIRMWARE_VERSION_PATCH;
-} 

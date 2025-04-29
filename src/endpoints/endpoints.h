@@ -27,9 +27,12 @@ EndpointResponse handleDebug(const EndpointRequest& request);
 
 #include "endpoint_handlers.h"
 #include "wifi_endpoint_handlers.h"
+#include "system_endpoint_handlers.h"
+
 // Create handler instances
 extern WiFiConfigHandler g_wifiConfigHandler;
 extern SystemInfoHandler g_systemInfoHandler;
+extern SystemRebootHandler g_systemRebootHandler;
 extern WiFiResetHandler g_wifiResetHandler;
 extern CryptoInfoHandler g_cryptoInfoHandler;
 extern NameInfoHandler g_nameInfoHandler;

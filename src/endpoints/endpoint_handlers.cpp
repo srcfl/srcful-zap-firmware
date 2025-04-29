@@ -4,7 +4,7 @@
 #include "debug.h"
 
 
-
+#include "config.h"
 
 
 // Crypto Info Handler Implementation

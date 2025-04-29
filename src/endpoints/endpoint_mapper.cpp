@@ -7,6 +7,7 @@
 // Define path constants
 const char* EndpointMapper::WIFI_CONFIG_PATH = "/api/wifi";
 const char* EndpointMapper::SYSTEM_INFO_PATH = "/api/system";
+const char* EndpointMapper::SYSTEM_REBOOT_PATH = "/api/system/reboot";
 const char* EndpointMapper::WIFI_RESET_PATH = "/api/wifi";
 const char* EndpointMapper::CRYPTO_INFO_PATH = "/api/crypto";
 const char* EndpointMapper::NAME_INFO_PATH = "/api/name";
@@ -27,6 +28,7 @@ NameInfoHandler g_nullHandler;
 const Endpoint endpoints[] = {
     Endpoint(Endpoint::WIFI_CONFIG, Endpoint::Verb::POST, EndpointMapper::WIFI_CONFIG_PATH, g_wifiConfigHandler),
     Endpoint(Endpoint::SYSTEM_INFO, Endpoint::Verb::GET, EndpointMapper::SYSTEM_INFO_PATH, g_systemInfoHandler),
+    Endpoint(Endpoint::SYSTEM_INFO, Endpoint::Verb::POST, EndpointMapper::SYSTEM_REBOOT_PATH, g_systemRebootHandler),
     Endpoint(Endpoint::WIFI_RESET, Endpoint::Verb::DELETE, EndpointMapper::WIFI_RESET_PATH, g_wifiResetHandler),
     Endpoint(Endpoint::CRYPTO_INFO, Endpoint::Verb::GET, EndpointMapper::CRYPTO_INFO_PATH, g_cryptoInfoHandler),
     Endpoint(Endpoint::NAME_INFO, Endpoint::Verb::GET, EndpointMapper::NAME_INFO_PATH, g_nameInfoHandler),

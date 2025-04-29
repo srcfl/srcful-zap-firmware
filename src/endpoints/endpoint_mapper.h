@@ -10,20 +10,28 @@ class EndpointMapper {
 public:
     // Define path constants
     static const char* WIFI_CONFIG_PATH;
-    static const char* SYSTEM_INFO_PATH;
     static const char* WIFI_RESET_PATH;
-    static const char* CRYPTO_INFO_PATH;
-    static const char* NAME_INFO_PATH;
     static const char* WIFI_STATUS_PATH;
     static const char* WIFI_SCAN_PATH;
-    static const char* BLE_STOP_PATH;
+
+
+    static const char* SYSTEM_INFO_PATH;
+    static const char* SYSTEM_REBOOT_PATH;
+    static const char* DEBUG_PATH;
+
+    
+    static const char* CRYPTO_INFO_PATH;
     static const char* CRYPTO_SIGN_PATH;
+
+    static const char* NAME_INFO_PATH;
+    static const char* ECHO_PATH;
+
+
+    static const char* BLE_STOP_PATH;
     static const char* OTA_UPDATE_PATH;
     static const char* OTA_STATUS_PATH;
     static const char* INITIALIZE_FORM_PATH;
     static const char* INITIALIZE_PATH;
-    static const char* DEBUG_PATH;
-    static const char* ECHO_PATH;
     
     // Iterator support
     class Iterator {

@@ -11,14 +11,6 @@
 #include "ota_handler.h"
 #include "zap_str.h"
 
-// Forward declarations
-extern const char* PRIVATE_KEY_HEX;
-extern const char* AP_SSID;
-extern const char* AP_PASSWORD;
-
-// System Info Handler
-
-
 // Crypto Info Handler
 class CryptoInfoHandler : public EndpointFunction {
 public:
