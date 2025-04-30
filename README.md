@@ -2,6 +2,8 @@
 
 This repository contains the firmware for the Srcful ZAP, an ESP32-C3 based device designed to read data from smart meters via the P1 port and securely transmit it to the Srcful backend.
 
+**NOTE this firmware is under heavy development and should be considered an Alpha vervison**
+
 ## Features
 
 *   **P1 Smart Meter Reading:** Connects to and reads data telegrams from smart meters using the P1 port (DSMR standard).
@@ -14,9 +16,9 @@ This repository contains the firmware for the Srcful ZAP, an ESP32-C3 based devi
 *   **Backend Communication:**
     *   Sends device status and receives configuration updates via GraphQL over HTTPS.
     *   Utilizes WebSockets (GraphQL Subscriptions) for real-time communication with the backend (e.g., receiving commands or configuration changes).
-*   **Over-the-Air (OTA) Updates:** Supports secure firmware updates over WiFi (under development).
+*   **Over-the-Air (OTA) Updates:** Supports firmware updates over WiFi (under development).
 *   **Hardware Interaction:** Manages LED status indication and button input (e.g., for WiFi reset or reboot).
-*   **Robust Operation:** Uses FreeRTOS tasks for managing concurrent operations (WiFi, data reading, backend communication, server).
+*   **Robust Operation:** Uses FreeRTOS tasks for managing concurrent operations (WiFi, data reading, backend communication, local server).
 *   **PlatformIO Build System:** Developed using the PlatformIO IDE framework for ESP32 development.
 
 ## Hardware
@@ -91,21 +93,14 @@ This project employs two primary methods for testing:
 
 ### 2. Desktop Unit Tests (`test_desktop`)
 
-*   **Framework:** A separate PlatformIO project located in the `test_desktop` directory, configured to run tests on the host machine (native platform). It uses testing frameworks like Unity or Catch2 (check `test_desktop/platformio.ini`).
-*   **Purpose:** These tests focus on unit testing individual components (classes, functions) in isolation, particularly logic that doesn't directly depend on ESP32 hardware specifics (e.g., data parsing, JWT formatting, cryptographic operations using mocks/stubs). This allows for faster development cycles and easier debugging.
+*   **Framework:** A separate VSCode C++ project located in the `test_desktop` directory, configured to run tests on the host machine (native platform).
+*   **Purpose:** These tests focus on unit testing individual components (classes, functions) in isolation, particularly logic that doesn't directly depend on ESP32 hardware specifics (e.g., data parsing, JWT formatting). This allows for faster development cycles and easier debugging.
 *   **Location:** The test project and its source files are within the `test_desktop` directory. Shared code from the main firmware (`src`) can be included for testing.
-*   **Execution:**
-    Navigate to the test directory and run the tests using PlatformIO:
-    ```bash
-    cd test_desktop
-    # Run tests on the native host machine
-    pio test -e native
-    cd ..
-    ```
+*   See the corresponding README for further instructions
 
 ## Contributing
 
-Contributions are welcome! Please refer to the contribution guidelines (if available) or open an issue to discuss proposed changes.
+Contributions are welcome! Please refer to the contribution guidelines (not available yet) or open an issue to discuss proposed changes.
 
 ## License
 
