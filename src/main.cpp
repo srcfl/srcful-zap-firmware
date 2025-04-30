@@ -45,11 +45,9 @@ bool buttonPressed = false;
 const unsigned long CLEAR_WIFI_PRESS_DURATION = 5000; // 5 seconds for long press
 const unsigned long REBOOT_PRESS_DURATION = 2000; // 2 seconds for reboot
 
-#if defined(USE_BLE_SETUP)
-    #include "ble_handler.h"
-    BLEHandler bleHandler; 
-    unsigned long lastBLECheck = 0;  // Track last BLE check time
-#endif
+#include "ble_handler.h"
+BLEHandler bleHandler; 
+unsigned long lastBLECheck = 0;  // Track last BLE check time
 
 
 void setup() {
@@ -111,44 +109,27 @@ void setup() {
         Serial.printf("Public key: %s\n", crypto_get_public_key(PRIVATE_KEY_HEX).c_str());
     }
     
-    #if defined(DIRECT_CONNECT)
-        // Connect to WiFi directly
-        Serial.println("Connecting to WiFi...");
-        WiFi.mode(WIFI_STA);
-        // Use the manager's connect method which now handles mDNS
-        if (wifiManager.connectToWiFi(WIFI_SSID, WIFI_PSK)) { 
-            digitalWrite(LED_PIN, HIGH); // Solid LED when connected
-        } else {
-            Serial.println("WiFi connection failed");
-            digitalWrite(LED_PIN, LOW);
-        }
-    #else
-        // Try to connect using saved credentials first. 
-        // autoConnect now handles conditional scanning and connectToWiFi handles mDNS.
-        if (!wifiManager.autoConnect()) {
-            Serial.println("Auto-connect failed or no saved credentials.");
-            // Scan is already done inside autoConnect if it failed.
-            
-            // Fall back to regular setup modes if auto-connect fails
-            #if defined(USE_SOFTAP_SETUP)
-                Serial.println("Setting up AP mode...");
-                wifiManager.setupAP(AP_SSID, AP_PASSWORD);
-            #endif
-            
-            #if defined(USE_BLE_SETUP)
-                Serial.println("Setting up BLE...");
-                bleHandler.init();
-            #endif
-        } else {
-            Serial.println("Successfully connected with saved credentials");
-            digitalWrite(LED_PIN, HIGH); // Solid LED when connected
-        }
-    #endif
-    
-    #if !defined(USE_SOFTAP_SETUP) && !defined(USE_BLE_SETUP) && !defined(DIRECT_CONNECT)
-        Serial.println("ERROR: No connection mode defined!");
-        #error "Must define either USE_SOFTAP_SETUP, USE_BLE_SETUP, or DIRECT_CONNECT"
-    #endif
+
+    // Try to connect using saved credentials first. 
+    // autoConnect now handles conditional scanning and connectToWiFi handles mDNS.
+    if (!wifiManager.autoConnect()) {
+        Serial.println("Auto-connect failed or no saved credentials.");
+        // Scan is already done inside autoConnect if it failed.
+        
+        // Fall back to regular setup modes if auto-connect fails
+        #if defined(USE_SOFTAP_SETUP)
+            Serial.println("Setting up AP mode...");
+            wifiManager.setupAP(AP_SSID, AP_PASSWORD);
+        #endif
+        
+        #if defined(USE_BLE_SETUP)
+            Serial.println("Setting up BLE...");
+            bleHandler.init();
+        #endif
+    } else {
+        Serial.println("Successfully connected with saved credentials");
+        digitalWrite(LED_PIN, HIGH); // Solid LED when connected
+    }
     
     // Configure and start the WiFi status task
     wifiStatusTask.setWifiManager(&wifiManager);

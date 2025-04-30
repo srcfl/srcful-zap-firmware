@@ -44,15 +44,6 @@ WifiManager::~WifiManager() {
     // Preferences automatically closes when goes out of scope
 }
 
-void WifiManager::setupAP(const char* ssid, const char* password) {
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(ssid, password);
-    
-    IPAddress IP = WiFi.softAPIP();
-    Serial.print("AP IP address: ");
-    Serial.println(IP);
-}
-
 void WifiManager::initNTP() {
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // 0, 0 = UTC, no daylight offset
     

@@ -14,7 +14,6 @@ public:
     ~WifiManager();
 
     // Setup methods
-    void setupAP(const char* ssid, const char* password);
     bool connectToWiFi(const zap::Str& ssid, const zap::Str& password, bool updateGlobals = true);
     void scanWiFiNetworks();
     
