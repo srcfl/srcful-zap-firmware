@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Simple Test",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-std=c++11",
+                "-g",
+                "-I${workspaceFolder}/../src",
+                "-I${workspaceFolder}/../include",
+                "-I${workspaceFolder}/mock",
+                "${workspaceFolder}/mock/Arduino.cpp",
+                "${workspaceFolder}/mock/HTTPClient.cpp",
+                "${workspaceFolder}/mock/crypto.cpp",
+                "${workspaceFolder}/main.cpp",
+                "${workspaceFolder}/ams/HdlcParser.cpp",
+           
+                "-o",
+                "${workspaceFolder}/build/simple_test"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": "$gcc"
+        }
+    ]
+}
