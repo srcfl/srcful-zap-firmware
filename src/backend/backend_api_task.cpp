@@ -1,4 +1,5 @@
 #include "backend_api_task.h"
+#include "data_sender.h"
 #include "crypto.h"
 #include "config.h"
 #include "./graphql.h"
@@ -7,8 +8,8 @@
 #include <time.h>
 
 
-BackendApiTask::BackendApiTask(uint32_t stackSize, UBaseType_t priority) 
-    : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
+BackendApiTask::BackendApiTask(DataSenderTask& dataSender, uint32_t stackSize, UBaseType_t priority) 
+    : dataSender(dataSender), stackSize(stackSize), priority(priority), shouldRun(false),
       wifiManager(nullptr), lastUpdateTime(0),  
       stateUpdateInterval(DEFAULT_STATE_UPDATE_INTERVAL), 
       bleActive(false),
@@ -91,45 +92,27 @@ void BackendApiTask::taskFunction(void* parameter) {
         if (task->wifiManager && task->wifiManager->isConnected() && !task->bleActive) {
             static bool firstRun = true;
 
-
-            // if (firstRun && !task->requestSubscription.isConnected()) {
-
-            //     Serial.println("Attempting to connect to WebSocket...");
-            //     if (!task->requestSubscription.begin()) {
-            //         Serial.println("Backend API task: Failed to connect to WebSocket");
-            //     } else {
-            //         Serial.println("Backend API task: WebSocket connection established");
-            //     }
-            // } else if (task->requestSubscription.isConnected()) {
-                
-            // }
+            task->dataSender.loop();
 
             task->requestSubscription.loop();
+
             
             // Check if it's time to send a state update
-            if (currentTime - task->lastUpdateTime > task->stateUpdateInterval) {
-                // After first update, restore to default interval if currently zero
-                if (task->stateUpdateInterval == 0) {
-                    task->stateUpdateInterval = DEFAULT_STATE_UPDATE_INTERVAL;
-                }
-                
+            if (firstRun || task->isTimeForStateUpdate(currentTime)) {
+                task->stateUpdateInterval = DEFAULT_STATE_UPDATE_INTERVAL;                
                 task->lastUpdateTime = currentTime;
                 
-                // Only send state update if WiFi is connected and BLE is not active
-                
-                Serial.println("Backend API task: Sending state update...");
                 task->sendStateUpdate();
-                
             }
 
             firstRun = false; // Reset first run flag after the first iteration
-        } else if (task->isTimeForStateUpdate(currentTime)) {
+        }/* else if (task->isTimeForStateUpdate(currentTime)) {
             if (task->wifiManager && task->wifiManager->isConnected()) {
                 Serial.println("Backend API task: WiFi connected but BLE is active, not sending state update");
             } else {
                 Serial.println("Backend API task: WiFi not connected, not sending state update");
             }
-        }
+        }*/
         
         // Small delay to prevent task from hogging CPU
         vTaskDelay(pdMS_TO_TICKS(100));

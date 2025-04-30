@@ -14,9 +14,11 @@
 // Default state update interval (5 minutes = 300,000 ms)
 const uint32_t DEFAULT_STATE_UPDATE_INTERVAL = 300000;
 
+class DataSenderTask;  // Forward declaration
+
 class BackendApiTask {
 public:
-    BackendApiTask(uint32_t stackSize = 4096*2, UBaseType_t priority = 5);
+    BackendApiTask(DataSenderTask& dataSender, uint32_t stackSize = 4096*2, UBaseType_t priority = 5);
     ~BackendApiTask();
     
     void begin(WifiManager* wifiManager);
@@ -40,6 +42,7 @@ private:
     static void taskFunction(void* parameter);
     void sendStateUpdate();
     
+    DataSenderTask& dataSender;
     
     TaskHandle_t taskHandle;
     uint32_t stackSize;

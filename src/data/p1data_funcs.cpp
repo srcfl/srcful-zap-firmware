@@ -58,25 +58,3 @@ bool createP1JWTPayload(const P1Data& p1data, char* outBuffer, size_t outBufferS
     return payload.hasOverflow();
 }
 
-zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const char* szPayload) {
-    // Create the header
-   
-    JsonBuilder header;
-    header.beginObject()
-        .add("alg", "ES256")
-        .add("typ", "JWT")
-        .add("device", deviceId.c_str())
-        .add("opr", "production")
-        .add("model", "p1homewizard")       // TODO: check if this is needed? Change to zap?
-        .add("dtype", "p1_telnet_json")
-        .add("sn", METER_SN);
-
-    zap::Str headerStr = header.end();
- 
-    
-    
-    // Use the crypto_create_jwt function from the crypto module
-    zap::Str jwt = crypto_create_jwt(headerStr.c_str(), szPayload, privateKey);
-    
-    return jwt;
-}

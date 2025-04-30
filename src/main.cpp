@@ -13,7 +13,7 @@
 #include "server/server_task.h"
 #include "wifi/wifi_manager.h"
 #include "wifi/wifi_status_task.h"
-#include "data/data_sender_task.h"
+#include "backend/data_sender.h"
 #include "data/data_reader_task.h"
 #include "backend/backend_api_task.h" // Include BackendApiTask
 #include "ota_handler.h"  // Include OTA handler
@@ -28,8 +28,8 @@
 WifiManager wifiManager(MDNS_NAME); // Create a WiFi manager instance, pass mDNS name
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 DataSenderTask dataSenderTask; // Create a data sender task instance
-DataReaderTask *dataReaderTask; // Create a data reader task instance
-BackendApiTask backendApiTask; // Create a backend API task instance
+DataReaderTask dataReaderTask; // Create a data reader task instance
+BackendApiTask backendApiTask(dataSenderTask); // Create a backend API task instance
 ServerTask serverTask(80); // Create a server task instance
 
 
@@ -161,14 +161,13 @@ void setup() {
     g_otaHandler.begin();
     
     // Configure and start the data sender task
-    dataSenderTask.begin(&wifiManager);
-    dataSenderTask.setInterval(5000); // 5 seconds interval for checking the queue
-    dataSenderTask.setBleActive(true);
+    // dataSenderTask.begin(&wifiManager);
+    // dataSenderTask.setInterval(5000); // 5 seconds interval for checking the queue
+    // dataSenderTask.setBleActive(true);
     
     // Configure and start the data reader task
-    dataReaderTask = new DataReaderTask();
-    dataReaderTask->setInterval(10000); // 10 seconds interval for generating data
-    dataReaderTask->begin(dataSenderTask.getQueueHandle()); // Share the queue between tasks
+    dataReaderTask.setInterval(10000); // 10 seconds interval for generating data
+    dataReaderTask.begin(dataSenderTask.getQueueHandle()); // Share the queue between tasks
     
     // Start the backend API task
     Serial.println("Starting backend API task...");
@@ -270,7 +269,6 @@ void loop() {
     
     #if defined(USE_BLE_SETUP)
     // Update BLE state in data sender task and backend API task
-    dataSenderTask.setBleActive(bleHandler.isActive());
     backendApiTask.setBleActive(bleHandler.isActive());
     
     // Handle BLE request queue in the main loop
