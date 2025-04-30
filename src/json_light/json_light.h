@@ -5,47 +5,11 @@
 #include <vector>
 #include <functional>
 
-class JsonBuilder {
-private:
-    zap::Str buffer;
-    bool firstItem;
-    bool inObject;
-    std::vector<bool> objectStack; // Stack to track firstItem state for nested objects
-    
-public:
-    JsonBuilder() : firstItem(true), inObject(false) {}
-    
-    // Start a new object
-    JsonBuilder& beginObject();
-    
-    // Start a nested object with a key
-    JsonBuilder& beginObject(const char* key);
-    
-    // End the current object
-    JsonBuilder& endObject();
-    
-    // Add a key-value pair
-    JsonBuilder& add(const char* key, const char* value);
-    JsonBuilder& add(const char* key, const zap::Str& value);
-    JsonBuilder& add(const char* key, int value);
-    JsonBuilder& add(const char* key, uint32_t value);
-    JsonBuilder& add(const char* key, uint64_t value);
-    JsonBuilder& add(const char* key, bool value);
-    JsonBuilder& add(const char* key, uint8_t* data, size_t size);
-    JsonBuilder& add(const char* key, float value);
-    
-    // Add an array of string values
-    JsonBuilder& addArray(const char* key, const std::vector<zap::Str>& values);
-    
-    // Add an array of C-style strings
-    JsonBuilder& addArray(const char* key, const char* const* values, size_t count);
-    
-    // End all objects and get the result
-    const zap::Str& end();
-    
-    // Clear the buffer and reset state
-    void clear();
-};
+#include "generic_json_builder.h"
+
+// Define user-friendly type aliases
+using JsonBuilder = zap::GenericJsonBuilder<zap::JsonBuilderDynamicBuffer>;
+using JsonBuilderFixed = zap::GenericJsonBuilder<zap::JsonBuilderFixedBuffer>;
 
 class JsonParser {
 private:

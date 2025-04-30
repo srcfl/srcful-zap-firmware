@@ -2,7 +2,7 @@
 #define DATA_PACKAGE_H
 
 // Maximum data size (adjust as needed)
-#define MAX_DATA_SIZE 2048
+#define MAX_DATA_SIZE (512 * 3) // typical payload size is 1000 bytes
 
 // Define a struct for the data package using char arrays instead of Strings
 typedef struct {

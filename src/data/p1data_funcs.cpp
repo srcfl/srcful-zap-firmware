@@ -1,36 +1,25 @@
 #include "p1data_funcs.h"
 #include "json_light/json_light.h"
 #include "crypto.h"
+#include "config.h"
 
-zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const P1Data& p1data) {
-    // Create the header
-    JsonBuilder header;
-    header.beginObject()
-        .add("alg", "ES256")
-        .add("typ", "JWT")
-        .add("device", deviceId.c_str())
-        .add("opr", "production")
-        .add("model", "p1homewizard")
-        .add("dtype", "p1_telnet_json")
-        .add("sn", "LGF5E360");
 
-    zap::Str headerStr = header.end();
-
-    // Create the payload
-    JsonBuilder payload;
+bool createP1JWTPayload(const P1Data& p1data, char* outBuffer, size_t outBufferSize) {
+    
     zap::Str timestampStr;
     
     timestampStr = zap::Str(static_cast<long>(p1data.timestamp));
     timestampStr += "000"; // Append '000' to the timestamp as in milliseconds
     
     // Start the payload object
+    JsonBuilderFixed payload(outBuffer, outBufferSize);
     payload.beginObject();
     
     // Create a nested object for the timestamp
     JsonBuilder dataObj;
-    dataObj.beginObject();
+    payload.beginObject(timestampStr.c_str());
 
-    dataObj.add("serial_number", "LGF5E360");
+    payload.add("serial_number", METER_SN);
 
     // Use a vector of Str instead of an array of C-style strings
     std::vector<zap::Str> rows;
@@ -42,6 +31,8 @@ zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const P1D
     }
     
     // Format timestamp
+    // TODO: this is somewhat redundant as we get the timestamp in obis format (esp for ascii)
+    // but we also need it in msek for the jwt format
     time_t now = p1data.timestamp;
     
     struct tm timeinfo;
@@ -52,27 +43,40 @@ zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const P1D
              timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     rows.push_back(zap::Str(buffer));
     
-    // Calculate checksum (simple implementation)
-    zap::Str checksum = "0E78"; // Fixed checksum for now
+    zap::Str checksum = "DEAD"; // Fixed checksum for now
     
     // Add the rows to the data object
-    dataObj.addArray("rows", rows);
+    payload.addArray("rows", rows);
     
-    // Add checksum
-    dataObj.add("checksum", checksum.c_str());
+    // TODO: Calculate checksum idk if this is really needed
+    payload.add("checksum", "DEAD");
     
-    // Add the data object to the payload with the timestamp as the key
-    zap::Str dataStr = dataObj.end();
+    // End timestamp sub object
+    payload.endObject();
+    payload.end();
+
+    return payload.hasOverflow();
+}
+
+zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const char* szPayload) {
+    // Create the header
+   
+    JsonBuilder header;
+    header.beginObject()
+        .add("alg", "ES256")
+        .add("typ", "JWT")
+        .add("device", deviceId.c_str())
+        .add("opr", "production")
+        .add("model", "p1homewizard")       // TODO: check if this is needed? Change to zap?
+        .add("dtype", "p1_telnet_json")
+        .add("sn", METER_SN);
+
+    zap::Str headerStr = header.end();
+ 
     
-    // Construct the payload JSON manually since we don't have complex JSON operations in our Str class
-    zap::Str payloadStr = "{\"";
-    payloadStr += timestampStr;
-    payloadStr += "\":";
-    payloadStr += dataStr;
-    payloadStr += "}";
     
     // Use the crypto_create_jwt function from the crypto module
-    zap::Str jwt = crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), privateKey);
+    zap::Str jwt = crypto_create_jwt(headerStr.c_str(), szPayload, privateKey);
     
     return jwt;
 }

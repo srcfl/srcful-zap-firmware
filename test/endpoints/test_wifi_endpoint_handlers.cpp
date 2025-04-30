@@ -4,7 +4,7 @@
 
 class MockWiFiManager : public WifiManager {
 public:
-    MockWiFiManager() : WifiManager() {
+    MockWiFiManager() : WifiManager("test") {
         // Initialize mock data if needed
     }
 

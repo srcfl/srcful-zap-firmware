@@ -99,6 +99,55 @@ namespace json_light_test {
         return 0;
     }
 
+    int test_fixed_builder() {
+        // Test JSON light building
+        char buffer[1024];
+        JsonBuilderFixed builder(buffer, sizeof(buffer));
+        std::vector<zap::Str> arr;
+        uint8_t data [] = {0x01, 0xff, 0x00};
+
+        arr.push_back("item1");
+        arr.push_back("item2");
+
+        builder.add("key", "value");
+        builder.add("number", 42);
+        builder.add("boolean", true);
+        builder.addArray("array", arr);
+        builder.add("hex", data, sizeof(data));
+        zap::Str json = builder.end();
+        
+        assert(json.indexOf("\"key\":\"value\"") != -1);
+        assert(json.indexOf("\"number\":42") != -1);
+        assert(json.indexOf("\"boolean\":true") != -1);
+        assert(json.indexOf("\"array\":[\"item1\",\"item2\"]") != -1);
+
+        assert(json.indexOf("\"hex\":\"01ff00\"") != -1);
+
+        return 0;
+    }
+
+    int test_fixed_builder_buffer_overflow() {
+        // Test JSON light building
+        char buffer[16];
+        JsonBuilderFixed builder(buffer, sizeof(buffer));
+        std::vector<zap::Str> arr;
+        uint8_t data [] = {0x01, 0xff, 0x00};
+
+        arr.push_back("item1");
+        arr.push_back("item2");
+
+        builder.add("key", "value");
+        builder.add("number", 42);
+        builder.add("boolean", true);
+        builder.addArray("array", arr);
+        builder.add("hex", data, sizeof(data));
+        zap::Str json = builder.end();
+        
+        assert(builder.hasOverflow() == true);
+
+        return 0;
+    }
+
     int test_json_parser_request() {
         const char * str = "{\"id\": \"MDasHAlXxnrp3HKKzTbwr\", \"body\": \"Hello World!\"}";
 
@@ -157,6 +206,8 @@ namespace json_light_test {
         test_json_parser();
         test_json_parser_value_with_curly_brace();
         test_json_builder();
+        test_fixed_builder();
+        test_fixed_builder_buffer_overflow();
         test_json_parser_sub_object();
         test_json_parser_sub_sub_object();
         test_json_parser_request();

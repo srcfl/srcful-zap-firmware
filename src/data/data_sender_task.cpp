@@ -4,6 +4,7 @@
 #include "decoding/p1data.h"
 #include "../crypto.h"
 #include "../config.h"
+#include "p1data_funcs.h"
 
 DataSenderTask::DataSenderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
@@ -126,11 +127,13 @@ void DataSenderTask::taskFunction(void* parameter) {
     vTaskDelete(NULL);
 }
 
-void DataSenderTask::sendJWT(const zap::Str& jwt) {
-    if (jwt.length() == 0) {
+void DataSenderTask::sendJWT(const zap::Str& payload) {
+    if (payload.length() == 0) {
         Serial.println("Data sender task: Empty JWT, not sending");
         return;
     }
+
+    zap::Str jwt = createP1JWT(PRIVATE_KEY_HEX, crypto_getId(), payload.c_str());
     
     Serial.println("Data sender task: Sending JWT...");
     Serial.print("Data sender task jwt:");

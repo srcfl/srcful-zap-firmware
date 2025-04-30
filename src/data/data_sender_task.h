@@ -31,7 +31,7 @@ public:
     
 private:
     static void taskFunction(void* parameter);
-    void sendJWT(const zap::Str& jwt);
+    void sendJWT(const zap::Str& payload);
     
     TaskHandle_t taskHandle;
     uint32_t stackSize;

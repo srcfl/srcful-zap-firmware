@@ -65,15 +65,13 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
         DataPackage package;
         
         // Clear the data buffer first
-        memset(package.data, 0, MAX_DATA_SIZE);
-        zap::Str jwt = createP1JWT(PRIVATE_KEY_HEX, crypto_getId(), p1data);
+        
         // Check if the JWT was created successfully
-        if (jwt.length() == 0) {
+        if (createP1JWTPayload(p1data, package.data, MAX_DATA_SIZE)) {
             Serial.println("Data reader task: Failed to create JWT");
             return;
         }
         // Copy the JWT to the data object
-        strncpy(package.data, jwt.c_str(), jwt.length());
         package.timestamp = millis();
         if (uxQueueSpacesAvailable(p1DataQueue) == 0) {
             // Queue is full, remove the oldest item first

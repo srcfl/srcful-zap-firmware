@@ -36,7 +36,7 @@ BLEHandler::BLEHandler() {
 
 void BLEHandler::init() {
     // Initialize NimBLE
-    NimBLEDevice::init("Sourceful Zippy Zap");
+    NimBLEDevice::init("Sourceful Zap");
     
     // Set the MTU size to maximum supported (517 bytes)
     NimBLEDevice::setMTU(512);
