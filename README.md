@@ -40,30 +40,73 @@ The firmware is designed for an ESP32-C3 based board equipped with:
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-github-username/srcful-zap-firmware.git
+    git clone https://github.com/srcful/srcful-zap-firmware.git # Replace if necessary
     cd srcful-zap-firmware
     ```
-    *(Replace `your-github-username` with the actual repository location)*
 
 2.  **Build the firmware:**
     ```bash
-    pio run
+    pio run -e esp32-c3
     ```
-    This command compiles the code and builds the firmware binary.
+    This command compiles the code and builds the firmware binary for the ESP32-C3 environment.
 
 3.  **Upload the firmware:**
     Connect the ESP32-C3 device via USB and run:
     ```bash
-    pio run -t upload
+    pio run -e esp32-c3 -t upload
     ```
-    PlatformIO will automatically detect the port and upload the firmware.
+    PlatformIO will automatically detect the port and upload the firmware. Use `-t upload -t monitor` to also open the serial monitor.
 
 ## Configuration
 
-*   **WiFi Credentials:** Configured primarily via the BLE setup process when the device first boots or after a WiFi reset.
-*   **Backend Endpoints:** The URLs for the Srcful API ([API_URL](http://_vscodecontentref_/1)) and data ingestion ([DATA_URL](http://_vscodecontentref_/2)) are defined in [config.cpp](http://_vscodecontentref_/3).
-*   **Build-time Options:** Certain features can be controlled via build flags in [platformio.ini](http://_vscodecontentref_/4) (e.g., `-DUSE_BLE_SETUP`).
+*   **WiFi Credentials:** Configured primarily via the BLE setup process when the device first boots or after a WiFi reset (holding the button for >5 seconds).
+*   **Backend Endpoints:** The URLs for the Srcful API ([API_URL](src/config.cpp)) and data ingestion ([DATA_URL](src/config.cpp)) are defined in `src/config.cpp`.
+*   **Build-time Options:** Certain features can be controlled via build flags in `platformio.ini` (e.g., `-DUSE_BLE_SETUP`) or configuration options in `sdkconfig.defaults`.
 
 ## Usage
 
 1.  **Flashing:** Build and upload the firmware to the ESP32-C3 device as described above.
+2.  **Initial Setup:** On first boot or after a reset, the device enters BLE configuration mode. Use a compatible app (like the Srcful mobile app) to connect and provide WiFi credentials.
+3.  **Operation:** Once connected to WiFi, the device will start reading P1 data, connecting to the backend, and transmitting data. The LED indicates the current status (e.g., WiFi connection state).
+4.  **Button:**
+    *   Hold > 2 seconds: Trigger a device reboot.
+    *   Hold > 5 seconds: Clear WiFi credentials and trigger a reboot into BLE configuration mode.
+
+## Testing
+
+This project employs two primary methods for testing:
+
+### 1. On-Device Integration Tests
+
+*   **Framework:** Utilizes PlatformIO's built-in [Unit Testing](https://docs.platformio.org/en/latest/advanced/unit-testing/index.html) engine for running tests directly on the ESP32-C3 hardware.
+*   **Purpose:** These tests focus on integration aspects, verifying the interaction between different firmware modules and hardware peripherals (e.g., WiFi connection, basic P1 reading, LED control).
+*   **Location:** Test cases are located within the `test` directory of the main project.
+*   **Execution:**
+    Connect the ESP32-C3 device via USB and run:
+    ```bash
+    # Run tests on the hardware target
+    pio test -e esp32-c3
+    ```
+    PlatformIO compiles the tests, uploads them to the device, runs them, and reports the results via the serial connection.
+
+### 2. Desktop Unit Tests (`test_desktop`)
+
+*   **Framework:** A separate PlatformIO project located in the `test_desktop` directory, configured to run tests on the host machine (native platform). It uses testing frameworks like Unity or Catch2 (check `test_desktop/platformio.ini`).
+*   **Purpose:** These tests focus on unit testing individual components (classes, functions) in isolation, particularly logic that doesn't directly depend on ESP32 hardware specifics (e.g., data parsing, JWT formatting, cryptographic operations using mocks/stubs). This allows for faster development cycles and easier debugging.
+*   **Location:** The test project and its source files are within the `test_desktop` directory. Shared code from the main firmware (`src`) can be included for testing.
+*   **Execution:**
+    Navigate to the test directory and run the tests using PlatformIO:
+    ```bash
+    cd test_desktop
+    # Run tests on the native host machine
+    pio test -e native
+    cd ..
+    ```
+
+## Contributing
+
+Contributions are welcome! Please refer to the contribution guidelines (if available) or open an issue to discuss proposed changes.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
