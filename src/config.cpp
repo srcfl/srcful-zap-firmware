@@ -1,13 +1,6 @@
 #include "config.h"
 
-// WiFi Configuration
-const char* WIFI_SSID = "";
-const char* WIFI_PSK = "";
-// Device Configuration
-const char* AP_SSID = "ZAP_Setup_V2";  // Name of the WiFi network created by ESP32
-const char* AP_PASSWORD = "12345678";     // Password for the setup network
 const char* MDNS_NAME = "zap";        // mDNS name - device will be accessible as zap.local
-
 const char* METER_SN = "zap";        // Serial number of the meter, this is hard coded in firmware but can be changed in the app if the user desires
 
 
