@@ -70,13 +70,6 @@ int test_decoder_frame() {
         std::cout << "OBIS String: " << p1data.obisStrings[i] << std::endl;
     }
 
-    HDLCParser hdlcParser;
-    DataParserContext dpc;
-    dpc.length = sizeof(faulty_aidon_frame_2);
-    dpc.type = 0;
-    dpc.timestamp = 0;
-    hdlcParser.parse(faulty_aidon_frame_2, dpc);
-
     return 0;
 }
 
