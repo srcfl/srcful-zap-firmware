@@ -3,7 +3,7 @@
 // Firmware version information
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 0
-#define FIRMWARE_VERSION_PATCH 1
+#define FIRMWARE_VERSION_PATCH 2
 
 // Helper macro to create version string
 #define STRINGIFY(x) #x

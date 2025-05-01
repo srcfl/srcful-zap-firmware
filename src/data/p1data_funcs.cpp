@@ -6,10 +6,12 @@
 
 bool createP1JWTPayload(const P1Data& p1data, char* outBuffer, size_t outBufferSize) {
     
-    zap::Str timestampStr;
     
-    timestampStr = zap::Str(static_cast<long>(p1data.timestamp));
-    timestampStr += "000"; // Append '000' to the timestamp as in milliseconds
+    // we get the unitx time in ms from the system clock
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t epochTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
+    zap::Str timestampStr(epochTimeMs);
     
     // Start the payload object
     JsonBuilderFixed payload(outBuffer, outBufferSize);
@@ -33,12 +35,13 @@ bool createP1JWTPayload(const P1Data& p1data, char* outBuffer, size_t outBufferS
     // Format timestamp
     // TODO: this is somewhat redundant as we get the timestamp in obis format (esp for ascii)
     // but we also need it in msek for the jwt format
+    // This is not needed anymore and should be moved to the binary decoder and just added as the obis string
     time_t now = p1data.timestamp;
     
     struct tm timeinfo;
     gmtime_r(&now, &timeinfo);
     char buffer[64];
-    snprintf(buffer, sizeof(buffer), "0-0:1.0.0(%02d%02d%02d%02d%02d%02dW)",
+    snprintf(buffer, sizeof(buffer), "0-0:1.0.0(%02d%02d%02d%02d%02d%02dW)",    // the W is not correct here
              timeinfo.tm_year % 100, timeinfo.tm_mon + 1, timeinfo.tm_mday,
              timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     rows.push_back(zap::Str(buffer));
