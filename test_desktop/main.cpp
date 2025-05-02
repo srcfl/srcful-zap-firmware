@@ -10,7 +10,11 @@
 
 #include "../src/data/circular_buffer.cpp"
 #include "../src/debug.cpp"
+
 #include "../src/backend/graphql.cpp"
+#include "../src/backend/request_handler.cpp"
+
+
 #include "../src/json_light/json_light.cpp"
 #include "../src/data/decoding/ascii_decoder.cpp"
 #include "../src/data/decoding/dlms_decoder.cpp"
@@ -27,6 +31,7 @@
 #include "json_light/json_light_test.cpp"
 
 #include "backend/graphql_test.cpp"
+#include "backend/request_handler_test.cpp"
 
 
 class FrameData : public IFrameData {
@@ -98,6 +103,7 @@ int main() {
         graphql_test::run();
         zap_str_test::run();
         debug_test::run();
+        request_handler_test::run();
 
         std::cout << "All tests passed!" << std::endl;
         return 0;

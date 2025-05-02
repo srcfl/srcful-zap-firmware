@@ -18,7 +18,7 @@
                 "${workspaceFolder}/ams/HdlcParser.cpp",
            
                 "-o",
-                "${workspaceFolder}/build/simple_test"
+                "${workspaceFolder}/build/zap_test"
             ],
             "group": {
                 "kind": "build",

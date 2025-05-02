@@ -202,6 +202,69 @@ namespace json_light_test {
         return 0;
     }
 
+    int test_json_parser_test_websocket_wifi_request() {
+        // this is in some respect more a test of GraphQLSubscriptionClient::handleRequestTask and handleRequest
+        const char* str =  "{\\u0022id\\u0022: \\u0022some-id\\u0022, \\u0022body\\u0022: {\\u0022psk\\u0022: \\u0022bamse-zorba\\u0022, \\u0022ssid\\u0022: \\u0022eather\\u0022}, \\u0022path\\u0022: \\u0022/api/wifi\\u0022, \\u0022query\\u0022: \\u0022{}\\u0022, \\u0022method\\u0022: \\u0022POST\\u0022, \\u0022headers\\u0022: \\u0022{}\\u0022, \\u0022timestamp\\u0022: 1746111306022}";
+        zap::Str data = zap::Str(str);
+
+        data.replace("\\u0022", "\"");
+
+        JsonParser configData(data.c_str());
+
+        zap::Str id; configData.getString("id", id);
+        zap::Str path; configData.getString("path", path);
+        zap::Str method; configData.getString("method", method);
+
+        zap::Str body; assert(!configData.getString("body", body));          // this is probably an object
+        JsonParser bodyParser(""); assert(configData.getObject("body", bodyParser));
+
+        zap::Str query; configData.getString("query", query);
+        zap::Str headers; configData.getString("headers", headers);
+        uint64_t timestamp; configData.getUInt64("timestamp", timestamp);
+
+        assert(id == "some-id");
+        assert(path == "/api/wifi");
+        assert(method == "POST");
+        assert(body == "{\"psk\":\"bamse-zorba\",\"ssid\":\"eather\"}");
+        assert(query == "{}");
+        assert(headers == "{}");
+        assert(timestamp == 1746111306022);
+
+        assert(false);
+        return 0;
+    }
+
+    int test_json_parser_test_websocket_ota_request() {
+        const char* str = "{\\u0022id\\u0022: \\u0022684c16c7-fcfd-4fe7-818e-802744e88b7c\\u0022, \\u0022body\\u0022: \\u0022{\\\\u0022url\\\\u0022: \\\\u0022https://github.com/srcfl/srcful-zap-firmware/raw/refs/heads/main/test_build/firmware_0_0_2.bin\\\\u0022, \\\\u0022version\\\\u0022: \\\\u00220.0.2\\\\u0022}\\u0022, \\u0022path\u0022: \\u0022/api/ota/update\\u0022, \\u0022query\\u0022: \\u0022{}\\u0022, \\u0022method\\u0022: \\u0022POST\\u0022, \\u0022headers\\u0022: \\u0022{}\\u0022, \\u0022timestamp\\u0022: 1746167058815}";
+    
+        zap::Str data = zap::Str(str);
+
+        data.replace("\\u0022", "\"");
+
+        JsonParser configData(data.c_str());
+
+        zap::Str id; configData.getString("id", id);
+        zap::Str path; configData.getString("path", path);
+        zap::Str method; configData.getString("method", method);
+
+        zap::Str body; assert(!configData.getString("body", body));          // this is probably an object
+        JsonParser bodyParser(""); assert(configData.getObject("body", bodyParser));
+
+        zap::Str query; configData.getString("query", query);
+        zap::Str headers; configData.getString("headers", headers);
+        uint64_t timestamp; configData.getUInt64("timestamp", timestamp);
+
+        assert(id == "684c16c7-fcfd-4fe7-818e-802744e88b7c");
+        assert(path == "/api/ota/update");
+        assert(method == "POST");
+        assert(query == "{}");
+        assert(headers == "{}");
+        assert(timestamp == 1746111306022);
+
+        assert(false);
+        return 0;
+    }
+
     int run() {
         test_json_parser();
         test_json_parser_value_with_curly_brace();
@@ -213,6 +276,7 @@ namespace json_light_test {
         test_json_parser_request();
         test_json_parser_get_object_by_path();
         test_json_parser_test_websocket_data();
+        // test_json_parser_test_websocket_ota_request();
         return 0;
     }
     

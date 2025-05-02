@@ -15,8 +15,26 @@
 #include "backend/request_handler.h" // Ensure RequestHandler is included
 #include "backend/graphql.h" // Include for GQL namespace used in removed methods
 
+
+class RequestHandlerExternals : public zap::backend::RequestHandler::Externals {
+public:
+    GQL::BoolResponse setConfiguration(const zap::Str& jwt) override {
+        return GQL::setConfiguration(jwt);
+    }
+
+    const Endpoint& toEndpoint(const zap::Str& path, const zap::Str& verb) override {
+        return EndpointMapper::toEndpoint(path, verb);
+    }
+
+    EndpointResponse route(const EndpointRequest& request) override {
+        return EndpointMapper::route(request);
+    }
+};
+
+RequestHandlerExternals g_requestHandlerExternals;
+
 // Constructor
-GraphQLSubscriptionClient::GraphQLSubscriptionClient(const char* wsUrl) {
+GraphQLSubscriptionClient::GraphQLSubscriptionClient(const char* wsUrl) : requestHandler(g_requestHandlerExternals) {
     url = String(wsUrl);
     parseUrl(url);
 }

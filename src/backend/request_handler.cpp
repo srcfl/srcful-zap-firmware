@@ -1,16 +1,19 @@
 #include "backend/request_handler.h"
-#include <Arduino.h>
 #include <sys/time.h>
 #include "json_light/json_light.h"
-#include "endpoints/endpoint_mapper.h"
-#include "endpoints/endpoint_types.h"
 #include "backend/graphql.h"
 #include "crypto.h"
 #include "config.h"
 
+#include <Arduino.h>
+
 // --- RequestHandler Implementation ---
 
 using namespace zap::backend;
+
+RequestHandler::RequestHandler(Externals& ext) : _ext(ext) {
+    // Constructor implementation
+}
 
 void RequestHandler::handleRequestTask(JsonParser& configData) {
     Serial.println("RequestHandler: Processing configuration data");
@@ -72,7 +75,8 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
     }
 
     // Use the EndpointMapper to find and execute the appropriate endpoint handler
-    const Endpoint& endpoint = EndpointMapper::toEndpoint(path, method);
+    // const Endpoint& endpoint = EndpointMapper::toEndpoint(path, method);
+    const Endpoint& endpoint = _ext.toEndpoint(path, method);
 
     if (endpoint.type == Endpoint::UNKNOWN) {
         // No endpoint found for this path/method combination
@@ -86,7 +90,8 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
     request.content = body;
 
     // Route the request to the appropriate handler
-    EndpointResponse response = EndpointMapper::route(request);
+    // EndpointResponse response = EndpointMapper::route(request);
+    EndpointResponse response = _ext.route(request);
 
     // Send the response
     sendResponse(id, response.statusCode, response.data);
@@ -137,7 +142,7 @@ void RequestHandler::sendResponse(const zap::Str& requestId, int statusCode, con
     }
 
     // Send the JWT using GraphQL
-    GQL::BoolResponse response = GQL::setConfiguration(jwt);
+    GQL::BoolResponse response = _ext.setConfiguration(jwt);
 
     // Handle the response
     if (response.isSuccess() && response.data) {

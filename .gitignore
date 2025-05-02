@@ -6,6 +6,9 @@
 # Build
 build/
 
+# python scripts
+*.py
+
 
 # Sensitive configuration
 src/config.h

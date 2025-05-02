@@ -10,3 +10,8 @@ zap::Str crypto_getId() {
     
     return "zap-testtesttestee";
 }
+
+zap::Str crypto_create_jwt(const char* header, const char* payload, const char* private_key_hex) {
+    
+    return zap::Str("a.b.c");
+}

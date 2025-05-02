@@ -5,7 +5,7 @@
             "name": "Debug Simple Test",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/simple_test",
+            "program": "${workspaceFolder}/build/zap_test",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

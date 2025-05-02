@@ -1,12 +1,24 @@
 #pragma once
 
+#include "graphql.h"
+#include "endpoints/endpoint_types.h"
 #include "json_light/json_light.h"
 #include "zap_str.h"
 namespace zap {
 namespace backend {
+
 class RequestHandler {
 public:
-    RequestHandler() = default;
+
+    class Externals {
+        public:
+            virtual GQL::BoolResponse setConfiguration(const zap::Str& jwt) = 0;
+
+            virtual const Endpoint& toEndpoint(const zap::Str& path, const zap::Str& verb) = 0;
+            virtual EndpointResponse route(const EndpointRequest& request) = 0;
+    };
+
+    RequestHandler(Externals& ext);
 
     /**
      * @brief Processes incoming configuration data, specifically looking for requests.
@@ -39,7 +51,10 @@ private:
      * @param errorMessage A descriptive error message.
      */
     void sendErrorResponse(const zap::Str& requestId, const char* errorMessage);
+
+    Externals& _ext;  // Reference to external dependencies
 };
+
 }
 }
 
