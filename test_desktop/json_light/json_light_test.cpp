@@ -15,6 +15,17 @@ namespace json_light_test {
         return 0;
     }
 
+    int test_json_parser_asString() {
+        // Test JSON light parsing
+        const char* json = "{\"key\": \"value\"}";
+        JsonParser parser(json);
+        zap::Str ret;
+        parser.asString(ret);
+        assert(ret == "{\"key\": \"value\"}");
+        
+        return 0;
+    }
+
     int test_json_parser_sub_object() {
         // Test JSON light parsing with sub-object
         const char* json = "{\"key\": {\"subkey\": \"subvalue\"}}";
@@ -82,6 +93,7 @@ namespace json_light_test {
         arr.push_back("item1");
         arr.push_back("item2");
 
+        builder.beginObject();
         builder.add("key", "value");
         builder.add("number", 42);
         builder.add("boolean", true);
@@ -89,6 +101,8 @@ namespace json_light_test {
         builder.add("hex", data, sizeof(data));
         zap::Str json = builder.end();
         
+        assert(json.indexOf("{") == 0);
+        assert(json.indexOf("}") == json.length() - 1);
         assert(json.indexOf("\"key\":\"value\"") != -1);
         assert(json.indexOf("\"number\":42") != -1);
         assert(json.indexOf("\"boolean\":true") != -1);
@@ -109,6 +123,7 @@ namespace json_light_test {
         arr.push_back("item1");
         arr.push_back("item2");
 
+        builder.beginObject();
         builder.add("key", "value");
         builder.add("number", 42);
         builder.add("boolean", true);
@@ -116,6 +131,8 @@ namespace json_light_test {
         builder.add("hex", data, sizeof(data));
         zap::Str json = builder.end();
         
+        assert(json.indexOf("{") == 0);
+        assert(json.indexOf("}") == json.length() - 1);
         assert(json.indexOf("\"key\":\"value\"") != -1);
         assert(json.indexOf("\"number\":42") != -1);
         assert(json.indexOf("\"boolean\":true") != -1);
@@ -180,7 +197,7 @@ namespace json_light_test {
     
     
         zap::Str id; parser.getString("id", id);
-        assert(id == "\\u0022");
+        assert(id == "\""); // in json \u0022 is translated to "
 
         return 0;
     }
@@ -267,6 +284,7 @@ namespace json_light_test {
 
     int run() {
         test_json_parser();
+        test_json_parser_asString();
         test_json_parser_value_with_curly_brace();
         test_json_builder();
         test_fixed_builder();

@@ -161,7 +161,14 @@ private:
 
     // Constructor with unsigned long
     explicit Str(unsigned long value) : _buffer(nullptr), _length(0), _capacity(0) {
-        char temp[12]; // Enough for uint32_t
+        // On 64-bit systems, unsigned long is 64 bits, so we need to handle it accordingly.
+        // On 32-bit systems, unsigned long is 32 bits, so we can use uint32_t.
+        // Typically esp32 vs test_desktop
+        #if ULONG_MAX != UINT64_MAX
+            char temp[12]; // Enough for uint32_t
+        #else
+            char temp[21]; // Enough for uint64_t
+        #endif
         sprintf(temp, "%lu", value);
         _length = strlen(temp);
         if (reserve(_length + 1)) {
@@ -662,6 +669,16 @@ private:
         _buffer = newBuf;
         _length = newLen;
         _capacity = maxNewLen;
+    }
+
+    Str& append(const char *bytes, size_t len) {
+        if (len == 0) return *this;
+        if (reserve(_length + len + 1)) {
+            memcpy(_buffer + _length, bytes, len);
+            _length += len;
+            _buffer[_length] = '\0'; // Null-terminate
+        }
+        return *this;
     }
 };
 

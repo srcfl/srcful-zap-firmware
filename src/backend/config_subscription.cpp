@@ -474,7 +474,7 @@ void GraphQLSubscriptionClient::subscribeToSettings() {
         // Properly escape the query string for JSON
         // Replace all newlines with \n
         // remove all newlines
-        query = jsonEncodeString(query);
+        // query = jsonEncodeString(query);
         
         JsonBuilder doc;
         doc.beginObject()

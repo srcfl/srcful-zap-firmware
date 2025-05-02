@@ -27,7 +27,7 @@ void RequestHandler::handleRequestTask(JsonParser& configData) {
     Serial.println("RequestHandler: Received data: ");
     Serial.println(data.c_str());
     // Replace escaped characters - TODO: Improve this handling
-    data.replace("\\u0022", "\"");
+    //data.replace("\\u0022", "\"");
 
     JsonParser dataDoc(data.c_str());
 
@@ -48,10 +48,23 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
     zap::Str id; requestData.getString("id", id);
     zap::Str path; requestData.getString("path", path);
     zap::Str method; requestData.getString("method", method);
-    zap::Str body; requestData.getString("body", body);
     zap::Str query; requestData.getString("query", query);
     zap::Str headers; requestData.getString("headers", headers);
     uint64_t timestamp; requestData.getUInt64("timestamp", timestamp);
+
+
+    // body can be both string or object
+    zap::Str body;
+    if (!requestData.getString("body", body)) {
+        // If not a string, try to get it as an object
+        JsonParser bodyDoc("");
+        if (requestData.getObject("body", bodyDoc)) {
+            // Convert the object to a string
+            bodyDoc.asString(body);
+        } else {
+            body = ""; // Default to empty string if not found
+        }
+    }
 
     Serial.print("RequestHandler: Processing request id=");
     Serial.print(id.c_str());
@@ -119,7 +132,7 @@ void RequestHandler::sendResponse(const zap::Str& requestId, int statusCode, con
     // Need to properly escape the responseData if it's intended to be a JSON string within the payload
     zap::Str escapedResponse = responseData;
     // Basic escaping - might need more robust JSON string escaping
-    escapedResponse.replace("\"", "\\\"");
+    // escapedResponse.replace("\"", "\\\"");
 
     JsonBuilder payloadBuilder;
     payloadBuilder.beginObject()

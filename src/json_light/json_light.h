@@ -43,6 +43,8 @@ private:
 
     // Get object value at current position
     bool getObjectValue(size_t pos, JsonParser& result, size_t& endPos) const;
+
+
     
 public:
     // Constructor for full buffer
@@ -96,4 +98,7 @@ public:
     
     // Simplified getter that returns the value directly
     uint64_t getUInt64(const char* key);
+
+    // returns the parser contents as a string
+    void asString(zap::Str& value) const;
 };

@@ -167,53 +167,216 @@ size_t JsonParser::skipValue(size_t pos) const {
     return pos;
 }
 
-bool JsonParser::getStringValue(size_t pos, char* value, size_t maxLen, size_t& endPos) const {
-    pos = skipWhitespace(pos);
-    
-    if (absPos(pos) >= dataLen || data[absPos(pos)] != '"') {
-        endPos = pos;
-        return false;
+// Helper function to convert 4 hex chars to a UTF-8 sequence
+// Note: This is a simplified version. A full implementation would handle surrogate pairs
+// and potentially different UTF encodings based on system needs.
+// Returns the number of bytes written to utf8_buffer (max 4), or 0 on error.
+int hex_to_utf8(const char* hex_chars, char* utf8_buffer) {
+    unsigned int codepoint;
+    if (sscanf(hex_chars, "%4x", &codepoint) != 1) {
+        return 0; // Invalid hex sequence
     }
-    
-    pos++;  // Skip opening quote
-    size_t i = 0;
-    
-    while (absPos(pos) < dataLen && data[absPos(pos)] != '"' && i < maxLen - 1) {
-        // We do NOT Handle escaped characters
-        value[i++] = data[absPos(pos)];
-        
-        pos++;
+
+    if (codepoint <= 0x7F) {
+        utf8_buffer[0] = (char)codepoint;
+        return 1;
+    } else if (codepoint <= 0x7FF) {
+        utf8_buffer[0] = (char)(0xC0 | (codepoint >> 6));
+        utf8_buffer[1] = (char)(0x80 | (codepoint & 0x3F));
+        return 2;
+    } else if (codepoint <= 0xFFFF) {
+        utf8_buffer[0] = (char)(0xE0 | (codepoint >> 12));
+        utf8_buffer[1] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+        utf8_buffer[2] = (char)(0x80 | (codepoint & 0x3F));
+        return 3;
     }
-    
-    value[i] = '\0';
-    
-    if (absPos(pos) < dataLen && data[absPos(pos)] == '"') pos++;  // Skip closing quote
-    
-    endPos = pos;
-    return true;
+     // For codepoints > 0xFFFF (requires surrogate pairs in \u sequences, more complex)
+     // or handle as needed for your specific embedded environment / character set.
+     // This basic version handles up to U+FFFF.
+     else {
+         // Handle codepoints requiring 4 bytes in UTF-8 (outside Basic Multilingual Plane)
+         // This requires handling surrogate pairs (\uD800\uDC00-\uDBFF\uDFFF) which adds complexity.
+         // For simplicity, we might represent these with a replacement character or return an error.
+         // Example: replace with '?'
+         utf8_buffer[0] = '?';
+         return 1; // Or return 0 for error
+     }
+
+     // We will return '?' for codepoints beyond the basic multilingual plane for now.
+     // utf8_buffer[0] = (char)(0xF0 | (codepoint >> 18));
+     // utf8_buffer[1] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
+     // utf8_buffer[2] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+     // utf8_buffer[3] = (char)(0x80 | (codepoint & 0x3F));
+     // return 4;
+
+    return 0; // Should not happen with current logic, but added for safety
 }
 
-bool JsonParser::getStringValue(size_t pos, zap::Str& value, size_t& endPos) const {
+
+// --- Modified getStringValue for C-style string ---
+bool JsonParser::getStringValue(size_t pos, char* value, size_t maxLen, size_t& endPos) const {
     pos = skipWhitespace(pos);
-    
+
     if (absPos(pos) >= dataLen || data[absPos(pos)] != '"') {
         endPos = pos;
+        if (maxLen > 0) value[0] = '\0'; // Ensure null termination on error
         return false;
     }
-    
+
     pos++;  // Skip opening quote
-    value.clear();
-    
+    size_t i = 0;
+
     while (absPos(pos) < dataLen && data[absPos(pos)] != '"') {
-        // We do NOT Handle escaped characters
-        value += data[absPos(pos)];
-        pos++;
+        if (i >= maxLen - 1) { // Check buffer overflow BEFORE writing
+             // Buffer full, stop processing but continue to find end quote
+             while (absPos(pos) < dataLen && data[absPos(pos)] != '"') {
+                 // Need to handle escaped quotes even when buffer is full
+                  if (data[absPos(pos)] == '\\' && absPos(pos) + 1 < dataLen) {
+                     pos++; // Skip the escaped character
+                     if (data[absPos(pos)] == 'u' && absPos(pos) + 4 < dataLen) {
+                         pos += 4; // Skip the 4 hex digits
+                     }
+                 }
+                 pos++;
+             }
+             value[i] = '\0'; // Null terminate what we have
+             if (absPos(pos) < dataLen && data[absPos(pos)] == '"') pos++; // Skip closing quote
+             endPos = pos;
+             // Consider returning false or a specific status indicating truncation
+             return false; // Indicate failure due to insufficient buffer size
+        }
+
+        if (data[absPos(pos)] == '\\' && absPos(pos) + 1 < dataLen) {
+            // Handle escape sequence
+            pos++; // Move past the backslash
+            switch (data[absPos(pos)]) {
+                case '"':  value[i++] = '"'; break;
+                case '\\': value[i++] = '\\'; break;
+                case '/':  value[i++] = '/'; break;
+                case 'b':  value[i++] = '\b'; break;
+                case 'f':  value[i++] = '\f'; break;
+                case 'n':  value[i++] = '\n'; break;
+                case 'r':  value[i++] = '\r'; break;
+                case 't':  value[i++] = '\t'; break;
+                case 'u':
+                    // Handle \uXXXX unicode escape
+                    if (absPos(pos) + 4 < dataLen) {
+                        char utf8_buf[4];
+                        int bytes_written = hex_to_utf8(data + absPos(pos) + 1, utf8_buf);
+                        if (bytes_written > 0 && i + bytes_written < maxLen) {
+                             memcpy(value + i, utf8_buf, bytes_written);
+                             i += bytes_written;
+                             pos += 4; // Skip the 4 hex digits
+                        } else {
+                            // Error in hex sequence or not enough space in buffer
+                            // Append a replacement char like '?' if possible
+                            if (i < maxLen -1 ) value[i++] = '?';
+                             pos += 4; // Skip the 4 hex digits anyway
+                        }
+                    } else {
+                        // Invalid \u sequence (not enough chars)
+                        if (i < maxLen -1 ) value[i++] = '?'; // Append replacement char
+                        // Advance pos to avoid getting stuck, but might skip valid chars if JSON is malformed.
+                        // Move to the end if sequence is cut short.
+                         pos = (dataLen - startPos) -1;
+                    }
+                    break;
+                default:
+                    // Invalid escape sequence, just append the character after backslash
+                    value[i++] = data[absPos(pos)];
+                    break;
+            }
+        } else {
+            // Regular character
+            value[i++] = data[absPos(pos)];
+        }
+        pos++; // Move to the next character in the source JSON
     }
-    
-    if (absPos(pos) < dataLen && data[absPos(pos)] == '"') pos++;  // Skip closing quote
-    
-    endPos = pos;
-    return true;
+
+    value[i] = '\0'; // Null terminate the result string
+
+    if (absPos(pos) < dataLen && data[absPos(pos)] == '"') {
+        pos++;  // Skip closing quote
+        endPos = pos;
+        return true;
+    } else {
+        // String wasn't properly terminated with a quote
+        endPos = pos; // endPos will be at the end or where the loop stopped
+        return false; // Indicate error: unterminated string
+    }
+}
+
+
+// --- Modified getStringValue for zap::Str ---
+bool JsonParser::getStringValue(size_t pos, zap::Str& value, size_t& endPos) const {
+    pos = skipWhitespace(pos);
+
+    if (absPos(pos) >= dataLen || data[absPos(pos)] != '"') {
+        endPos = pos;
+        value.clear(); // Ensure value is empty on error
+        return false;
+    }
+
+    pos++;  // Skip opening quote
+    value.clear(); // Start with an empty string
+
+    while (absPos(pos) < dataLen && data[absPos(pos)] != '"') {
+        if (data[absPos(pos)] == '\\' && absPos(pos) + 1 < dataLen) {
+            // Handle escape sequence
+            pos++; // Move past the backslash
+            switch (data[absPos(pos)]) {
+                case '"':  value += '"'; break;
+                case '\\': value += '\\'; break;
+                case '/':  value += '/'; break;
+                case 'b':  value += '\b'; break;
+                case 'f':  value += '\f'; break;
+                case 'n':  value += '\n'; break;
+                case 'r':  value += '\r'; break;
+                case 't':  value += '\t'; break;
+                case 'u':
+                     // Handle \uXXXX unicode escape
+                    if (absPos(pos) + 4 < dataLen) {
+                        char utf8_buf[4];
+                        int bytes_written = hex_to_utf8(data + absPos(pos) + 1, utf8_buf);
+                         if (bytes_written > 0) {
+                             // Append the UTF-8 bytes directly
+                            value.append(utf8_buf, bytes_written);
+                             pos += 4; // Skip the 4 hex digits
+                        } else {
+                            // Error in hex sequence
+                            value += '?'; // Append replacement char
+                             pos += 4; // Skip the 4 hex digits anyway
+                        }
+                    } else {
+                         // Invalid \u sequence (not enough chars)
+                        value += '?'; // Append replacement char
+                        // Advance pos to avoid getting stuck, but might skip valid chars if JSON is malformed.
+                        // Move to the end if sequence is cut short.
+                         pos = (dataLen - startPos) -1;
+                    }
+                    break;
+                default:
+                    // Invalid escape sequence, just append the character after backslash
+                    value += data[absPos(pos)];
+                    break;
+            }
+        } else {
+            // Regular character
+            value += data[absPos(pos)];
+        }
+         pos++; // Move to the next character in the source JSON
+    }
+
+    if (absPos(pos) < dataLen && data[absPos(pos)] == '"') {
+        pos++;  // Skip closing quote
+        endPos = pos;
+        return true;
+    } else {
+        // String wasn't properly terminated with a quote
+        endPos = pos; // endPos will be at the end or where the loop stopped
+        // value will contain the partially parsed string
+        return false; // Indicate error: unterminated string
+    }
 }
 
 
@@ -546,4 +709,11 @@ uint64_t JsonParser::getUInt64(const char* key) {
     uint64_t value = 0;
     getUInt64(key, value);
     return value;
+}
+
+void JsonParser::asString(zap::Str& value) const {
+    value.clear();
+    for (size_t i = startPos; i < endPos; i++) {
+        value += data[i];
+    }
 }
