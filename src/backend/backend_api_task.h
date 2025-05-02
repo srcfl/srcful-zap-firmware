@@ -1,5 +1,4 @@
-#ifndef BACKEND_API_TASK_H
-#define BACKEND_API_TASK_H
+#pragma once
 
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
@@ -58,5 +57,3 @@ private:
 
     GraphQLSubscriptionClient requestSubscription;
 };
-
-#endif // BACKEND_API_TASK_H

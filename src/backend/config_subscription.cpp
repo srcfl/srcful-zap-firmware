@@ -12,8 +12,8 @@
 #include "endpoints/endpoint_mapper.h"
 #include "endpoints/endpoint_types.h"
 #include "endpoints/endpoints.h"
-
-
+#include "backend/request_handler.h" // Ensure RequestHandler is included
+#include "backend/graphql.h" // Include for GQL namespace used in removed methods
 
 // Constructor
 GraphQLSubscriptionClient::GraphQLSubscriptionClient(const char* wsUrl) {
@@ -261,10 +261,6 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
             // Null-terminate
             payload[payload_length] = '\0';
             
-            // Process message
-            // Serial.print("Received text: ");
-            // Serial.println(payload);
-            
             // Parse JSON
             JsonParser doc(payload);
             
@@ -286,12 +282,13 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
                                 handleSettings(configChanges);
                             }
                             else if (subKey == REQUEST_TASK_SUBKEY) {
-                                handleRequestTask(configChanges);
+                                requestHandler.handleRequestTask(configChanges);
                             }
                         }
                     }
                 }
             }
+            delete[] payload;
         }
         break;
         case 0x08: // Close frame
@@ -523,34 +520,6 @@ void GraphQLSubscriptionClient::handleSettings(JsonParser& configData) {
     // Update settings in the blackboard
 }
 
-// Process request task
-void GraphQLSubscriptionClient::handleRequestTask(JsonParser& configData) {
-    Serial.println("GraphQLSubscriptionClient: Processing configuration data");
-
-    // extract the data string and convert it to a json string
-    zap::Str data;
-    if (!configData.getString("data", data)) {
-        Serial.println("GraphQLSubscriptionClient: Failed to extract data from configuration");
-        return;
-    }
-    // Replace escaped characters
-    data.replace("\\u0022", "\"");
-
-    JsonParser dataDoc(data.c_str());
-        
-    // Check if this is a request to handle
-    if (dataDoc.contains("id") && dataDoc.contains("path") && dataDoc.contains("method")) {
-        // This appears to be a request, so handle it
-        handleRequest(dataDoc);
-    } else {
-        // This is some other type of configuration data
-        Serial.println("Backend API task: Received non-request configuration");
-        // Process other configuration types here if needed
-    }
-    
-    Serial.println("Backend API task: Configuration processing completed");
-}
-
 // Restart the connection
 void GraphQLSubscriptionClient::restart() {
     Serial.println("Restarting WebSocket client");
@@ -575,139 +544,5 @@ void GraphQLSubscriptionClient::stop() {
     _isConnected = false;
     isWebSocketHandshakeDone = false;
     client.stop();
-}
-
-
-
-// void GraphQLSubscriptionClient::fetchConfiguration() {
-//     // First, try to fetch the device configuration
-//     GQL::StringResponse configResponse = GQL::getConfiguration("request");
-//     if (configResponse.isSuccess()) {
-//         Serial.println("Backend API task: Device configuration fetched successfully");
-//         processConfiguration(configResponse.data.c_str());
-//     } else {
-//         Serial.print("Backend API task: Failed to fetch device configuration: ");
-//         Serial.println(configResponse.error.c_str());
-//     }
-// }
-
-void GraphQLSubscriptionClient::processConfiguration(const char* configData) {
-    
-}
-
-void GraphQLSubscriptionClient::handleRequest(JsonParser& configData) {
-
-
-    zap::Str id; configData.getString("id", id);
-    zap::Str path; configData.getString("path", path);
-    zap::Str method; configData.getString("method", method);
-    zap::Str body; configData.getString("body", body);
-    zap::Str query; configData.getString("query", query);
-    zap::Str headers; configData.getString("headers", headers);
-    uint64_t timestamp; configData.getUInt64("timestamp", timestamp);
-    
-    Serial.print("Backend API task: Processing request id=");
-    Serial.print(id.c_str());
-    Serial.print(", path=");
-    Serial.print(path.c_str());
-    Serial.print(", method=");
-    Serial.print(method.c_str());
-    Serial.print(", body=");
-    Serial.print(body.c_str());
-    Serial.println(", end");
-    
-    // Validate timestamp - reject requests older than 1 minute
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    uint64_t currentTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
-    if (timestamp < (currentTimeMs / 1000 - 60)) {
-        sendErrorResponse(id, "Request too old");
-        return;
-    }
-    
-    // Use the EndpointMapper to find and execute the appropriate endpoint handler
-    const Endpoint& endpoint = EndpointMapper::toEndpoint(path, method);
-    
-    if (endpoint.type == Endpoint::UNKNOWN) {
-        // No endpoint found for this path/method combination
-        sendErrorResponse(id, "Endpoint not found");
-        return;
-    }
-    
-    // Create an endpoint request
-    EndpointRequest request(endpoint);
-    request.content = body;
-    
-    // Route the request to the appropriate handler
-    EndpointResponse response = EndpointMapper::route(request);
-    
-    // Send the response
-    sendResponse(id, response.statusCode, response.data);
-}
-
-void GraphQLSubscriptionClient::sendResponse(const zap::Str& requestId, int statusCode, const zap::Str& responseData) {
-    Serial.print("Backend API task: Sending response for request ");
-    Serial.println(requestId.c_str());
-    
-    // Get current epoch time in milliseconds
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    uint64_t epochTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
-    
-    // Use JsonBuilder to create JWT header
-    JsonBuilder headerBuilder;
-    headerBuilder.beginObject()
-        .add("alg", "ES256")
-        .add("typ", "JWT")
-        .add("device", crypto_getId().c_str())
-        .add("subKey", "response");
-    zap::Str header = headerBuilder.end();
-    
-    // Use JsonBuilder to create JWT payload
-
-    zap::Str escapedResponse = responseData;
-    escapedResponse.replace("\"", "\\\""); // Escape double quotes in JSON string
-
-
-    JsonBuilder payloadBuilder;
-    payloadBuilder.beginObject()
-        .add("id", requestId.c_str())
-        .add("timestamp", epochTimeMs)
-        .add("code", statusCode)
-        .add("response", escapedResponse.c_str());
-    zap::Str payload = payloadBuilder.end();
-    
-    // External signature key (from config.h)
-    extern const char* PRIVATE_KEY_HEX;
-    
-    // Sign and generate JWT
-    zap::Str jwt = crypto_create_jwt(header.c_str(), payload.c_str(), PRIVATE_KEY_HEX);
-    
-    if (jwt.length() == 0) {
-        Serial.println("Backend API task: Failed to create JWT for response");
-        return;
-    }
-    
-    // Send the JWT using GraphQL
-    GQL::BoolResponse response = GQL::setConfiguration(jwt);
-    
-    // Handle the response
-    if (response.isSuccess() && response.data) {
-        Serial.print("Backend API task: Response for request ");
-        Serial.print(requestId.c_str());
-        Serial.println(" sent successfully");
-    } else {
-        Serial.print("Backend API task: Failed to send response for request ");
-        Serial.println(requestId.c_str());
-    }
-}
-
-void GraphQLSubscriptionClient::sendErrorResponse(const zap::Str& requestId, const char* errorMessage) {
-    JsonBuilder errorBuilder;
-    errorBuilder.beginObject()
-        .add("error", errorMessage);
-    zap::Str errorJson = errorBuilder.end();
-    
-    sendResponse(requestId, 400, errorJson);
 }
 

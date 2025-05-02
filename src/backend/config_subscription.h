@@ -5,6 +5,10 @@
 #include <time.h>
 
 #include "json_light/json_light.h"
+#include "endpoints/endpoint_mapper.h"
+#include "endpoints/endpoint_types.h"
+#include "endpoints/endpoints.h"
+#include "backend/request_handler.h" // Include the new RequestHandler header
 
 // Forward declarations
 class Crypto;
@@ -33,6 +37,7 @@ private:
     unsigned long lastPingTime = 0;
     unsigned long lastConnectAttempt = 0;
 
+    zap::backend::RequestHandler requestHandler; // Add RequestHandler instance
 
 public:
 
@@ -83,15 +88,6 @@ private:
     // Helper for handling settings data
     void handleSettings(JsonParser& configData);
     
-    // Helper for handling request tasks
-    void handleRequestTask(JsonParser& configData);
-
-
     void processConfiguration(const char* configData);
-    
-    // Request handling methods
-    void handleRequest(JsonParser& configData);
-    void sendResponse(const zap::Str& requestId, int statusCode, const zap::Str& responseData);
-    void sendErrorResponse(const zap::Str& requestId, const char* errorMessage);
 };
 
