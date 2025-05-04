@@ -34,7 +34,9 @@ private:
     String url;
     bool _isConnected = false;
     bool isWebSocketHandshakeDone = false;
+    unsigned long pingPongDiff = 0;
     unsigned long lastPingTime = 0;
+    unsigned long lastPongTime = 0;
     unsigned long lastConnectAttempt = 0;
 
     zap::backend::RequestHandler requestHandler; // Add RequestHandler instance

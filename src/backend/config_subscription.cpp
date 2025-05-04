@@ -185,6 +185,7 @@ void GraphQLSubscriptionClient::loop() {
         Serial.println("Websocket Sending ping");
         sendPing();
         lastPingTime = currentMillis;
+        pingPongDiff += 1;
     }
     
     // Check for available data
@@ -197,6 +198,17 @@ void GraphQLSubscriptionClient::loop() {
         if (length > 0) {
             processWebSocketData(buffer, length);
         }
+    }
+
+    // Check if ping pong has timed out
+    if (pingPongDiff > 2) {
+        Serial.println("Ping pong timeout, two pings sent without response...");
+        Serial.println("Closing connection...");
+        _isConnected = false;
+        isWebSocketHandshakeDone = false;
+        client.stop();
+
+        return;
     }
     
     // Check if connection is still alive
@@ -338,7 +350,7 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
             stop();
         }
         break;
-        case 0x09: // Ping frame
+        case 0x09: // Ping frame, we never seem to get this
         {
             // Respond with pong
             Serial.println("Received ping, sending pong");
@@ -362,7 +374,14 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
         break;
         case 0x0A: // Pong frame
         {
-            Serial.println("Received pong");
+            
+            if (pingPongDiff > 0) {
+                Serial.println("Received valid pong");
+                pingPongDiff--;
+                lastPongTime = millis();
+            } else {
+                Serial.println("Received unsolicited pong");
+            }
         }
         break;
         default:
