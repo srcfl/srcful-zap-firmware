@@ -295,7 +295,14 @@ bool DLMSDecoder::processObisValue(const uint8_t* obisCode, const IFrameData& fr
             timeinfo.tm_min = minute;
             timeinfo.tm_sec = second;
             
-            p1data.timestamp = mktime(&timeinfo);
+            // convert to obis string time stamp string
+            // TODO: investigate the W at the end of the string
+            char buffer[32];
+            snprintf(buffer, sizeof(buffer), "0-0:1.0.0(%02d%02d%02d%02d%02d%02dW)",    // the W is not correct here
+                    timeinfo.tm_year % 100, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                    timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+            p1data.addObisString(buffer);
+
             P1_DLMS_LOG(printf("    Timestamp: %04d-%02d-%02d %02d:%02d:%02d\n", 
                           year, month, day, hour, minute, second));
             known = true;

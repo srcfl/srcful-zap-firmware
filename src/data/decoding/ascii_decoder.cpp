@@ -12,52 +12,6 @@ AsciiDecoder::AsciiDecoder() {
 }
 
 /**
- * @brief Parses the timestamp line (e.g., 0-0:1.0.0(YYMMDDhhmmssX))
- * 
- * Extracts the date and time components and converts them to a time_t timestamp.
- * The 'X' represents the DST flag (W for Winter, S for Summer), which is ignored for now.
- * 
- * @param line The null-terminated string containing the timestamp line.
- * @param p1data The P1Data object to store the parsed timestamp in.
- * @return true if the timestamp was successfully parsed and stored, false otherwise.
- */
-bool AsciiDecoder::parseTimestamp(const char* line, P1Data& p1data) {
-    const char* openParen = strchr(line, '(');
-    const char* closeParen = strchr(line, ')');
-
-    if (!openParen || !closeParen || closeParen <= openParen) {
-        return false; // Malformed timestamp line
-    }
-
-    // Extract YYMMDDhhmmss part
-    int year, month, day, hour, minute, second;
-    // Example: 0-0:1.0.0(250427132220W)
-    // Use sscanf to parse the 12 digits directly after the '('
-    if (sscanf(openParen + 1, "%2d%2d%2d%2d%2d%2d", &year, &month, &day, &hour, &minute, &second) == 6) {
-        struct tm timeinfo = {0};
-        timeinfo.tm_year = year + 100; // YY (e.g., 25) becomes years since 1900 (125)
-        timeinfo.tm_mon = month - 1;   // Input month is 1-12, struct tm month is 0-11
-        timeinfo.tm_mday = day;
-        timeinfo.tm_hour = hour;
-        timeinfo.tm_min = minute;
-        timeinfo.tm_sec = second;
-        timeinfo.tm_isdst = -1; // Let mktime determine DST based on system settings/date
-
-        // mktime converts struct tm (local time) to time_t
-        p1data.timestamp = mktime(&timeinfo); 
-        
-        // Check if mktime succeeded (returns -1 on error)
-        if (p1data.timestamp == (time_t)(-1)) {
-            // Handle error: Invalid date/time components
-            return false;
-        }
-        return true;
-    }
-
-    return false; // sscanf failed to parse 6 values
-}
-
-/**
  * @brief Parses a standard OBIS data line and adds it to P1Data.
  * 
  * Assumes the line is a valid OBIS data line containing an OBIS code and value,
@@ -110,11 +64,6 @@ bool AsciiDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
                     p1data.setDeviceId(currentLine + 1); 
                     dataFound = true; // Found at least the device ID
 
-                } else if (strncmp(currentLine, "0-0:1.0.0", 9) == 0) {
-                    // Timestamp line
-                    if (parseTimestamp(currentLine, p1data)) {
-                        dataFound = true;
-                    }
                 } else if (currentLine[0] == '!') {
                     // Checksum line: Marks the end of the data telegram
                     // TODO: Optionally implement checksum verification here

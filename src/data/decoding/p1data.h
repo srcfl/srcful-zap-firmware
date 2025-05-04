@@ -14,6 +14,7 @@ public:
     uint8_t obisStringCount; // Number of OBIS strings stored
 
     // Meter identification
+    // TODO: Are these really needed?
     static const uint8_t DEVICE_ID_LEN = 32;
     static const uint8_t METER_MODEL_LEN = 32;
     char szDeviceId[DEVICE_ID_LEN];             // Device ID
@@ -21,13 +22,9 @@ public:
 
     void setDeviceId(const char *szDeviceId);
 
-    // Timestamp
-    time_t timestamp;                    // Timestamp of the reading
-
     // Constructor
     P1Data() :
-        obisStringCount(0),
-        timestamp(0) {
+        obisStringCount(0) {
             szDeviceId[0] = '\0';
             szMeterModel[0] = '\0';
             for (int i = 0; i < MAX_OBIS_STRINGS; ++i) {
