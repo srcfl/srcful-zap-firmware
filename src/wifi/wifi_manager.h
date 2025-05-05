@@ -15,6 +15,11 @@ public:
 
     // Setup methods
     bool connectToWiFi(const zap::Str& ssid, const zap::Str& password, bool updateGlobals = true);
+
+    // scanning methods
+    // set to true to scan for available networks via the task
+    void setScanWiFiNetworks(bool scan) { _scanWiFiNetworks = scan; }
+    bool getScanWiFiNetworks() const { return _scanWiFiNetworks; }
     void scanWiFiNetworks();
     
     // Status methods
@@ -52,6 +57,7 @@ private:
     const zap::Str& getString(Preferences &pref, const char* key, const char* defaultValue = "");
 
     // Member variables
+    bool _scanWiFiNetworks; // Flag to control WiFi scanning
     bool _isProvisioned;
     zap::Str _configuredSSID;
     zap::Str _configuredPassword;
@@ -59,7 +65,6 @@ private:
     unsigned long _lastScanTime;
     Preferences _preferences;  // Preferences instance for NVS operations
     const char* _mdnsHostname; // Store mDNS hostname
-    static const unsigned long SCAN_CACHE_TIME = 10000; // Cache scan results for 10 seconds
     
     // Constants for NVS storage
     static const char* PREF_NAMESPACE;

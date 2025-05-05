@@ -97,15 +97,15 @@ EndpointResponse WiFiScanHandler::handle(const zap::Str& contents) {
     
     JsonBuilder json;
     json.beginObject();
-    
-    // Get the cached scan results
-    json.addArray("ssids", wifiManager.getLastScanResults());
-    
+
     // Add connected network info if connected
     if (wifiManager.isConnected()) {
-        json.add("connected", wifiManager.getConfiguredSSID().c_str());
+        wifiManager.setScanWiFiNetworks(true);
+        json.add("status", "sucess");
+        json.add("message", "scan initiated");
     } else {
-        json.add("connected", nullptr);  // JSON null if not connected
+        json.add("status", "error");
+        json.add("message", "not connected");
     }
     
     response.data = json.end();

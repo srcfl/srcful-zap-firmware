@@ -64,6 +64,12 @@ void WifiStatusTask::taskFunction(void* parameter) {
                     wasConnected = true;
                     task->connectionAttempts = 0; // Reset connection attempts
                 }
+                if (task->wifiManager->getScanWiFiNetworks()) {
+                    task->wifiManager->setScanWiFiNetworks(false);
+                    task->wifiManager->scanWiFiNetworks();
+                } else {
+                    Serial.println("WiFi scanning disabled");
+                }
             } else {
                 if (wasConnected) {
                     Serial.println("WiFi connection lost!");
@@ -75,15 +81,6 @@ void WifiStatusTask::taskFunction(void* parameter) {
                 task->wifiManager->autoConnect();
                 Serial.print("Connection attempt: ");
                 Serial.println(task->connectionAttempts);
-
-                #if defined(DIRECT_CONNECT)
-                    // Only try to reconnect automatically in direct connect mode
-                    if (task->ledPin >= 0) {
-                        digitalWrite(task->ledPin, millis() % 1000 < 500); // Blink LED when disconnected
-                    }
-                    WiFi.begin(WIFI_SSID, WIFI_PSK);
-                    Serial.println("WiFi disconnected, attempting to reconnect...");
-                #endif
             }
             
             // Print some debug info

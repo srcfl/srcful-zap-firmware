@@ -10,7 +10,8 @@ const char* WifiManager::KEY_PROVISIONED = "provisioned";
 WifiManager::WifiManager(const char* mdnsHostname) 
     : _isProvisioned(false), 
       _lastScanTime(0),
-      _mdnsHostname(mdnsHostname) {
+      _mdnsHostname(mdnsHostname),
+      _scanWiFiNetworks(true) {
     
     Serial.println("Initializing WiFi Manager...");
     
