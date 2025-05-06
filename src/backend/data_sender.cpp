@@ -75,12 +75,12 @@ void DataSenderTask::sendJWT(const zap::Str& payload) {
 
     zap::Str jwt = createP1JWT(PRIVATE_KEY_HEX, crypto_getId(), payload.c_str());
     
-    Serial.println("Data sender task: Sending JWT...");
-    Serial.print("Data sender task jwt:");
-    Serial.println(jwt.c_str());
+    // Serial.println("Data sender task: Sending JWT...");
+    // Serial.print("Data sender task jwt:");
+    // Serial.println(jwt.c_str());
     
-    Serial.print("Data sender task: Sending JWT to: ");
-    Serial.println(DATA_URL);
+    // Serial.print("Data sender task: Sending JWT to: ");
+    // Serial.println(DATA_URL);
     
     // Close any previous connections and start a new one
     http.end();

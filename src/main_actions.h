@@ -6,8 +6,9 @@ class MainActions {
         enum class Type {
             NONE,
             REBOOT,
-            WIFI_DISCONNECT
-            // Add other action types here
+            WIFI_DISCONNECT,
+            SEND_STATE
+            // Add other action types here, do not forget to update the actionStates array
         };
 
         struct State {

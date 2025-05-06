@@ -1,6 +1,7 @@
 #include "wifi_status_task.h"
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include "main_actions.h"
 
 #if defined(USE_BLE_SETUP)
     #include "ble_handler.h"
@@ -63,12 +64,12 @@ void WifiStatusTask::taskFunction(void* parameter) {
                     Serial.println(task->wifiManager->getLocalIP().c_str());
                     wasConnected = true;
                     task->connectionAttempts = 0; // Reset connection attempts
+                    MainActions::triggerAction(MainActions::Type::SEND_STATE, 500);
                 }
                 if (task->wifiManager->getScanWiFiNetworks()) {
                     task->wifiManager->setScanWiFiNetworks(false);
                     task->wifiManager->scanWiFiNetworks();
-                } else {
-                    Serial.println("WiFi scanning disabled");
+                    MainActions::triggerAction(MainActions::Type::SEND_STATE, 500);
                 }
             } else {
                 if (wasConnected) {

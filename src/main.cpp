@@ -25,16 +25,14 @@
 #define IO_BUTTON 9
 
 // Global variables
+BackendApiTask backendApiTask; // Create a backend API task instance
 WifiManager wifiManager(MDNS_NAME); // Create a WiFi manager instance, pass mDNS name
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
-DataSenderTask dataSenderTask; // Create a data sender task instance
 DataReaderTask dataReaderTask; // Create a data reader task instance
-BackendApiTask backendApiTask(dataSenderTask); // Create a backend API task instance
 ServerTask serverTask(80); // Create a server task instance
 
-
 // Instantiate MainActionManager directly
-MainActionManager mainActionManager(wifiManager);
+MainActionManager mainActionManager;
 
 String configuredSSID = "";
 String configuredPassword = "";
@@ -148,7 +146,7 @@ void setup() {
     
     // Configure and start the data reader task
     dataReaderTask.setInterval(10000); // 10 seconds interval for generating data
-    dataReaderTask.begin(dataSenderTask.getQueueHandle()); // Share the queue between tasks
+    dataReaderTask.begin(backendApiTask.getQueueHandle()); // Share the queue between tasks
     
     // Start the backend API task
     Serial.println("Starting backend API task...");
@@ -169,7 +167,7 @@ void setup() {
 
 void loop() {
     // --- Check for deferred actions FIRST ---
-    mainActionManager.checkAndExecute(); // Call method on the instance
+    mainActionManager.checkAndExecute(wifiManager, backendApiTask); // Call method on the instance
 
     // Handle button press for WiFi reset
     int buttonState = digitalRead(IO_BUTTON);

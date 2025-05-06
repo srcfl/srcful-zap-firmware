@@ -11,12 +11,11 @@ WifiManager::WifiManager(const char* mdnsHostname)
     : _isProvisioned(false), 
       _lastScanTime(0),
       _mdnsHostname(mdnsHostname),
-      _scanWiFiNetworks(true) {
+      _scanWiFiNetworks(false) {
     
     Serial.println("Initializing WiFi Manager...");
     
     // Try to load credentials at initialization
-    // Begin with the namespace but don't end it - we'll keep it open throughout the lifecycle
     if (_preferences.begin(PREF_NAMESPACE, true)) {
         _isProvisioned = _preferences.getBool(KEY_PROVISIONED, false);
         
@@ -186,6 +185,18 @@ zap::Str WifiManager::getLocalIP() const {
     return WiFi.localIP().toString().c_str();
 }
 
+zap::Str WifiManager::getMacAddress() const {
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
+    
+    // Convert MAC address to string
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X", 
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    
+    return zap::Str(macStr);
+}
+
 int WifiManager::getStatus() const {
     return WiFi.status();
 }
@@ -334,10 +345,7 @@ bool WifiManager::autoConnect() {
     }
     
     // If connection failed or no credentials existed, perform a scan
-    if (!connected) {
-        Serial.println("Auto-connect failed or no credentials, performing WiFi scan...");
-        scanWiFiNetworks(); 
-    } else {
+    if (connected) {
         Serial.println("Auto-connect successful.");
 
         // two quick blinks to indicate success

@@ -1,5 +1,4 @@
 #include "backend_api_task.h"
-#include "data_sender.h"
 #include "crypto.h"
 #include "config.h"
 #include "./graphql.h"
@@ -8,8 +7,8 @@
 #include <time.h>
 
 
-BackendApiTask::BackendApiTask(DataSenderTask& dataSender, uint32_t stackSize, UBaseType_t priority) 
-    : dataSender(dataSender), stackSize(stackSize), priority(priority), shouldRun(false),
+BackendApiTask::BackendApiTask(uint32_t stackSize, UBaseType_t priority) 
+    : stackSize(stackSize), priority(priority), shouldRun(false),
       wifiManager(nullptr), lastUpdateTime(0),  
       stateUpdateInterval(DEFAULT_STATE_UPDATE_INTERVAL), 
       bleActive(false),
@@ -154,6 +153,20 @@ void BackendApiTask::sendStateUpdate() {
             .add("uptime", millis())
             .add("version", FIRMWARE_VERSION_STRING)
         .endObject()
+        .beginObject("network")
+            .beginObject("wifi")
+                .add("connected", wifiManager->isConnected() ? wifiManager->getConfiguredSSID().c_str() : "")
+                .addArray("ssids", wifiManager->getLastScanResults())
+            .endObject()
+            .beginObject("address")
+                .add("ip", wifiManager->isConnected() ? wifiManager->getLocalIP().c_str() : "")
+                .add("port", 80)
+                .add("wlan0_mac", wifiManager->getMacAddress().c_str())
+                .beginObject("interfaces")
+                    .add("wlan0", wifiManager->isConnected() ? wifiManager->getLocalIP().c_str() : "")
+                .endObject()
+            .endObject()
+        .endObject()
         .add("timestamp", epochTimeMs);
     zap::Str payload = payloadBuilder.end();
     
@@ -199,9 +212,15 @@ void BackendApiTask::sendStateUpdate() {
     }
 }
 
-
-
 void BackendApiTask::triggerStateUpdate() {
+    // we need to set both to 0 to trigger immediate update because of unsigned variables
+    lastUpdateTime = 0;
+    stateUpdateInterval = 0;
+    Serial.print("Backend API task: Triggering immediate state update: ");
+    Serial.println(isTimeForStateUpdate(millis()) ? "true" : "false");
+}
+
+void BackendApiTask::_triggerStateUpdate() {
     // Only send state update if WiFi is connected and BLE is not active
     if (wifiManager && wifiManager->isConnected() && !bleActive) {
         Serial.println("Backend API task: Triggering immediate state update...");

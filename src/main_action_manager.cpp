@@ -1,6 +1,7 @@
 #include "main_action_manager.h"
 #include "main_actions.h" // Include the definitions
 #include "wifi/wifi_manager.h" // Include WifiManager header
+#include "backend/backend_api_task.h" // Include BackendApiTask header
 #include <Arduino.h>      // For millis()
 #include <WiFi.h>         // Keep for direct WiFi calls if needed, though manager is preferred
 #include <esp_system.h>   // For ESP.restart()
@@ -16,11 +17,15 @@ void MainActionManager::executeReboot() {
     ESP.restart();
 }
 
-void MainActionManager::executeWifiDisconnect() {
+void MainActionManager::executeWifiDisconnect(WifiManager& wifiManager) {
     wifiManager.disconnect();
 }
 
-void MainActionManager::checkAndExecute() {
+void MainActionManager::executeStateUpdate(BackendApiTask& backendApiTask) {
+    backendApiTask.triggerStateUpdate();
+}
+
+void MainActionManager::checkAndExecute(WifiManager& wifiManager, BackendApiTask& backendApiTask) {
     unsigned long currentTime = millis();
 
     // Loop through all defined actions
@@ -50,7 +55,10 @@ void MainActionManager::checkAndExecute() {
                         break; // Technically unreachable, but good practice
 
                     case MainActions::Type::WIFI_DISCONNECT:
-                        executeWifiDisconnect();
+                        executeWifiDisconnect(wifiManager);
+                        break;
+                    case MainActions::Type::SEND_STATE:
+                        executeStateUpdate(backendApiTask);
                         break;
 
                     // Add cases for other actions here

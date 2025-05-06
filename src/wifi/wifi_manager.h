@@ -33,6 +33,7 @@ public:
     zap::Str getConfiguredPassword() const { return _configuredPassword; }
     virtual const std::vector<zap::Str>& getLastScanResults() const { return _lastScanResults; }
     unsigned long getLastScanTime() const { return _lastScanTime; }
+    zap::Str getMacAddress() const;
     
     // Setters
     void setProvisioned(bool provisioned) { _isProvisioned = provisioned; }

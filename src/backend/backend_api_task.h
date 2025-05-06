@@ -9,15 +9,15 @@
 #include "json_light/json_light.h"
 
 #include "config_subscription.h"
+#include "data_sender.h"
 
 // Default state update interval (5 minutes = 300,000 ms)
 const uint32_t DEFAULT_STATE_UPDATE_INTERVAL = 300000;
 
-class DataSenderTask;  // Forward declaration
 
 class BackendApiTask {
 public:
-    BackendApiTask(DataSenderTask& dataSender, uint32_t stackSize = 4096*2, UBaseType_t priority = 5);
+    BackendApiTask(uint32_t stackSize = 1024*8, UBaseType_t priority = 5);
     ~BackendApiTask();
     
     void begin(WifiManager* wifiManager);
@@ -33,15 +33,21 @@ public:
     void setBleActive(bool active);
     bool isBleActive() const;
     
-    // Trigger an immediate state update (if conditions allow)
+    // Trigger an immediate state update
     void triggerStateUpdate();
+
+    QueueHandle_t getQueueHandle() {
+        return dataSender.getQueueHandle();
+    }
     
 private:
     bool isTimeForStateUpdate(unsigned long currentTime) const;
     static void taskFunction(void* parameter);
     void sendStateUpdate();
+
+    void _triggerStateUpdate();
     
-    DataSenderTask& dataSender;
+    DataSenderTask dataSender;
     
     TaskHandle_t taskHandle;
     uint32_t stackSize;
@@ -49,9 +55,11 @@ private:
     bool shouldRun;
     
     WifiManager* wifiManager;
-    unsigned long lastUpdateTime;
+    volatile unsigned long lastUpdateTime;
     uint32_t stateUpdateInterval;
     bool bleActive;
+
+    bool triggerCalled;
     
     HTTPClient http;  // Reuse HTTPClient instance
 
