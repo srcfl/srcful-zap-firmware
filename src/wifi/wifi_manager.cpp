@@ -2,7 +2,10 @@
 #include "config.h"
 #include "zap_log.h"
 
+const char* TAG = "wifi_manager";  // Tag for logging
+
 // Define static constants for NVS storage
+// DO NOT CHANGE THESE or the NVS data will be lost
 const char* WifiManager::PREF_NAMESPACE = "wificonfig";
 const char* WifiManager::KEY_SSID = "ssid";
 const char* WifiManager::KEY_PASSWORD = "password";
@@ -14,7 +17,7 @@ WifiManager::WifiManager(const char* mdnsHostname)
       _mdnsHostname(mdnsHostname),
       _scanWiFiNetworks(true) {
     
-    Serial.println("Initializing WiFi Manager...");
+    LOG_D(TAG, "Initializing WiFi Manager...");
     
     loadCredentials();  // Load saved credentials from NVS
 }
@@ -27,23 +30,20 @@ WifiManager::~WifiManager() {
 void WifiManager::initNTP() {
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // 0, 0 = UTC, no daylight offset
     
-    Serial.print("Waiting for NTP time sync: ");
+    LOG_D(TAG, "Waiting for NTP time sync: ");
     time_t now = time(nullptr);
     while (now < 8 * 3600 * 2) {
         delay(500);
-        Serial.print(".");
         now = time(nullptr);
     }
-    Serial.println();
+    LOG_D(TAG, "NTP time sync complete");
 }
 
 bool WifiManager::connectToWiFi(const zap::Str& ssid, const zap::Str& password, bool updateGlobals) {
     if (ssid.length() > 0 && password.length() > 0) {
-        Serial.println("Connecting to WiFi...");
-        Serial.print("SSID: ");
-        Serial.println(ssid.c_str());
-        Serial.print("Password length: ");
-        Serial.println(password.length());
+        LOG_D(TAG, "Connecting to WiFi...");
+        LOG_D(TAG, "SSID: %s", ssid.c_str());
+        LOG_D(TAG, "Password length: %i", password.length());
         
         // First disconnect and wait a bit
         WiFi.disconnect(true);  // true = disconnect and clear settings
@@ -60,28 +60,24 @@ bool WifiManager::connectToWiFi(const zap::Str& ssid, const zap::Str& password, 
         int attempts = 0;
         while (WiFi.status() != WL_CONNECTED && attempts < 30) {  // Increased timeout to 15 seconds
             delay(500);
-            Serial.print(".");
             attempts++;
         }
-        Serial.println();
         
         if (WiFi.status() == WL_CONNECTED) {
-            Serial.println("WiFi connected");
-            Serial.print("IP address: ");
-            Serial.println(WiFi.localIP());
+            LOG_I(TAG, "WiFi connected");
+            LOG_I(TAG, "IP address: %s", WiFi.localIP().toString().c_str());
             
             // Initialize NTP time synchronization
-            Serial.println("Initializing NTP...");
+            LOG_I(TAG, "Initializing NTP...");
             initNTP();
-            Serial.print("NTP initialized, Epoch:");
-            Serial.println(time(nullptr));
+            LOG_I(TAG, "NTP initialized");
 
             // Setup mDNS now that we are connected
-            Serial.println("Setting up MDNS...");
+            LOG_I(TAG, "Setting up MDNS...");
             if (setupMDNS(_mdnsHostname)) {
-                 Serial.println("MDNS responder started");
+                 LOG_I(TAG, "MDNS responder started");
             } else {
-                 Serial.println("Error setting up MDNS responder!");
+                 LOG_E(TAG, "Error setting up MDNS responder!");
             }
             
             // Configure low power WiFi
@@ -99,18 +95,18 @@ bool WifiManager::connectToWiFi(const zap::Str& ssid, const zap::Str& password, 
             
             return true;
         } else {
-            Serial.println("WiFi connection failed");
+            LOG_W(TAG, "WiFi connection failed");
             WiFi.disconnect(true);  // Clean disconnect on failure
             return false;
         }
     } else {
-        Serial.println("No WiFi credentials provided");
+        LOG_W(TAG, "No WiFi credentials provided");
         return false;
     }
 }
 
 void WifiManager::scanWiFiNetworks() {
-    Serial.println("Scanning WiFi networks...");
+    LOG_I(TAG, "Scanning WiFi networks...");
     
     // Set WiFi to station mode to perform scan
     WiFiMode_t currentMode = WiFi.getMode(); // Store current mode
@@ -120,15 +116,14 @@ void WifiManager::scanWiFiNetworks() {
     }
     
     int n = WiFi.scanNetworks();
-    Serial.println("Scan completed");
+    LOG_I(TAG, "Scan completed");
     
     _lastScanResults.clear();
     
     if (n == 0) {
-        Serial.println("No networks found");
+        LOG_I(TAG, "No networks found");
     } else {
-        Serial.print(n);
-        Serial.println(" networks found");
+        LOG_I(TAG, "%d networks found", n);
         
         // Store unique SSIDs (some networks might broadcast on multiple channels)
         std::vector<zap::Str> uniqueSSIDs;
@@ -190,40 +185,33 @@ bool WifiManager::setupMDNS(const char* hostname) {
 }
 
 bool WifiManager::loadCredentials() {
-    Serial.println("Loading WiFi credentials from NVS...");
+    LOG_I(TAG, "Loading WiFi credentials from NVS...");
     
     if (!_preferences.begin(PREF_NAMESPACE, true)) { // true = read-only
-        Serial.println("Failed to open NVS namespace");
+        LOG_E(TAG, "Failed to open NVS namespace for reading");
         return false;
     }
     
     // Read values from NVS
     _isProvisioned = _preferences.getBool(KEY_PROVISIONED, false);
-    Serial.print("Loaded isProvisioned: ");
-    Serial.println(_isProvisioned ? "true" : "false");
+    LOG_I(TAG, "Loaded isProvisioned: %s", _isProvisioned ? "true" : "false");
     
     if (_isProvisioned) {
         _configuredSSID = getString(_preferences, KEY_SSID, "");
         _configuredPassword = getString(_preferences, KEY_PASSWORD, "");
         
-        Serial.println("Credentials loaded successfully");
-        Serial.print("SSID: ");
-        Serial.println(_configuredSSID.c_str());
-        Serial.print("Password length: ");
-        Serial.println(_configuredPassword.length());
+        LOG_I(TAG, "Credentials loaded successfully");
+        LOG_I(TAG, "SSID: %s", _configuredSSID.c_str());
+        LOG_I(TAG, "Password length: %d", _configuredPassword.length());
         
         // Additional debug info about what was actually read
-        Serial.print("Raw SSID from NVS: '");
-        Serial.print(_preferences.getString(KEY_SSID, "<not found>"));
-        Serial.println("'");
+        LOG_D(TAG, "Raw SSID from NVS: '%s'", _preferences.getString(KEY_SSID, "<not found>").c_str());
         
         // Check if the namespace contains the expected keys
-        Serial.print("NVS contains SSID key: ");
-        Serial.println(_preferences.isKey(KEY_SSID) ? "yes" : "no");
-        Serial.print("NVS contains PASSWORD key: ");
-        Serial.println(_preferences.isKey(KEY_PASSWORD) ? "yes" : "no");
+        LOG_D(TAG, "NVS contains SSID key: %s", _preferences.isKey(KEY_SSID) ? "yes" : "no");
+        LOG_D(TAG, "NVS contains PASSWORD key: %s", _preferences.isKey(KEY_PASSWORD) ? "yes" : "no");
     } else {
-        Serial.println("No saved credentials found (_isProvisioned flag is false)");
+        LOG_I(TAG, "No saved credentials found (_isProvisioned flag is false)");
     }
     
     _preferences.end();
@@ -231,29 +219,24 @@ bool WifiManager::loadCredentials() {
 }
 
 bool WifiManager::saveCredentials() {
-    Serial.println("Saving WiFi credentials to NVS...");
+    LOG_I(TAG, "Saving WiFi credentials to NVS...");
     
     if (!_preferences.begin(PREF_NAMESPACE, false)) { // false = read-write
-        Serial.println("Failed to open NVS namespace");
+        LOG_E(TAG, "Failed to open NVS namespace for writing");
         return false;
     }
     
     // Print current values being saved
-    Serial.print("Saving isProvisioned: ");
-    Serial.println(_isProvisioned ? "true" : "false");
+    LOG_I(TAG, "Saving isProvisioned: %s", _isProvisioned ? "true" : "false");
     
     if (_isProvisioned) {
-        Serial.print("Saving SSID: '");
-        Serial.print(_configuredSSID.c_str());
-        Serial.println("'");
-        Serial.print("Saving Password (length): ");
-        Serial.println(_configuredPassword.length());
+        LOG_I(TAG, "Saving SSID: '%s'", _configuredSSID.c_str());
+        LOG_I(TAG, "Saving Password (length): %d", _configuredPassword.length());
     }
     
     // Save values to NVS
     bool provResult = _preferences.putBool(KEY_PROVISIONED, _isProvisioned);
-    Serial.print("Result of saving isProvisioned: ");
-    Serial.println(provResult ? "success" : "failure");
+    LOG_D(TAG, "Result of saving isProvisioned: %s", provResult ? "success" : "failure");
     
     bool ssidResult = false;
     bool pwdResult = false;
@@ -262,35 +245,30 @@ bool WifiManager::saveCredentials() {
         ssidResult = _preferences.putString(KEY_SSID, _configuredSSID.c_str());
         pwdResult = _preferences.putString(KEY_PASSWORD, _configuredPassword.c_str());
         
-        Serial.print("Result of saving SSID: ");
-        Serial.println(ssidResult ? "success" : "failure");
-        Serial.print("Result of saving password: ");
-        Serial.println(pwdResult ? "success" : "failure");
+        LOG_D(TAG, "Result of saving SSID: %s", ssidResult ? "success" : "failure");
+        LOG_D(TAG, "Result of saving password: %s", pwdResult ? "success" : "failure");
         
         // Verify the data was saved correctly
-        Serial.print("Verifying saved SSID: '");
-        Serial.print(_preferences.getString(KEY_SSID, "<not found>"));
-        Serial.println("'");
-        Serial.print("Verifying saved password length: ");
-        Serial.println(_preferences.getString(KEY_PASSWORD, "").length());
+        LOG_D(TAG, "Verifying saved SSID: '%s'", _preferences.getString(KEY_SSID, "<not found>").c_str());
+        LOG_D(TAG, "Verifying saved password length: %d", _preferences.getString(KEY_PASSWORD, "").length());
     }
     
     _preferences.end();
     
     if (!_isProvisioned || (ssidResult && pwdResult && provResult)) {
-        Serial.println("Credentials saved successfully");
+        LOG_I(TAG, "Credentials saved successfully");
         return true;
     } else {
-        Serial.println("Failed to save one or more credential values");
+        LOG_E(TAG, "Failed to save one or more credential values");
         return false;
     }
 }
 
 bool WifiManager::clearCredentials() {
-    Serial.println("Clearing saved WiFi credentials...");
+    LOG_I(TAG, "Clearing saved WiFi credentials...");
     
     if (!_preferences.begin(PREF_NAMESPACE, false)) { // false = read-write
-        Serial.println("Failed to open NVS namespace");
+        LOG_E(TAG, "Failed to open NVS namespace for clearing");
         return false;
     }
     
@@ -303,12 +281,12 @@ bool WifiManager::clearCredentials() {
     _configuredSSID = "";
     _configuredPassword = "";
     
-    Serial.println("Credentials cleared successfully");
+    LOG_I(TAG, "Credentials cleared successfully");
     return true;
 }
 
 bool WifiManager::autoConnect() {
-    Serial.println("Attempting to auto-connect to WiFi...");
+    LOG_I(TAG, "Attempting to auto-connect to WiFi...");
     
     // Force reload credentials from NVS to ensure we have the latest
     loadCredentials();
@@ -316,17 +294,16 @@ bool WifiManager::autoConnect() {
     bool connected = false;
     // Try to connect using saved credentials
     if (_isProvisioned && _configuredSSID.length() > 0) {
-        Serial.print("Found saved credentials for SSID: ");
-        Serial.println(_configuredSSID.c_str());
+        LOG_I(TAG, "Found saved credentials for SSID: %s", _configuredSSID.c_str());
         
         connected = connectToWiFi(_configuredSSID, _configuredPassword, false); // Attempt connection
     } else {
-         Serial.println("No saved credentials found.");
+         LOG_I(TAG, "No saved credentials found.");
     }
     
     // If connection failed or no credentials existed, perform a scan
     if (connected) {
-        Serial.println("Auto-connect successful.");
+        LOG_I(TAG, "Auto-connect successful.");
 
         // two quick blinks to indicate success
         digitalWrite(LED_PIN, HIGH);    // Turn off
@@ -345,15 +322,15 @@ bool WifiManager::autoConnect() {
 }
 
 bool WifiManager::disconnect() {
-    Serial.println("Disconnecting from WiFi...");
+    LOG_I(TAG, "Disconnecting from WiFi...");
     
     if (WiFi.status() == WL_CONNECTED) {
         WiFi.disconnect(true);  // true = disconnect and clear settings
         delay(1000);  // Give it time to complete
-        Serial.println("Disconnected from WiFi");
+        LOG_I(TAG, "Disconnected from WiFi");
         return true;
     } else {
-        Serial.println("Not connected to WiFi");
+        LOG_I(TAG, "Not connected to WiFi");
         return false;
     }
 }

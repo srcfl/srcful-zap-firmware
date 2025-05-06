@@ -10,6 +10,10 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include "config.h"
+#include "zap_log.h" // Added for logging
+
+// Define TAG for logging
+static const char* TAG = "ble_handler";
 
 // Define Queue properties
 #define REQUEST_QUEUE_LENGTH 5
@@ -27,21 +31,24 @@ BLEHandler::BLEHandler() {
     // Create the queue
     _requestQueue = xQueueCreate(REQUEST_QUEUE_LENGTH, REQUEST_QUEUE_ITEM_SIZE);
     if (_requestQueue == nullptr) {
-        Serial.println("Error creating BLE request queue!");
+        LOG_E(TAG, "Error creating BLE request queue!");
         // Handle error appropriately - maybe halt or signal failure
     } else {
-        Serial.println("BLE request queue created successfully.");
+        LOG_I(TAG, "BLE request queue created successfully.");
     }
 }
 
 void BLEHandler::init() {
     // Initialize NimBLE
+    LOG_I(TAG, "Initializing NimBLE...");
     NimBLEDevice::init("Sourceful Zap");
     
     // Set the MTU size to maximum supported (517 bytes)
+    LOG_D(TAG, "Setting MTU to 512");
     NimBLEDevice::setMTU(512);
     
     // Create server
+    LOG_D(TAG, "Creating BLE server...");
     pServer = NimBLEDevice::createServer();
     
     // Add server connection callbacks to detect disconnections
@@ -49,9 +56,11 @@ void BLEHandler::init() {
     pServer->setCallbacks(pServerCallbacks);
     
     // Create service with extended attribute table size for iOS
+    LOG_D(TAG, "Creating BLE service: %s", SRCFUL_SERVICE_UUID);
     pService = pServer->createService(SRCFUL_SERVICE_UUID);
     
     // Create characteristics with notification support
+    LOG_D(TAG, "Creating request characteristic: %s", SRCFUL_REQUEST_CHAR_UUID);
     pRequestChar = pService->createCharacteristic(
         SRCFUL_REQUEST_CHAR_UUID,
         NIMBLE_PROPERTY::WRITE |
@@ -59,7 +68,7 @@ void BLEHandler::init() {
         NIMBLE_PROPERTY::NOTIFY
     );
     
-    // For response char, ensure both NOTIFY and INDICATE are available for iOS
+    LOG_D(TAG, "Creating response characteristic: %s", SRCFUL_RESPONSE_CHAR_UUID);
     pResponseChar = pService->createCharacteristic(
         SRCFUL_RESPONSE_CHAR_UUID,
         NIMBLE_PROPERTY::READ |
@@ -74,9 +83,11 @@ void BLEHandler::init() {
     pResponseChar->setCallbacks(pResponseCallback);
     
     // Start service
+    LOG_D(TAG, "Starting BLE service...");
     pService->start();
 
     // Improved advertising configuration for iOS compatibility
+    LOG_D(TAG, "Configuring BLE advertising...");
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SRCFUL_SERVICE_UUID);
     pAdvertising->setScanResponse(true);
@@ -91,18 +102,19 @@ void BLEHandler::init() {
     pAdvertising->setMaxInterval(0x30);   // 30ms
     
     // Start advertising
+    LOG_I(TAG, "Starting BLE advertising with iOS-optimized settings...");
     NimBLEDevice::startAdvertising();
     isAdvertising = true;
-    Serial.println("NimBLE service started and advertising with iOS-optimized settings");
     stopTimer = 0;
 }
 
 void BLEHandler::hardStop() {
     if (pServer != nullptr) {
+        LOG_I(TAG, "Stopping NimBLE advertising and deinitializing...");
         NimBLEDevice::stopAdvertising();
         isAdvertising = false;
         NimBLEDevice::deinit(true);
-        Serial.println("NimBLE stopped and resources released");
+        LOG_I(TAG, "NimBLE stopped and resources released");
         stopTimer = 0;
     }
     digitalWrite(LED_PIN, HIGH); // Turn off
@@ -122,7 +134,7 @@ bool BLEHandler::isActive() {
 
 void BLEHandler::checkAdvertising() {
     if (!isAdvertising) {
-        Serial.println("NimBLE advertising stopped - restarting");
+        LOG_W(TAG, "NimBLE advertising was stopped - restarting...");
         NimBLEDevice::startAdvertising();
         isAdvertising = true;
     }
@@ -190,7 +202,7 @@ bool BLEHandler::sendResponse(const zap::Str& location, const zap::Str& method,
 }
 
 void BLERequestCallback::onWrite(NimBLECharacteristic* pCharacteristic) {
-    std::string value = pCharacteristic->getValue();    // TODO: Propbably not optimal to go via std::string
+    std::string value = pCharacteristic->getValue();
     if (value.length() > 0) {
         handler->enqueueRequest(zap::Str(value.c_str()));
     }
@@ -201,12 +213,15 @@ void BLEResponseCallback::onRead(NimBLECharacteristic* pCharacteristic) {
 }
 
 void BLEHandler::enqueueRequest(const zap::Str& requestStr) {
-    if (_requestQueue == nullptr) return;
+    if (_requestQueue == nullptr) {
+        LOG_E(TAG, "Request queue is null, cannot enqueue.");
+        return;
+    }
     
     // Allocate memory for the string
     char* buffer = (char*)malloc(requestStr.length() + 1);
     if (buffer == nullptr) {
-        Serial.println("Failed to allocate memory for BLE request");
+        LOG_E(TAG, "Failed to allocate memory for BLE request string.");
         return;
     }
     
@@ -215,8 +230,10 @@ void BLEHandler::enqueueRequest(const zap::Str& requestStr) {
     
     // Send the pointer to the queue
     if (xQueueSend(_requestQueue, &buffer, pdMS_TO_TICKS(100)) != pdPASS) {
-        Serial.println("Failed to send request to queue");
+        LOG_E(TAG, "Failed to send request to queue, buffer full or timeout.");
         free(buffer);
+    } else {
+        LOG_D(TAG, "Enqueued request (%d bytes): %s", requestStr.length(), requestStr.c_str());
     }
 }
 
@@ -227,10 +244,11 @@ void BLEHandler::handlePendingRequest() {
     char* buffer = nullptr;
     if (xQueueReceive(_requestQueue, &buffer, pdMS_TO_TICKS(REQUEST_QUEUE_RECEIVE_TIMEOUT_MS)) == pdPASS) {
         if (buffer != nullptr) {
-            Serial.printf("Dequeued request (%d bytes)\n", strlen(buffer));
+            LOG_D(TAG, "Dequeued request (%d bytes)", strlen(buffer));
 
             // Create a String object from the buffer
             zap::Str receivedRequest(buffer);
+            LOG_V(TAG, "Processing request: %s", receivedRequest.c_str());
 
             // Process the request
             handleRequest(receivedRequest);
@@ -245,11 +263,16 @@ void BLEHandler::handleRequest(const zap::Str& request) {
     zap::Str method, path, content;
     int offset = 0;
     
+    LOG_D(TAG, "Handling request: %s", request.substring(0, 80).c_str());
+
     if (!parseRequest(request, method, path, content, offset)) {
-        Serial.println("Failed to parse request");
+        LOG_E(TAG, "Failed to parse request. Raw: %s", request.substring(0,120).c_str());
         return;
     }
     
+    LOG_I(TAG, "Parsed request: Method=%s, Path=%s, Offset=%d", method.c_str(), path.c_str(), offset);
+    LOG_V(TAG, "Request content: %s", content.c_str());
+
     handleRequestInternal(method, path, content, offset);
 }
 
@@ -272,7 +295,7 @@ bool BLEHandler::parseRequest(const zap::Str& request, zap::Str& method, zap::St
     
     // Get path and trim whitespace
     path = firstLine.substring(methodEnd + 1, firstLine.length() - 10);
-    path.trim();  // Trim as a separate operation
+    path.trim();
     
     // Parse headers
     offset = 0;
@@ -291,9 +314,12 @@ void BLEHandler::handleRequestInternal(const zap::Str& method, const zap::Str& p
     request.content = content;
     request.offset = offset;
     
+    LOG_D(TAG, "Routing request for endpoint: %s (%s)", path.c_str(), method.c_str());
     EndpointResponse response = EndpointMapper::route(request);
 
-    Serial.println((method + " " + path + " " + " Response: " + response.data).c_str());
+    LOG_I(TAG, "%s %s - Response Status: %d, Data Length: %d", 
+        method.c_str(), path.c_str(), response.statusCode, response.data.length());
+    LOG_V(TAG, "Response data: %s", response.data.substring(0, 120).c_str());
     
     if (response.statusCode == 200) {
         sendResponse(path, method, response.data, offset);
@@ -303,13 +329,12 @@ void BLEHandler::handleRequestInternal(const zap::Str& method, const zap::Str& p
 }
 
 void SrcfulBLEServerCallbacks::onConnect(NimBLEServer* pServer) {
-    Serial.println("BLE client connected");
-    // Log the actual MTU size being used
-    Serial.printf("Current MTU size: %d\n", NimBLEDevice::getMTU());
+    LOG_I(TAG, "BLE client connected");
+    LOG_D(TAG, "Current MTU size: %d", NimBLEDevice::getMTU());
 }
 
 void SrcfulBLEServerCallbacks::onDisconnect(NimBLEServer* pServer) {
-    Serial.println("BLE client disconnected");
-    // Restart advertising when disconnected to allow new connections
+    LOG_I(TAG, "BLE client disconnected");
+    LOG_D(TAG, "Restarting BLE advertising due to disconnect.");
     NimBLEDevice::startAdvertising();
 }

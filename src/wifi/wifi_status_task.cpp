@@ -3,6 +3,10 @@
 #include <WiFiClientSecure.h>
 #include "main_actions.h"
 
+#include "zap_log.h"
+
+static const char* TAG = "wifi_status_task";
+
 WifiStatusTask::WifiStatusTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
       wifiManager(nullptr), ledPin(-1) {
@@ -54,9 +58,8 @@ void WifiStatusTask::taskFunction(void* parameter) {
             
             if (task->wifiManager && task->wifiManager->isConnected()) {
                 if (!wasConnected) {
-                    Serial.println("WiFi connected");
-                    Serial.print("IP address: ");
-                    Serial.println(task->wifiManager->getLocalIP().c_str());
+                    LOG_I(TAG, "WiFi connected");
+                    LOG_D(TAG, "IP address: %s", task->wifiManager->getLocalIP().c_str());
                     wasConnected = true;
                     task->connectionAttempts = 0; // Reset connection attempts
                     MainActions::triggerAction(MainActions::Type::SEND_STATE, 500);
@@ -64,15 +67,14 @@ void WifiStatusTask::taskFunction(void* parameter) {
                 
             } else {
                 if (wasConnected) {
-                    Serial.println("WiFi connection lost!");
+                    LOG_I(TAG, "WiFi connection lost!");
                     wasConnected = false;
                 }
 
                 // Attempt to reconnect TODO: incremental backoff and max attempts
                 task->connectionAttempts++;
                 task->wifiManager->autoConnect();
-                Serial.print("Connection attempt: ");
-                Serial.println(task->connectionAttempts);
+                LOG_D(TAG, "Connection attempt: %i", task->connectionAttempts);
             }
             
             if (task->wifiManager) {
@@ -84,10 +86,8 @@ void WifiStatusTask::taskFunction(void* parameter) {
             }
 
             // Print some debug info
-            Serial.print("Free heap: ");
-            Serial.println(ESP.getFreeHeap());
-            Serial.print("WiFi status: ");
-            Serial.println(task->wifiManager ? task->wifiManager->getStatus() : -1);
+            LOG_D(TAG, "Free heap: %i", ESP.getFreeHeap());
+            LOG_D(TAG, "WiFi status: %i", task->wifiManager ? task->wifiManager->getStatus() : -1);
         }
         
         // Small delay to prevent task from hogging CPU

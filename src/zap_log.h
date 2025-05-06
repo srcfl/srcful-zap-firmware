@@ -1,7 +1,7 @@
 #pragma once
 
 // Define log levels
-enum log_level_t {
+enum zap_log_level_t {
     ZLOG_LEVEL_NONE,
     ZLOG_LEVEL_ERROR,
     ZLOG_LEVEL_WARN,
@@ -10,11 +10,11 @@ enum log_level_t {
     ZLOG_LEVEL_VERBOSE
 };
 
-void set_log_level(log_level_t level);
-log_level_t get_log_level();
+void set_log_level(zap_log_level_t level);
+zap_log_level_t get_log_level();
 
 // Main logging function declaration
-void zap_log_message(log_level_t level, const char *tag, const char *format, ...);
+void zap_log_message(zap_log_level_t level, const char *tag, const char *format, ...);
 
 #ifdef PLATFORMIO
     // log level macros

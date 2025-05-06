@@ -2,17 +2,17 @@
 #include <Arduino.h> // Required for Serial
 #include <stdarg.h>  // Explicitly include for va_list, va_start, va_arg, va_end
 
-static log_level_t current_log_level = ZLOG_LEVEL_INFO; // Default log level
+static zap_log_level_t current_log_level = ZLOG_LEVEL_INFO; // Default log level
 
-void set_log_level(log_level_t level) {
+void set_log_level(zap_log_level_t level) {
     current_log_level = level;
 }
 
-log_level_t get_log_level() {
+zap_log_level_t get_log_level() {
     return current_log_level;
 }
 
-static const char* level_to_string(log_level_t level) {
+static const char* level_to_string(zap_log_level_t level) {
     switch (level) {
         case ZLOG_LEVEL_ERROR: return "E";
         case ZLOG_LEVEL_WARN:  return "W";
@@ -23,7 +23,7 @@ static const char* level_to_string(log_level_t level) {
     }
 }
 
-void zap_log_message(log_level_t level, const char *tag, const char *format, ...) {
+void zap_log_message(zap_log_level_t level, const char *tag, const char *format, ...) {
     if (level == ZLOG_LEVEL_NONE || level > current_log_level) {
         return;
     }
@@ -32,10 +32,8 @@ void zap_log_message(log_level_t level, const char *tag, const char *format, ...
     // This check relies on the Arduino Serial object's boolean conversion.
     // This basically checks if Serial is initialized in the main setup it will not react on plugging in or out
     if (!Serial && level > ZLOG_LEVEL_ERROR) {
-        digitalWrite(3, LOW);
         return;
     }
-    digitalWrite(3, HIGH);
 
     char log_buffer[256]; // Buffer for the formatted log message
     char *p_log_buffer = log_buffer;
@@ -46,7 +44,7 @@ void zap_log_message(log_level_t level, const char *tag, const char *format, ...
     while (*level_str && p_log_buffer < log_buffer_end) {
         *p_log_buffer++ = *level_str++;
     }
-    if (p_log_buffer < log_buffer_end) *p_log_buffer++ = '_';
+    if (p_log_buffer < log_buffer_end) *p_log_buffer++ = ' ';
     
     const char* p_tag = tag;
     while (*p_tag && (p_log_buffer < log_buffer_end) && (p_tag - tag < 30)) { // Limit tag length
