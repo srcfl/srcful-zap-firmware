@@ -6,7 +6,6 @@
 #include <esp_system.h>
 #include "crypto.h"
 #include "../backend/graphql.h"
-#include "html.h"
 #include "firmware_version.h"
 #include "wifi/wifi_manager.h"
 #include "endpoint_handlers.h"

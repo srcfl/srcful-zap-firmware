@@ -21,6 +21,7 @@ const char* EndpointMapper::DEBUG_PATH = "/api/debug";
 const char* EndpointMapper::ECHO_PATH = "/api/echo";
 
 // Global instance of OTA handler
+// TODO: The endpoint should be passed to the OTA handler
 OTAHandler g_otaHandler;
 
 NameInfoHandler g_nullHandler;

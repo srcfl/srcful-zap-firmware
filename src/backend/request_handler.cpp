@@ -4,6 +4,9 @@
 #include "backend/graphql.h"
 #include "crypto.h"
 #include "config.h"
+#include "zap_log.h"
+
+static const char *TAG = "request_handler";
 
 #include <Arduino.h>
 
@@ -16,7 +19,7 @@ RequestHandler::RequestHandler(Externals& ext) : _ext(ext) {
 }
 
 void RequestHandler::handleRequestTask(JsonParser& configData) {
-    Serial.println("RequestHandler: Processing configuration data");
+    LOG_I(TAG, "RequestHandler: Processing configuration data");
 
     // extract the data string and convert it to a json string
     zap::Str data;

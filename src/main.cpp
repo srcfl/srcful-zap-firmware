@@ -1,7 +1,6 @@
 #include "endpoints/endpoint_types.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include "html.h"
 #include "crypto.h"
 #include <HTTPClient.h>
 #include <esp_system.h>
@@ -20,6 +19,10 @@
 #include "debug.h" // Include Debug header
 #include "main_action_manager.h" // Include the action manager
 #include "main_actions.h" // Include actions for triggering
+
+#include "zap_log.h" // Include crypto functions
+
+static const char* TAG = "main"; // Tag for logging
 
 
 #define IO_BUTTON 9
@@ -49,17 +52,14 @@ unsigned long lastBLECheck = 0;  // Track last BLE check time
 
 
 void setup() {
-    Serial.println("\n\n--- Srcful ZAP Firmware Booting ---");
-
-
     // --- Get and store the reset reason ---
     esp_reset_reason_t reason = esp_reset_reason();
     Debug::setResetReason(reason);
-    Serial.printf("Last reset reason: %d\n", reason); // Log reason to serial for local debugging
-    // --- 
 
     Serial.begin(115200);
     delay(1000); // Give some time for serial connection but no loop as we are not using the serial port in the actual meters
+
+    LOG_I(TAG, "\n\n--- Srcful ZAP Firmware Booting ---");
 
     pinMode(LED_PIN, OUTPUT);
     pinMode(IO_BUTTON, INPUT_PULLUP); // Initialize button pin with internal pull-up
@@ -68,14 +68,12 @@ void setup() {
     digitalWrite(LED_PIN, HIGH);
 
 
-    Serial.println("Starting setup...");
+    LOG_I(TAG, "Starting setup...");
 
-    Serial.printf("Total heap: %d\n", ESP.getHeapSize());
-    Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
-    Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
-    Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
-
-
+    LOG_I(TAG, "Total heap: %d\n", ESP.getHeapSize());
+    LOG_I(TAG, "Free heap: %d\n", ESP.getFreeHeap());
+    LOG_I(TAG, "Total PSRAM: %d\n", ESP.getPsramSize());
+    LOG_I(TAG, "Free PSRAM: %d\n", ESP.getFreePsram());
 
     {   // get the private key from the Preferences
         Preferences preferences;
@@ -99,7 +97,7 @@ void setup() {
                 // Store the private key in Preferences
                 preferences.putBytes("private_key", privateKey, sizeof(privateKey));
             } else {
-                Serial.println("Failed to create private key");
+                LOG_E(TAG, "Failed to create private key!!");
             }
         }
         preferences.end();
@@ -108,26 +106,14 @@ void setup() {
     }
     
 
-    // Try to connect using saved credentials first. 
-    // autoConnect now handles conditional scanning and connectToWiFi handles mDNS.
-    if (!wifiManager.autoConnect()) {
-        Serial.println("Auto-connect failed or no saved credentials.");
-        // Scan is already done inside autoConnect if it failed.
-        
-        // Fall back to regular setup modes if auto-connect fails
-        #if defined(USE_SOFTAP_SETUP)
-            Serial.println("Setting up AP mode...");
-            wifiManager.setupAP(AP_SSID, AP_PASSWORD);
-        #endif
-        
-        #if defined(USE_BLE_SETUP)
-            Serial.println("Setting up BLE...");
-            bleHandler.init();
-        #endif
-    } else {
-        Serial.println("Successfully connected with saved credentials");
-        digitalWrite(LED_PIN, HIGH); // Solid LED when connected
-    }
+    // Try to connect using saved credentials first.
+    // if there is no saved credentials we need to start the BLE
+    if (wifiManager.isProvisioned()) {
+        LOG_I(TAG, "No saved credentials found, starting BLE setup...");
+    
+        bleHandler.init();
+    } 
+    
     
     // Configure and start the WiFi status task
     wifiStatusTask.setWifiManager(&wifiManager);
@@ -135,7 +121,7 @@ void setup() {
     wifiStatusTask.begin();
     
     // Start the OTA handler
-    Serial.println("Starting OTA handler...");
+    // TODO: The endpoint should be passed to the OTA handler
     extern OTAHandler g_otaHandler;
     g_otaHandler.begin();
     
@@ -149,20 +135,16 @@ void setup() {
     dataReaderTask.begin(backendApiTask.getQueueHandle()); // Share the queue between tasks
     
     // Start the backend API task
-    Serial.println("Starting backend API task...");
     backendApiTask.begin(&wifiManager);  // Pass the WiFi manager reference
     backendApiTask.setInterval(300000);  // 5 minutes interval (300,000 ms) for state updates
     backendApiTask.setBleActive(true);   // Initialize with BLE active (same as dataSenderTask)
-    Serial.println("Backend API task started");
     
     // Start the server task
-    Serial.println("Starting server task...");
-    serverTask.begin();
-    Serial.println("Server task started");
+    // server task is started/restarted in the main loop when wifi is connected
+    // serverTask.begin();
     
-    Serial.println("Setup completed successfully!");
-    Serial.print("Free heap after setup: ");
-    Serial.println(ESP.getFreeHeap());
+    LOG_I(TAG, "Setup completed successfully!");
+    LOG_I(TAG, "Free heap after setup: %i", ESP.getFreeHeap());
 }
 
 void loop() {
@@ -179,7 +161,7 @@ void loop() {
             // Button was just pressed, record the time and do a quick blink
             buttonPressStartTime = millis();
             buttonPressed = true;
-            Serial.println("Button pressed, starting timer");
+            LOG_V(TAG, "Button pressed, starting timer");
             
             // Quick LED blink as feedback
             digitalWrite(LED_PIN, LOW);
@@ -205,7 +187,7 @@ void loop() {
         
         if (pressDuration > CLEAR_WIFI_PRESS_DURATION) {
             // Long press confirmed and button released, now reset WiFi and restart
-            Serial.println("Long press confirmed! Resetting WiFi settings...");
+            LOG_V(TAG, "Long press confirmed! Resetting WiFi settings...");
             
             // Clear WiFi credentials
             wifiManager.clearCredentials();
@@ -215,7 +197,7 @@ void loop() {
         // i.e. this is a reboot without wifi credentials clearing.
         if (pressDuration > REBOOT_PRESS_DURATION) {
             // Short press confirmed, trigger a reboot
-            Serial.println("Short press confirmed! Rebooting...");
+            LOG_V(TAG, "Short press confirmed! Rebooting...");
             
             // Trigger a deferred reboot using the new system (e.g., 1 second delay)
             MainActions::triggerAction(MainActions::Type::REBOOT, 10); // Request reboot in 1000ms

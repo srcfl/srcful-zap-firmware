@@ -5,6 +5,7 @@
 #include "../data/p1data_funcs.h"
 #include "../data/data_package.h"
 #include "../json_light/json_light.h"
+#include <esp_log.h>
 
 
 zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const char* szPayload) {
