@@ -205,6 +205,7 @@ void GraphQLSubscriptionClient::loop() {
         Serial.println("Ping pong timeout, two pings sent without response...");
         Serial.println("Closing connection...");
         _isConnected = false;
+        pingPongDiff = 0;
         isWebSocketHandshakeDone = false;
         client.stop();
 

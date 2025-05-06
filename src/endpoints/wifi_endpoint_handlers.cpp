@@ -98,15 +98,9 @@ EndpointResponse WiFiScanHandler::handle(const zap::Str& contents) {
     JsonBuilder json;
     json.beginObject();
 
-    // Add connected network info if connected
-    if (wifiManager.isConnected()) {
-        wifiManager.setScanWiFiNetworks(true);
-        json.add("status", "sucess");
-        json.add("message", "scan initiated");
-    } else {
-        json.add("status", "error");
-        json.add("message", "not connected");
-    }
+    wifiManager.setScanWiFiNetworks(true);
+    json.add("status", "sucess");
+    json.add("message", "scan initiated");
     
     response.data = json.end();
     return response;

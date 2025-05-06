@@ -13,6 +13,10 @@
 #include <esp_random.h>
 #include <soc/efuse_reg.h>
 
+
+
+
+
 static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len);
 
 // Helper functions

@@ -1,5 +1,6 @@
 #include "wifi_manager.h"
 #include "config.h"
+#include "zap_log.h"
 
 // Define static constants for NVS storage
 const char* WifiManager::PREF_NAMESPACE = "wificonfig";
@@ -11,32 +12,11 @@ WifiManager::WifiManager(const char* mdnsHostname)
     : _isProvisioned(false), 
       _lastScanTime(0),
       _mdnsHostname(mdnsHostname),
-      _scanWiFiNetworks(false) {
+      _scanWiFiNetworks(true) {
     
     Serial.println("Initializing WiFi Manager...");
     
-    // Try to load credentials at initialization
-    if (_preferences.begin(PREF_NAMESPACE, true)) {
-        _isProvisioned = _preferences.getBool(KEY_PROVISIONED, false);
-        
-        if (_isProvisioned) {
-
-            _configuredSSID = getString(_preferences, KEY_SSID, "");
-            _configuredPassword = getString(_preferences, KEY_PASSWORD, "");;
-            
-            Serial.println("WiFi credentials loaded from NVS");
-            Serial.print("SSID: ");
-            Serial.println(_configuredSSID.c_str());
-            Serial.print("Password length: ");
-            Serial.println(_configuredPassword.length());
-        } else {
-            Serial.println("No saved WiFi credentials found");
-        }
-        
-        _preferences.end(); // Close after reading initial values
-    } else {
-        Serial.println("Failed to open preferences namespace");
-    }
+    loadCredentials();  // Load saved credentials from NVS
 }
 
 WifiManager::~WifiManager() {

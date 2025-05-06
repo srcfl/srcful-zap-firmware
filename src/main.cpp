@@ -51,7 +51,10 @@ BLEHandler bleHandler;
 unsigned long lastBLECheck = 0;  // Track last BLE check time
 
 
+
+
 void setup() {
+
     // --- Get and store the reset reason ---
     esp_reset_reason_t reason = esp_reset_reason();
     Debug::setResetReason(reason);
@@ -59,7 +62,11 @@ void setup() {
     Serial.begin(115200);
     delay(1000); // Give some time for serial connection but no loop as we are not using the serial port in the actual meters
 
-    LOG_I(TAG, "\n\n--- Srcful ZAP Firmware Booting ---");
+
+
+
+
+    // LOG_I(TAG, "\n\n--- Srcful ZAP Firmware Booting ---");
 
     pinMode(LED_PIN, OUTPUT);
     pinMode(IO_BUTTON, INPUT_PULLUP); // Initialize button pin with internal pull-up
@@ -68,12 +75,12 @@ void setup() {
     digitalWrite(LED_PIN, HIGH);
 
 
-    LOG_I(TAG, "Starting setup...");
+    // LOG_I(TAG, "Starting setup...");
 
-    LOG_I(TAG, "Total heap: %d\n", ESP.getHeapSize());
-    LOG_I(TAG, "Free heap: %d\n", ESP.getFreeHeap());
-    LOG_I(TAG, "Total PSRAM: %d\n", ESP.getPsramSize());
-    LOG_I(TAG, "Free PSRAM: %d\n", ESP.getFreePsram());
+    // LOG_I(TAG, "Total heap: %d\n", ESP.getHeapSize());
+    // LOG_I(TAG, "Free heap: %d\n", ESP.getFreeHeap());
+    // LOG_I(TAG, "Total PSRAM: %d\n", ESP.getPsramSize());
+    // LOG_I(TAG, "Free PSRAM: %d\n", ESP.getFreePsram());
 
     {   // get the private key from the Preferences
         Preferences preferences;
@@ -108,11 +115,13 @@ void setup() {
 
     // Try to connect using saved credentials first.
     // if there is no saved credentials we need to start the BLE
-    if (wifiManager.isProvisioned()) {
+    if (!wifiManager.loadCredentials()) {
         LOG_I(TAG, "No saved credentials found, starting BLE setup...");
     
         bleHandler.init();
-    } 
+    } else {
+        LOG_I(TAG, "Found saved credentials, attempting to connect...");
+    }
     
     
     // Configure and start the WiFi status task
@@ -142,7 +151,8 @@ void setup() {
     // Start the server task
     // server task is started/restarted in the main loop when wifi is connected
     // serverTask.begin();
-    
+
+
     LOG_I(TAG, "Setup completed successfully!");
     LOG_I(TAG, "Free heap after setup: %i", ESP.getFreeHeap());
 }
@@ -161,7 +171,7 @@ void loop() {
             // Button was just pressed, record the time and do a quick blink
             buttonPressStartTime = millis();
             buttonPressed = true;
-            LOG_V(TAG, "Button pressed, starting timer");
+            // LOG_V(TAG, "Button pressed, starting timer");
             
             // Quick LED blink as feedback
             digitalWrite(LED_PIN, LOW);
@@ -187,7 +197,7 @@ void loop() {
         
         if (pressDuration > CLEAR_WIFI_PRESS_DURATION) {
             // Long press confirmed and button released, now reset WiFi and restart
-            LOG_V(TAG, "Long press confirmed! Resetting WiFi settings...");
+            // LOG_V(TAG, "Long press confirmed! Resetting WiFi settings...");
             
             // Clear WiFi credentials
             wifiManager.clearCredentials();
@@ -197,7 +207,7 @@ void loop() {
         // i.e. this is a reboot without wifi credentials clearing.
         if (pressDuration > REBOOT_PRESS_DURATION) {
             // Short press confirmed, trigger a reboot
-            LOG_V(TAG, "Short press confirmed! Rebooting...");
+            // LOG_V(TAG, "Short press confirmed! Rebooting...");
             
             // Trigger a deferred reboot using the new system (e.g., 1 second delay)
             MainActions::triggerAction(MainActions::Type::REBOOT, 10); // Request reboot in 1000ms

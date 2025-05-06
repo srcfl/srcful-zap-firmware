@@ -3,11 +3,6 @@
 #include <WiFiClientSecure.h>
 #include "main_actions.h"
 
-#if defined(USE_BLE_SETUP)
-    #include "ble_handler.h"
-    extern BLEHandler bleHandler;
-#endif
-
 WifiStatusTask::WifiStatusTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
       wifiManager(nullptr), ledPin(-1) {
@@ -66,11 +61,7 @@ void WifiStatusTask::taskFunction(void* parameter) {
                     task->connectionAttempts = 0; // Reset connection attempts
                     MainActions::triggerAction(MainActions::Type::SEND_STATE, 500);
                 }
-                if (task->wifiManager->getScanWiFiNetworks()) {
-                    task->wifiManager->setScanWiFiNetworks(false);
-                    task->wifiManager->scanWiFiNetworks();
-                    MainActions::triggerAction(MainActions::Type::SEND_STATE, 500);
-                }
+                
             } else {
                 if (wasConnected) {
                     Serial.println("WiFi connection lost!");
@@ -84,6 +75,14 @@ void WifiStatusTask::taskFunction(void* parameter) {
                 Serial.println(task->connectionAttempts);
             }
             
+            if (task->wifiManager) {
+                if (task->wifiManager->getScanWiFiNetworks()) {
+                    task->wifiManager->setScanWiFiNetworks(false);
+                    task->wifiManager->scanWiFiNetworks();
+                    MainActions::triggerAction(MainActions::Type::SEND_STATE, 500);
+                }
+            }
+
             // Print some debug info
             Serial.print("Free heap: ");
             Serial.println(ESP.getFreeHeap());
