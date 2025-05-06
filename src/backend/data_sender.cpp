@@ -16,7 +16,7 @@ zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const cha
         .add("typ", "JWT")
         .add("device", deviceId.c_str())
         .add("opr", "production")
-        .add("model", "p1homewizard")       // TODO: check if this is needed? Change to zap?
+        .add("model", "p1zap")
         .add("dtype", "p1_telnet_json")
         .add("sn", METER_SN);
 
