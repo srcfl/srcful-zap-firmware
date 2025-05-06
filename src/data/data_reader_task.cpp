@@ -3,7 +3,10 @@
 #include "decoding/ascii_decoder.h"
 #include "p1data_funcs.h"
 #include "debug.h"
+#include "../zap_log.h" // Added for logging
 
+// Define TAG for logging
+static const char* TAG = "data_reader_task";
 
 DataReaderTask::DataReaderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
@@ -25,7 +28,7 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
     });
 
     if (!p1Meter.begin()) {
-        Serial.println("Data reader task: Failed to initialize P1 meter");
+        LOG_E(TAG, "Failed to initialize P1 meter");
     }
 
     this->p1DataQueue = dataQueue;
@@ -68,7 +71,7 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
         
         // Check if the JWT was created successfully
         if (createP1JWTPayload(p1data, package.data, MAX_DATA_SIZE)) {
-            Serial.println("Data reader task: Failed to create JWT");
+            LOG_E(TAG, "Failed to create JWT");
             return;
         }
         // Copy the JWT to the data object
@@ -77,15 +80,15 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
             // Queue is full, remove the oldest item first
             DataPackage oldPackage;
             xQueueReceive(p1DataQueue, &oldPackage, 0);
-            Serial.println("Data reader task: Queue full, removed oldest item");
+            LOG_W(TAG, "Queue full, removed oldest item");
         }
         
         // Add the new package to the back (FIFO behavior)
         BaseType_t result = xQueueSendToBack(p1DataQueue, &package, pdMS_TO_TICKS(100));
         if (result == pdPASS) {
-            Serial.println("Data reader task: Added data package to queue");
+            LOG_D(TAG, "Added data package to queue");
         } else {
-            Serial.println("Data reader task: Failed to add data package to queue");
+            LOG_E(TAG, "Failed to add data package to queue");
         }            
     }
 }
@@ -96,15 +99,14 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     const size_t size = frame.getFrameSize();
 
     // Debug output print first 15 and last 15 bytes of the frame
-    Serial.print("Data reader task: Received P1 frame ("); Serial.print(size); Serial.println(" bytes)");
+    LOG_D(TAG, "Received P1 frame (%d bytes)", size);
     for (size_t i = 0; i < min(size, size_t(15)); i++) {
-        Serial.print((char)frame.getFrameByte(i));
+        LOG_D(TAG, "%c", (char)frame.getFrameByte(i));
     }
-    if (size > 30) Serial.print("...");
+    if (size > 30) LOG_D(TAG, "...");
     for (size_t i = max(size - 15, size_t(15)); i < size; i++) {
-        Serial.print((char)frame.getFrameByte(i));
+        LOG_D(TAG, "%c", (char)frame.getFrameByte(i));
     }
-    Serial.println();
     
     // Decode the frame
     DLMSDecoder decoder;
@@ -114,21 +116,21 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
 
     switch (frame.getFrameTypeId()) {
         case IFrameData::Type::FRAME_TYPE_DLMS:
-            Serial.println("Data reader task: DLMS frame detected");
+            LOG_D(TAG, "DLMS frame detected");
             if (decoder.decodeBuffer(frame, p1data)) {
-                Serial.println("DLMS data decoded successfully");
+                LOG_I(TAG, "DLMS data decoded successfully");
                 isDecoded = true;
             }
             break;
         case IFrameData::Type::FRAME_TYPE_ASCII:
-            Serial.println("Data reader task: ASCII frame detected");
+            LOG_D(TAG, "ASCII frame detected");
             if (asciiDecoder.decodeBuffer(frame, p1data)) {
-                Serial.println("ASCII data decoded successfully");
+                LOG_I(TAG, "ASCII data decoded successfully");
                 isDecoded = true;
             }
             break;
         default:
-            Serial.println("Data reader task: Unknown frame type");
+            LOG_W(TAG, "Unknown frame type");
             break;
     }
     
@@ -141,7 +143,7 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
         for (size_t i = 0; i < size; i++) {
             Debug::addFaultyFrameData(frame.getFrameByte(i));
         }
-        Serial.println("Failed to decode P1 data frame");
+        LOG_E(TAG, "Failed to decode P1 data frame");
     }
 }
 

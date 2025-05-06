@@ -14,7 +14,10 @@
 #include "endpoints/endpoints.h"
 #include "backend/request_handler.h" // Ensure RequestHandler is included
 #include "backend/graphql.h" // Include for GQL namespace used in removed methods
+#include "../zap_log.h" // Added for logging
 
+// Define TAG for logging
+static const char* TAG = "config_subscription";
 
 class RequestHandlerExternals : public zap::backend::RequestHandler::Externals {
 public:
@@ -37,6 +40,7 @@ RequestHandlerExternals g_requestHandlerExternals;
 GraphQLSubscriptionClient::GraphQLSubscriptionClient(const char* wsUrl) : requestHandler(g_requestHandlerExternals) {
     url = String(wsUrl);
     parseUrl(url);
+    LOG_I(TAG, "GraphQLSubscriptionClient initialized with URL: %s", wsUrl);
 }
 
 // Parse URL into components
@@ -65,35 +69,37 @@ void GraphQLSubscriptionClient::parseUrl(String urlString) {
         host = urlString.substring(0, portStart);
         port = urlString.substring(portStart + 1, pathStart).toInt();
     }
+    
+    LOG_D(TAG, "Parsed URL: host=%s, port=%d, path=%s", host.c_str(), port, path.c_str());
 }
 
 // Initialize the client
 bool GraphQLSubscriptionClient::begin() {
-    Serial.println("Connecting to WebSocket server...");
+    LOG_I(TAG, "Connecting to WebSocket server: %s:%d%s", host.c_str(), port, path.c_str());
 
     client.setInsecure(); // Accept all SSL certificates (not recommended for production)
     client.setTimeout(10);
     
     if (client.connect(host.c_str(), port)) {
-        Serial.println("TCP Connection established");
+        LOG_I(TAG, "TCP Connection established");
         _isConnected = true;
         
         // Perform WebSocket handshake
         if (performWebSocketHandshake()) {
-            Serial.println("WebSocket handshake successful");
+            LOG_I(TAG, "WebSocket handshake successful");
             isWebSocketHandshakeDone = true;
             sendConnectionInit();
             return true;
         } 
         else {
-            Serial.println("WebSocket handshake failed");
+            LOG_E(TAG, "WebSocket handshake failed");
             client.stop();
             _isConnected = false;
             return false;
         }
     } 
     else {
-        Serial.println("TCP Connection failed");
+        LOG_E(TAG, "TCP Connection failed");
         return false;
     }
 }
@@ -140,7 +146,7 @@ bool GraphQLSubscriptionClient::performWebSocketHandshake() {
     unsigned long timeout = millis() + 5000;
     while (client.available() == 0) {
         if (millis() > timeout) {
-            Serial.println("Handshake timeout");
+            LOG_E(TAG, "Handshake timeout");
             return false;
         }
         delay(10);
@@ -160,8 +166,8 @@ bool GraphQLSubscriptionClient::performWebSocketHandshake() {
     
     // Check if upgrade was successful
     if (response.indexOf("HTTP/1.1 101") < 0) {
-        Serial.println("Handshake failed, server response:");
-        Serial.println(response);
+        LOG_E(TAG, "Handshake failed, server response:");
+        LOG_E(TAG, "%s", response.c_str());
         return false;
     }
     
@@ -174,6 +180,7 @@ void GraphQLSubscriptionClient::loop() {
         unsigned long currentMillis = millis();
         if (currentMillis - lastConnectAttempt > RECONNECT_DELAY) {
             lastConnectAttempt = currentMillis;
+            LOG_I(TAG, "Attempting to reconnect WebSocket...");
             begin();
         }
         return;
@@ -182,7 +189,7 @@ void GraphQLSubscriptionClient::loop() {
     // Check if we need to send a ping
     unsigned long currentMillis = millis();
     if (currentMillis - lastPingTime > PING_INTERVAL) {
-        Serial.println("Websocket Sending ping");
+        LOG_D(TAG, "Websocket Sending ping");
         sendPing();
         lastPingTime = currentMillis;
         pingPongDiff += 1;
@@ -190,7 +197,7 @@ void GraphQLSubscriptionClient::loop() {
     
     // Check for available data
     if (client.available()) {
-        Serial.println("Web socket Data available");
+        LOG_V(TAG, "Web socket Data available");
         uint8_t buffer[1024]; // Adjust buffer size as needed
         size_t length = client.read(buffer, sizeof(buffer));
         
@@ -202,8 +209,8 @@ void GraphQLSubscriptionClient::loop() {
 
     // Check if ping pong has timed out
     if (pingPongDiff > 2) {
-        Serial.println("Ping pong timeout, two pings sent without response...");
-        Serial.println("Closing connection...");
+        LOG_W(TAG, "Ping pong timeout, two pings sent without response...");
+        LOG_W(TAG, "Closing connection...");
         _isConnected = false;
         pingPongDiff = 0;
         isWebSocketHandshakeDone = false;
@@ -214,7 +221,7 @@ void GraphQLSubscriptionClient::loop() {
     
     // Check if connection is still alive
     if (!client.connected()) {
-        Serial.println("Connection lost");
+        LOG_W(TAG, "Connection lost");
         _isConnected = false;
         isWebSocketHandshakeDone = false;
         client.stop();
@@ -224,9 +231,17 @@ void GraphQLSubscriptionClient::loop() {
 // Process WebSocket frames
 void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t length) {
 
-    for (size_t i = 0; i < length; i++) {
-        Serial.print(buffer[i], HEX);
-        Serial.print(" ");
+    // Verbose logging of received hex data
+    if (get_log_level() >= ZLOG_LEVEL_VERBOSE) { 
+        zap::Str hexData;
+        for (size_t i = 0; i < length; i++) {
+            char byteHex[4];
+            sprintf(byteHex, "%02X ", buffer[i]);
+            hexData += byteHex;
+        }
+        
+        LOG_V(TAG, "Received %d bytes:", length);
+        LOG_V(TAG, hexData.c_str());
     }
 
     // Very basic WebSocket frame parsing
@@ -299,10 +314,10 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
             if (doc.getString("type", type)) {
             
                 if (type == "connection_ack") {
-                    Serial.println("Connection acknowledged, sending subscription");
+                    LOG_I(TAG, "Connection acknowledged, sending subscription");
                     subscribeToSettings();
                 } else if (type == "data") {
-                    // Serial.print("Received data:"); Serial.println(payload);
+                    LOG_D(TAG, "Received data: %s", payload);
                     JsonParser configChanges("");
                     if (doc.getObjectByPath("payload.data.configurationDataChanges", configChanges)) {
 
@@ -310,9 +325,11 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
                         if (configChanges.getString("subKey", subKey)) {
                         
                             if (subKey == SETTINGS_SUBKEY) {
+                                LOG_I(TAG, "Handling settings update for subKey: %s", subKey.c_str());
                                 handleSettings(configChanges);
                             }
                             else if (subKey == REQUEST_TASK_SUBKEY) {
+                                LOG_I(TAG, "Handling request task for subKey: %s", subKey.c_str());
                                 requestHandler.handleRequestTask(configChanges);
                             }
                         }
@@ -329,12 +346,11 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
                 closeCode = (buffer[header_length] << 8) | buffer[header_length + 1];
             }
             
-            Serial.print("Received close frame with code: ");
-            Serial.println(closeCode);
+            LOG_I(TAG, "Received close frame with code: %d", closeCode);
             
             if (payload_length > 2) {
                 // Extract close reason if provided
-                char* reason = new char[payload_length - 1];
+                char* reason = new char[payload_length - 2];
                 for (size_t i = 0; i < payload_length - 2; i++) {
                     if (masked) {
                         reason[i] = buffer[header_length + 2 + i] ^ mask[(i + 2) % 4];
@@ -342,9 +358,8 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
                         reason[i] = buffer[header_length + 2 + i];
                     }
                 }
-                reason[payload_length - 3] = '\0';
-                Serial.print("Close reason: ");
-                Serial.println(reason);
+                reason[payload_length - 2] = '\0';
+                LOG_I(TAG, "Close reason: %s", reason);
                 delete[] reason;
             }
             
@@ -354,7 +369,7 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
         case 0x09: // Ping frame, we never seem to get this
         {
             // Respond with pong
-            Serial.println("Received ping, sending pong");
+            LOG_D(TAG, "Received ping, sending pong");
             // Extract ping payload
             uint8_t* pingPayload = new uint8_t[payload_length];
             for (size_t i = 0; i < payload_length; i++) {
@@ -377,18 +392,17 @@ void GraphQLSubscriptionClient::processWebSocketData(uint8_t* buffer, size_t len
         {
             
             if (pingPongDiff > 0) {
-                Serial.println("Received valid pong");
+                LOG_D(TAG, "Received valid pong");
                 pingPongDiff--;
                 lastPongTime = millis();
             } else {
-                Serial.println("Received unsolicited pong");
+                LOG_W(TAG, "Received unsolicited pong");
             }
         }
         break;
         default:
         {
-            Serial.print("Received unknown frame type: ");
-            Serial.println(opcode);
+            LOG_W(TAG, "Received unknown frame type: %d", opcode);
         }
         break;
     }
@@ -434,9 +448,12 @@ void GraphQLSubscriptionClient::sendFrame(const zap::Str& data, uint8_t opcode) 
             i++;
             retries = 0;
         } else {
-            Serial.println("Failed to send data, retrying...");
+            LOG_W(TAG, "Failed to send data byte, retrying...");
             retries++;
         }
+    }
+    if (retries >= 5) {
+        LOG_E(TAG, "Failed to send WebSocket frame after multiple retries.");
     }
 }
 
@@ -446,7 +463,7 @@ void GraphQLSubscriptionClient::sendPing() {
         // Send WebSocket ping frame
         static uint8_t pingPayload[2] = {0x89, 0x00}; // Empty payload
         client.write(pingPayload, 2); // FIN bit set, opcode 0x09 (ping)
-        Serial.println("Sent ping");
+        LOG_D(TAG, "Sent ping");
     }
 }
 
@@ -454,7 +471,7 @@ void GraphQLSubscriptionClient::sendPing() {
 void GraphQLSubscriptionClient::sendConnectionInit() {
     if (_isConnected && isWebSocketHandshakeDone) {       
         sendFrame("{\"type\":\"connection_init\", \"payload\": {}}");
-        Serial.println("Sent connection_init message");
+        LOG_I(TAG, "Sent connection_init message");
     }
 }
 
@@ -491,11 +508,6 @@ void GraphQLSubscriptionClient::subscribeToSettings() {
     if (_isConnected && isWebSocketHandshakeDone) {
         zap::Str query = getSubscriptionQuery();
 
-        // Properly escape the query string for JSON
-        // Replace all newlines with \n
-        // remove all newlines
-        // query = jsonEncodeString(query);
-        
         JsonBuilder doc;
         doc.beginObject()
             .add("id", "1")
@@ -505,10 +517,9 @@ void GraphQLSubscriptionClient::subscribeToSettings() {
             .endObject();
 
         zap::Str payload = doc.end();
-        Serial.print("Subscription payload: ");
-        Serial.println(payload.c_str());
+        LOG_D(TAG, "Subscription payload: %s", payload.c_str());
         sendFrame(payload);
-        Serial.println("Sent subscription message");
+        LOG_I(TAG, "Sent subscription message");
     }
 }
 
@@ -553,14 +564,14 @@ zap::Str GraphQLSubscriptionClient::getSubscriptionQuery() {
 
 // Process settings update
 void GraphQLSubscriptionClient::handleSettings(JsonParser& configData) {
-    Serial.println("Handling settings update");
+    LOG_I(TAG, "Handling settings update");
     // Extract settings data from configData["data"]
     // Update settings in the blackboard
 }
 
 // Restart the connection
 void GraphQLSubscriptionClient::restart() {
-    Serial.println("Restarting WebSocket client");
+    LOG_I(TAG, "Restarting WebSocket client");
     stop();
     begin();
 }
@@ -568,7 +579,7 @@ void GraphQLSubscriptionClient::restart() {
 // Stop the client
 void GraphQLSubscriptionClient::stop() {
     if (_isConnected) {
-        Serial.println("Closing WebSocket connection");
+        LOG_I(TAG, "Closing WebSocket connection");
         
         // Send close frame
         client.write(0x88); // FIN bit set, opcode 0x08 (close)

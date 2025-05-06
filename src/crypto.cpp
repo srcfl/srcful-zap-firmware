@@ -13,9 +13,9 @@
 #include <esp_random.h>
 #include <soc/efuse_reg.h>
 
+#include "zap_log.h"
 
-
-
+static const char* TAG = "crypto";
 
 static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t *der_len);
 
@@ -95,42 +95,42 @@ bool Crypto::generateKeyPair(uint8_t* privateKey, uint8_t* publicKey) {
     const char *pers = "ecdsa_keygen";
     ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *)pers, strlen(pers));
     if (ret != 0) {
-        Serial.println("Failed to seed random number generator");
+        LOG_E(TAG, "Failed to seed random number generator");
         goto cleanup;
     }
     
     // Set up the ECP group (SECP256R1 curve)
     ret = mbedtls_ecp_group_load(&keypair.grp, MBEDTLS_ECP_DP_SECP256R1);
     if (ret != 0) {
-        Serial.println("Failed to load ECP group");
+        LOG_E(TAG, "Failed to load ECP group");
         goto cleanup;
     }
     
     // Import the private key
     ret = mbedtls_mpi_read_binary(&keypair.d, privateKey, 32);
     if (ret != 0) {
-        Serial.println("Failed to import private key");
+        LOG_E(TAG, "Failed to import private key");
         goto cleanup;
     }
     
     // Derive the public key from the private key
     ret = mbedtls_ecp_mul(&keypair.grp, &keypair.Q, &keypair.d, &keypair.grp.G, mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
-        Serial.println("Failed to derive public key");
+        LOG_E(TAG, "Failed to derive public key");
         goto cleanup;
     }
     
     // Export X coordinate
     ret = mbedtls_mpi_write_binary(&keypair.Q.X, publicKey, 32);
     if (ret != 0) {
-        Serial.println("Failed to export X coordinate");
+        LOG_E(TAG, "Failed to export X coordinate");
         goto cleanup;
     }
     
     // Export Y coordinate
     ret = mbedtls_mpi_write_binary(&keypair.Q.Y, publicKey + 32, 32);
     if (ret != 0) {
-        Serial.println("Failed to export Y coordinate");
+        LOG_E(TAG, "Failed to export Y coordinate");
         goto cleanup;
     }
     
@@ -172,21 +172,21 @@ bool Crypto::signMessage(const uint8_t* privateKey, const uint8_t* message, size
     const char *pers = "ecdsa_sign";
     ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *)pers, strlen(pers));
     if (ret != 0) {
-        Serial.println("Failed to seed random number generator");
+        LOG_E(TAG, "Failed to seed random number generator");
         goto cleanup;
     }
     
     // Set up the ECDSA context
     ret = mbedtls_ecp_group_load(&ecdsa.grp, MBEDTLS_ECP_DP_SECP256R1);
     if (ret != 0) {
-        Serial.println("Failed to load ECP group");
+        LOG_E(TAG, "Failed to load ECP group");
         goto cleanup;
     }
     
     // Import the private key
     ret = mbedtls_mpi_read_binary(&d, privateKey, 32);
     if (ret != 0) {
-        Serial.println("Failed to import private key");
+        LOG_E(TAG, "Failed to import private key");
         goto cleanup;
     }
     
@@ -196,20 +196,20 @@ bool Crypto::signMessage(const uint8_t* privateKey, const uint8_t* message, size
     // Sign the hash
     ret = mbedtls_ecdsa_sign(&ecdsa.grp, &r, &s, &d, hash, 32, mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
-        Serial.println("Failed to sign message");
+        LOG_E(TAG, "Failed to sign message");
         goto cleanup;
     }
     
     // Export the signature
     ret = mbedtls_mpi_write_binary(&r, signature, 32);
     if (ret != 0) {
-        Serial.println("Failed to export r value");
+        LOG_E(TAG, "Failed to export r value");
         goto cleanup;
     }
     
     ret = mbedtls_mpi_write_binary(&s, signature + 32, 32);
     if (ret != 0) {
-        Serial.println("Failed to export s value");
+        LOG_E(TAG, "Failed to export s value");
         goto cleanup;
     }
     
@@ -240,12 +240,12 @@ zap::Str crypto_get_public_key(const char* private_key_hex) {
     uint8_t publicKey[64];
     
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
-        Serial.println("Failed to convert private key hex to bytes");
+        LOG_E(TAG, "Failed to convert private key hex to bytes");
         return "";
     }
     
     if (!Crypto::generateKeyPair(privateKey, publicKey)) {
-        Serial.println("Failed to generate key pair");
+        LOG_E(TAG, "Failed to generate key pair");
         return "";
     }
     
@@ -375,22 +375,7 @@ static int crypto_convert_to_der(const uint8_t *signature, uint8_t *der, size_t 
 
 zap::Str crypto_getId() {
   // Debug flag
-  const bool debug = false;
   uint64_t chipId = ESP.getEfuseMac();
-  
-  if (debug) {
-    Serial.print("Method 1 - ESP.getEfuseMac(): ");
-    
-    // Print the 64-bit value byte by byte in hex
-    for (int i = 7; i >= 0; i--) {
-      uint8_t byte = (chipId >> (i * 8)) & 0xFF;
-      char hexDigits[] = "0123456789ABCDEF";
-      Serial.print(hexDigits[(byte >> 4) & 0xF]);
-      Serial.print(hexDigits[byte & 0xF]);
-      if (i > 0) Serial.print(":");
-    }
-    Serial.println();
-  }
   
   // Convert 64-bit chipId to 16 hex characters
   char serial[17]; // 16 hex chars + null terminator
@@ -428,21 +413,21 @@ bool crypto_create_private_key(uint8_t* privateKey) {
     const char *pers = "ecdsa_genkey";
     ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *)pers, strlen(pers));
     if (ret != 0) {
-        Serial.println("Failed to seed random number generator");
+        LOG_E(TAG, "Failed to seed random number generator");
         return false;
     }
 
     // Generate the key pair
     ret = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP256R1, &keypair, mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
-        Serial.println("Failed to generate key pair");
+        LOG_E(TAG, "Failed to generate key pair");
         return false;
     }
 
     // Export the private key
     ret = mbedtls_mpi_write_binary(&keypair.d, privateKey, 32);
     if (ret != 0) {
-        Serial.println("Failed to export private key");
+        LOG_E(TAG, "Failed to export private key");
         return false;
     }
 

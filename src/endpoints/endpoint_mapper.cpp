@@ -35,14 +35,12 @@ const Endpoint endpoints[] = {
     Endpoint(Endpoint::NAME_INFO, Endpoint::Verb::GET, EndpointMapper::NAME_INFO_PATH, g_nameInfoHandler),
     Endpoint(Endpoint::WIFI_STATUS, Endpoint::Verb::GET, EndpointMapper::WIFI_STATUS_PATH, g_wifiStatusHandler),
     Endpoint(Endpoint::WIFI_SCAN, Endpoint::Verb::GET, EndpointMapper::WIFI_SCAN_PATH, g_wifiScanHandler),
-    Endpoint(Endpoint::DEBUG, Endpoint::Verb::GET, EndpointMapper::DEBUG_PATH, g_debugHandler), // Special case handled in route
-#if defined(USE_BLE_SETUP)
-    Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_bleStopHandler), // Special case handled in route
-#endif
+    Endpoint(Endpoint::DEBUG, Endpoint::Verb::GET, EndpointMapper::DEBUG_PATH, g_debugHandler), 
+    Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_bleStopHandler), 
     Endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, EndpointMapper::CRYPTO_SIGN_PATH, g_cryptoSignHandler),
-    Endpoint(Endpoint::ECHO, Endpoint::Verb::POST, EndpointMapper::ECHO_PATH, g_echoHandler), // New Echo endpoint
-    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_nullHandler),   // Will be handled by route()
-    Endpoint(Endpoint::OTA_STATUS, Endpoint::Verb::GET, EndpointMapper::OTA_STATUS_PATH, g_nullHandler)     // Will be handled by route()
+    Endpoint(Endpoint::ECHO, Endpoint::Verb::POST, EndpointMapper::ECHO_PATH, g_echoHandler), 
+    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_nullHandler),
+    Endpoint(Endpoint::OTA_STATUS, Endpoint::Verb::GET, EndpointMapper::OTA_STATUS_PATH, g_nullHandler)
 };
 
 EndpointMapper::Iterator EndpointMapper::begin() const { return EndpointMapper::Iterator(endpoints); }
@@ -95,23 +93,6 @@ EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
     response.contentType = "application/json";
     response.data = "{\"status\":\"error\",\"message\":\"Endpoint not found\"}";
     return response;
-}
-
-void EndpointMapper::printPaths() {
-    Serial.println("Registered paths:");
-    Serial.println(WIFI_CONFIG_PATH);
-    Serial.println(SYSTEM_INFO_PATH);
-    Serial.println(WIFI_RESET_PATH);
-    Serial.println(CRYPTO_INFO_PATH);
-    Serial.println(NAME_INFO_PATH);
-    Serial.println(WIFI_STATUS_PATH);
-    Serial.println(WIFI_SCAN_PATH);
-    Serial.println(BLE_STOP_PATH);
-    Serial.println(CRYPTO_SIGN_PATH);
-    Serial.println(OTA_UPDATE_PATH);
-    Serial.println(OTA_STATUS_PATH);
-    Serial.println(DEBUG_PATH);
-    Serial.println(ECHO_PATH);
 }
 
 // Define the global instance

@@ -66,7 +66,7 @@ void setup() {
 
 
 
-    // LOG_I(TAG, "\n\n--- Srcful ZAP Firmware Booting ---");
+    LOG_I(TAG, "\n\n--- Srcful ZAP Firmware Booting ---");
 
     pinMode(LED_PIN, OUTPUT);
     pinMode(IO_BUTTON, INPUT_PULLUP); // Initialize button pin with internal pull-up

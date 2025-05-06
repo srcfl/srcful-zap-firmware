@@ -1,6 +1,10 @@
 #include "p1_meter.h"
 #include <Arduino.h>
 #include <memory>
+#include "../zap_log.h" // Added for logging
+
+// Define TAG for logging
+static const char* TAG = "p1_meter";
 
 // Timeout for protocol detection (ms)
 #define PROTOCOL_DETECTION_TIMEOUT 5000
@@ -19,7 +23,7 @@ P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate)
       _lastDataTime(0),
       _frameCallback(nullptr) {
     
-    Serial.println("P1Meter constructor called");
+    LOG_I(TAG, "P1Meter constructor called");
     
     // Set up frame buffer callback
     _frameBuffer.setFrameCallback([this](const IFrameData& frame) -> bool {
@@ -28,26 +32,26 @@ P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate)
 }
 
 P1Meter::~P1Meter() {
-    Serial.println("P1Meter destructor called");
+    LOG_I(TAG, "P1Meter destructor called");
 }
 
 bool P1Meter::begin() {
-    Serial.println("Initializing P1 meter...");
+    LOG_I(TAG, "Initializing P1 meter...");
     
     // Configure DTR pin
     if (_dtrPin >= 0) {
         pinMode(_dtrPin, OUTPUT);
         digitalWrite(_dtrPin, HIGH); // Enable P1 port
-        Serial.printf("Set DTR pin %d HIGH\n", _dtrPin);
+        LOG_D(TAG, "Set DTR pin %d HIGH", _dtrPin);
     }
     
     // Initialize serial
     // try {
         _serial.setRxBufferSize(2048); // Set RX buffer size
         _serial.begin(_baudRate, SERIAL_8N1, _rxPin, -1, true); // Inverted logic
-        Serial.printf("Initialized UART1 with baud rate %d, RX pin %d\n", _baudRate, _rxPin);
+        LOG_I(TAG, "Initialized UART1 with baud rate %d, RX pin %d", _baudRate, _rxPin);
     // } catch (...) {
-    //     Serial.println("EXCEPTION: Failed to initialize P1 serial");
+    //     LOG_E(TAG, "EXCEPTION: Failed to initialize P1 serial");
     //     return false;
     // }
     
@@ -56,7 +60,7 @@ bool P1Meter::begin() {
     // _protocolDetected = false;
     _lastDataTime = millis();
     
-    Serial.println("P1 meter initialized successfully");
+    LOG_I(TAG, "P1 meter initialized successfully");
     return true;
 }
 
@@ -69,16 +73,16 @@ bool P1Meter::update() {
     
     // Read available data
     while ((availableBytes = _serial.available()) > 0) {
-        Serial.print("Available bytes: "); Serial.println(availableBytes);
+        LOG_V(TAG, "Available bytes: %d", availableBytes);
         size_t leftInBuffer = bufferSize - readBytes;
         if (leftInBuffer <= 0) {
             break;
         }
 
         readBytes += _serial.readBytes(&buffer[readBytes], availableBytes < leftInBuffer ? availableBytes : leftInBuffer);
-        // Serial.print("Read bytes: "); Serial.println(readBytes);
+        // LOG_V(TAG, "Read bytes: %d", readBytes);
         
-        // Serial.print(inByte, HEX); Serial.print(" ");
+        // LOG_V(TAG, "%02X ", inByte); // Example for logging hex bytes if needed
         // Process byte through frame buffer
         // if (_frameBuffer.addByte(inByte)) {
         //     dataProcessed = true;
@@ -88,7 +92,7 @@ bool P1Meter::update() {
 
     if (readBytes) {
         
-        Serial.print("Processing read bytes: "); Serial.println(readBytes);
+        LOG_V(TAG, "Processing read bytes: %d", readBytes);
         if (_frameBuffer.addData(buffer, readBytes, _lastDataTime)) {
             dataProcessed = true;
         }
@@ -112,20 +116,12 @@ bool P1Meter::update() {
     //             dataProcessed = _reader->processData();
     //         }
     //     } catch (...) {
-    //         Serial.println("ERROR: Exception in reader processData()");
+    //         LOG_E(TAG, "ERROR: Exception in reader processData()");
     //         return false;
     //     }
     // }
     
     return dataProcessed;
-}
-
-zap::Str P1Meter::getProtocolName() const {
-    // if (_protocolDetected && _reader) {
-    //     return _reader->getProtocolName();
-    // }
-    
-    return "Unknown";
 }
 
 int P1Meter::getBufferSize() const {
@@ -147,7 +143,7 @@ void P1Meter::setFrameCallback(FrameReceivedCallback callback) {
 
 bool P1Meter::onFrameDetected(const IFrameData& frame) {
    
-    Serial.printf("P1 frame detected (%zu bytes)\n", frame.getFrameSize());
+    LOG_D(TAG, "P1 frame detected (%zu bytes)", frame.getFrameSize());
     
     // Call user-provided frame callback if available
     if (_frameCallback) {
@@ -157,28 +153,4 @@ bool P1Meter::onFrameDetected(const IFrameData& frame) {
     // Here would be a good place to integrate with protocol detection or decoding
     
     return true;
-}
-
-bool P1Meter::detectProtocol() {
-    // Serial.println("Attempting to detect P1 protocol...");
-    
-    // Use static factory method to detect protocol
-    // try {
-    //     _reader = P1ReaderInterface::autoDetectReader(this);
-    // } catch (...) {
-    //     Serial.println("EXCEPTION: Protocol detection failed");
-    //     return false;
-    // }
-    
-    // if (_reader) {
-    //     _protocolDetected = true;
-    //     _reader->begin();
-    //     
-    //     Serial.print("Protocol detected: ");
-    //     Serial.println(_reader->getProtocolName());
-    //     return true;
-    // }
-    
-    Serial.println("Protocol detection not implemented yet");
-    return false;
 }

@@ -26,8 +26,6 @@ EndpointResponse CryptoInfoHandler::handle(const zap::Str& contents) {
     
     response.statusCode = 200;
     response.data = json.end();
-    Serial.print("Response data: ");
-    Serial.println(response.data.c_str());
     return response;
 }
 
@@ -39,20 +37,24 @@ EndpointResponse NameInfoHandler::handle(const zap::Str& contents) {
     GQL::StringResponse gqlResponse = GQL::fetchGatewayName(crypto_getId());
     zap::Str name;
     
+    JsonBuilder json;
     if (gqlResponse.isSuccess()) {
         name = gqlResponse.data;
+        json.beginObject()
+            .add("name", name.c_str());
+    
+        response.statusCode = 200;
     } else {
         // Handle error case - use a default name or empty string
-        name = "Unknown Gateway";
-        Serial.print("Error fetching gateway name: ");
-        Serial.println(gqlResponse.error.c_str());
+        name = "Unknown";
+        json.beginObject()
+            .add("name", name.c_str())
+            .add("error", gqlResponse.error.c_str())
+            .add("status", "error");
+    
+        response.statusCode = 500;
     }
     
-    JsonBuilder json;
-    json.beginObject()
-        .add("name", name.c_str());
-    
-    response.statusCode = 200;
     response.data = json.end();
     return response;
 }

@@ -1,6 +1,10 @@
 #include "ota_task.h"
 #include "../firmware_version.h"
 #include <algorithm>
+#include "../zap_log.h" // Added for logging
+
+// Define TAG for logging
+static const char* TAG = "ota_task";
 
 OTATask::OTATask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
@@ -9,13 +13,13 @@ OTATask::OTATask(uint32_t stackSize, UBaseType_t priority)
     // Create the queue for update requests (store just 1 request)
     updateQueue = xQueueCreate(1, sizeof(OTAUpdateRequest));
     if (updateQueue == nullptr) {
-        Serial.println("OTA task: Failed to create queue");
+        LOG_E(TAG, "Failed to create queue");
     }
     
     // Create mutex for protecting status variables
     statusMutex = xSemaphoreCreateMutex();
     if (statusMutex == nullptr) {
-        Serial.println("OTA task: Failed to create mutex");
+        LOG_E(TAG, "Failed to create mutex");
     }
     
     // Initialize update result
@@ -54,7 +58,7 @@ void OTATask::begin() {
         0  // Run on core 0
     );
     
-    Serial.println("OTA task: Started");
+    LOG_I(TAG, "Started");
 }
 
 void OTATask::stop() {
@@ -70,18 +74,18 @@ void OTATask::stop() {
         taskHandle = nullptr;
     }
     
-    Serial.println("OTA task: Stopped");
+    LOG_I(TAG, "Stopped");
 }
 
 bool OTATask::requestUpdate(const String& url, const String& version) {
     if (updateQueue == nullptr) {
-        Serial.println("OTA task: Queue not created");
+        LOG_E(TAG, "Queue not created");
         return false;
     }
     
     // Check if an update is already in progress
     if (isUpdateInProgress()) {
-        Serial.println("OTA task: Update already in progress");
+        LOG_W(TAG, "Update already in progress");
         return false;
     }
     
@@ -102,11 +106,11 @@ bool OTATask::requestUpdate(const String& url, const String& version) {
     
     // Send to queue with a timeout of 500ms
     if (xQueueSend(updateQueue, &request, pdMS_TO_TICKS(500)) != pdPASS) {
-        Serial.println("OTA task: Failed to send request to queue");
+        LOG_E(TAG, "Failed to send request to queue");
         return false;
     }
     
-    Serial.println("OTA task: Update requested for URL: " + url);
+    LOG_I(TAG, "Update requested for URL: %s", url.c_str());
     return true;
 }
 
@@ -162,7 +166,7 @@ void OTATask::taskFunction(void* parameter) {
         // Check if there's a request in the queue
         OTAUpdateRequest request;
         if (xQueueReceive(task->updateQueue, &request, pdMS_TO_TICKS(500)) == pdTRUE) {
-            Serial.println("OTA task: Received update request");
+            LOG_I(TAG, "Received update request");
             
             // Set update in progress flag
             if (task->statusMutex != nullptr) {
@@ -187,7 +191,7 @@ void OTATask::taskFunction(void* parameter) {
             
             // If update was successful, we might reboot here
             if (success) {
-                Serial.println("OTA task: Update successful, rebooting...");
+                LOG_I(TAG, "Update successful, rebooting...");
                 vTaskDelay(pdMS_TO_TICKS(1000)); // Give time for any final logging
                 ESP.restart();
             }
@@ -207,7 +211,7 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
     result.success = false;
     result.statusCode = 500; // Default error status
     
-    Serial.println("OTA task: Starting update from URL: " + String(request.url));
+    LOG_I(TAG, "Starting update from URL: %s", request.url);
     
     // Check version if provided
     if (request.hasVersion) {
@@ -216,18 +220,18 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
         
         // Simple string comparison for now
         if (newVersion == currentVersion) {
-            Serial.println("OTA task: Already running version " + currentVersion);
+            LOG_I(TAG, "Already running version %s", currentVersion.c_str());
             strncpy(result.message, "Already running latest version", sizeof(result.message) - 1);
             result.success = true;
             result.statusCode = 200;
             return false;  // Not an error, but no update needed
         }
         
-        Serial.println("OTA task: Current version: " + currentVersion);
-        Serial.println("OTA task: New version: " + newVersion);
+        LOG_I(TAG, "Current version: %s", currentVersion.c_str());
+        LOG_I(TAG, "New version: %s", newVersion.c_str());
     }
     
-    Serial.println("OTA task: Free heap before update: " + String(ESP.getFreeHeap()));
+    LOG_D(TAG, "Free heap before update: %d", ESP.getFreeHeap());
     
     // Create HTTP client
     HTTPClient http;
@@ -243,7 +247,7 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
     int httpCode = http.GET();
     
     if (httpCode != HTTP_CODE_OK) {
-        Serial.println("OTA task: HTTP GET failed with code: " + String(httpCode));
+        LOG_E(TAG, "HTTP GET failed with code: %d", httpCode);
         http.end();
         
         snprintf(result.message, sizeof(result.message) - 1, 
@@ -254,11 +258,11 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
     
     // Get the size of the firmware
     int contentLength = http.getSize();
-    Serial.println("OTA task: Firmware size: " + String(contentLength) + " bytes");
+    LOG_I(TAG, "Firmware size: %d bytes", contentLength);
     
     // Start the update
     if (!Update.begin(contentLength)) {
-        Serial.println("OTA task: Failed to start update: " + String(Update.getError()));
+        LOG_E(TAG, "Failed to start update: %s", String(Update.getError()).c_str());
         http.end();
         
         snprintf(result.message, sizeof(result.message) - 1, 
@@ -275,7 +279,7 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
     
     while (written < contentLength) {
         if (!stream->connected()) {
-            Serial.println("OTA task: Connection lost");
+            LOG_E(TAG, "Connection lost");
             http.end();
             
             strncpy(result.message, "Connection lost during update", sizeof(result.message) - 1);
@@ -284,12 +288,12 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
         
         size_t available = stream->available();
         if (available) {
-            size_t bytesToRead = std::min(available, sizeof(buff));
+            size_t bytesToRead = std::min(available, (size_t)sizeof(buff));
             size_t bytesRead = stream->readBytes(buff, bytesToRead);
             
             if (bytesRead > 0) {
                 if (Update.write(buff, bytesRead) != bytesRead) {
-                    Serial.println("OTA task: Failed to write update data");
+                    LOG_E(TAG, "Failed to write update data");
                     http.end();
                     
                     strncpy(result.message, "Failed to write update data", sizeof(result.message) - 1);
@@ -303,7 +307,7 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
     }
     
     if (Update.end()) {
-        Serial.println("OTA task: Update complete");
+        LOG_I(TAG, "Update complete");
         http.end();
         
         strncpy(result.message, "Update successful", sizeof(result.message) - 1);
@@ -311,7 +315,7 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
         result.statusCode = 200;
         return true;
     } else {
-        Serial.println("OTA task: Update failed: " + String(Update.getError()));
+        LOG_E(TAG, "Update failed: %s", String(Update.getError()).c_str());
         http.end();
         
         snprintf(result.message, sizeof(result.message) - 1, 
@@ -326,7 +330,7 @@ void OTATask::updateProgress(size_t current, size_t total) {
     // Print progress every 5%
     static int lastPrintedPercent = 0;
     if (newPercent >= lastPrintedPercent + 5 || newPercent == 100) {
-        Serial.printf("OTA task: Progress: %d%%\n", newPercent);
+        LOG_D(TAG, "Progress: %d%%", newPercent);
         lastPrintedPercent = newPercent;
     }
     

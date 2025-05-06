@@ -8,8 +8,7 @@ MainActions::State MainActions::actionStates[] = {
     // Add other actions here
 };
 
-// const unsigned char MainActions::numActions = (unsigned char)(sizeof(actionStates) / sizeof(actionStates[0]));
-const unsigned char MainActions::numActions = 3;
+const unsigned char MainActions::numActions = (unsigned char)(sizeof(actionStates) / sizeof(actionStates[0]));
 
 void MainActions::triggerAction(Type type, unsigned long delayMs) {
     if (type == Type::NONE) return;

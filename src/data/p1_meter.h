@@ -34,9 +34,6 @@ public:
     // Process available data (non-blocking)
     bool update();
     
-    // Get the detected protocol name
-    zap::Str getProtocolName() const;
-    
     // Get buffer size and usage
     int getBufferSize() const;
     int getBufferUsed() const;
@@ -69,7 +66,4 @@ private:
     
     // Internal frame callback
     bool onFrameDetected(const IFrameData& frame);
-    
-    // Attempt to auto-detect protocol if needed
-    bool detectProtocol();
 };

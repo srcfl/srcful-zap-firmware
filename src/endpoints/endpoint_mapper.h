@@ -69,7 +69,6 @@ public:
     static Endpoint::Verb stringToVerb(const zap::Str& method);
     static zap::Str verbToString(Endpoint::Verb method);
     static EndpointResponse route(const EndpointRequest& request);
-    static void printPaths();
 };
 
 // Global instance of EndpointMapper

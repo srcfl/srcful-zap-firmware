@@ -5,7 +5,10 @@
 #include "json_light/json_light.h"
 #include "firmware_version.h"
 #include <time.h>
+#include "../zap_log.h" // Added for logging
 
+// Define TAG for logging
+static const char* TAG = "backend_api_task";
 
 BackendApiTask::BackendApiTask(uint32_t stackSize, UBaseType_t priority) 
     : stackSize(stackSize), priority(priority), shouldRun(false),
@@ -107,9 +110,9 @@ void BackendApiTask::taskFunction(void* parameter) {
             firstRun = false; // Reset first run flag after the first iteration
         }/* else if (task->isTimeForStateUpdate(currentTime)) {
             if (task->wifiManager && task->wifiManager->isConnected()) {
-                Serial.println("Backend API task: WiFi connected but BLE is active, not sending state update");
+                LOG_I(TAG, "WiFi connected but BLE is active, not sending state update");
             } else {
-                Serial.println("Backend API task: WiFi not connected, not sending state update");
+                LOG_I(TAG, "WiFi not connected, not sending state update");
             }
         }*/
         
@@ -130,7 +133,7 @@ bool BackendApiTask::isTimeForStateUpdate(unsigned long currentTime) const {
 }
 
 void BackendApiTask::sendStateUpdate() {
-    Serial.println("Backend API task: Preparing state update");
+    LOG_I(TAG, "Preparing state update");
     
     // Use JsonBuilder to create JWT header
     JsonBuilder headerBuilder;
@@ -177,33 +180,32 @@ void BackendApiTask::sendStateUpdate() {
     zap::Str jwt = crypto_create_jwt(header.c_str(), payload.c_str(), PRIVATE_KEY_HEX);
     
     if (jwt.length() == 0) {
-        Serial.println("Backend API task: Failed to create JWT");
+        LOG_E(TAG, "Failed to create JWT");
         return;
     }
     
-    Serial.println("Backend API task: JWT created successfully");
+    LOG_I(TAG, "JWT created successfully");
     
     // Send the JWT using GraphQL
     GQL::BoolResponse response = GQL::setConfiguration(jwt);
     
     // Handle the response
     if (response.isSuccess() && response.data) {
-        Serial.println("Backend API task: State update sent successfully");
+        LOG_I(TAG, "State update sent successfully");
     } else {
         // Handle different error cases
         switch (response.status) {
             case GQL::Status::NETWORK_ERROR:
-                Serial.println("Backend API task: Network error sending state update");
+                LOG_E(TAG, "Network error sending state update");
                 break;
             case GQL::Status::GQL_ERROR:
-                Serial.println("Backend API task: GraphQL error in state update");
+                LOG_E(TAG, "GraphQL error in state update");
                 break;
             case GQL::Status::OPERATION_FAILED:
-                Serial.println("Backend API task: Server rejected state update");
+                LOG_E(TAG, "Server rejected state update");
                 break;
             default:
-                Serial.print("Backend API task: Failed to send state update: ");
-                Serial.println(response.error.c_str());
+                LOG_E(TAG, "Failed to send state update: %s", response.error.c_str());
                 break;
         }
         
@@ -216,16 +218,15 @@ void BackendApiTask::triggerStateUpdate() {
     // we need to set both to 0 to trigger immediate update because of unsigned variables
     lastUpdateTime = 0;
     stateUpdateInterval = 0;
-    Serial.print("Backend API task: Triggering immediate state update: ");
-    Serial.println(isTimeForStateUpdate(millis()) ? "true" : "false");
+    LOG_I(TAG, "Triggering immediate state update: %s", isTimeForStateUpdate(millis()) ? "true" : "false");
 }
 
 void BackendApiTask::_triggerStateUpdate() {
     // Only send state update if WiFi is connected and BLE is not active
     if (wifiManager && wifiManager->isConnected() && !bleActive) {
-        Serial.println("Backend API task: Triggering immediate state update...");
+        LOG_I(TAG, "Triggering immediate state update...");
         sendStateUpdate();
     } else {
-        Serial.println("Backend API task: Cannot trigger update - WiFi not connected or BLE active");
+        LOG_W(TAG, "Cannot trigger update - WiFi not connected or BLE active");
     }
 }

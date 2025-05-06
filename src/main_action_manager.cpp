@@ -7,7 +7,9 @@
 #include <esp_system.h>   // For ESP.restart()
 // #include "debug.h"     // Include if logging is desired inside execute functions
 
+#include "zap_log.h"     // Include for logging
 
+static const char* TAG = "main_action_manager"; // Tag for logging
 
 
 // --- MainActionManager Implementation ---
@@ -65,7 +67,7 @@ void MainActionManager::checkAndExecute(WifiManager& wifiManager, BackendApiTask
 
                     case MainActions::Type::NONE:
                     default:
-                        // Serial.printf("MainActionManager: Warning - Unknown or NONE action type %d encountered during execution.\n", static_cast<int>(actionType));
+                        LOG_E(TAG, "Unknown or NONE action type %d encountered during execution.", static_cast<int>(actionType));
                         break;
                 }
             }
