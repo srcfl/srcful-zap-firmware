@@ -94,17 +94,17 @@ bool WifiManager::connectToWiFi(const zap::Str& ssid, const zap::Str& password, 
                 // Save to persistent storage
                 saveCredentials();
             }
-            _connectToWiFiProcessing = true;
+            _connectToWiFiProcessing = false;
             return true;
         } else {
             LOG_W(TAG, "WiFi connection failed");
             WiFi.disconnect(true);  // Clean disconnect on failure
-            _connectToWiFiProcessing = true;
+            _connectToWiFiProcessing = false;
             return false;
         }
     } else {
         LOG_W(TAG, "No WiFi credentials provided");
-        _connectToWiFiProcessing = true;
+        _connectToWiFiProcessing = false;
         return false;
     }
 }

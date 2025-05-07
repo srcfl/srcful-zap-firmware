@@ -6,7 +6,7 @@
 #include "config.h"
 #include "zap_log.h"
 
-static const char *TAG = "request_handler";
+static const char *TAG_rh = "request_handler";
 
 // --- RequestHandler Implementation ---
 
@@ -17,15 +17,15 @@ RequestHandler::RequestHandler(Externals& ext) : _ext(ext) {
 }
 
 void RequestHandler::handleRequestTask(JsonParser& configData) {
-    LOG_I(TAG, "Processing configuration data");
+    LOG_I(TAG_rh, "Processing configuration data");
 
     // extract the data string and convert it to a json string
     zap::Str data;
     if (!configData.getString("data", data)) {
-        LOG_E(TAG, "Failed to extract data from configuration");
+        LOG_E(TAG_rh, "Failed to extract data from configuration");
         return;
     }
-    LOG_I(TAG, "Received data: %s", data.c_str());
+    LOG_I(TAG_rh, "Received data: %s", data.c_str());
     // Replace escaped characters - TODO: Improve this handling
     //data.replace("\\u0022", "\"");
 
@@ -37,11 +37,11 @@ void RequestHandler::handleRequestTask(JsonParser& configData) {
         handleRequest(dataDoc);
     } else {
         // This is some other type of configuration data
-        LOG_I(TAG, "Received non-request configuration");
+        LOG_I(TAG_rh, "Received non-request configuration");
         // Process other configuration types here if needed
     }
 
-    LOG_I(TAG, "Configuration processing completed");
+    LOG_I(TAG_rh, "Configuration processing completed");
 }
 
 void RequestHandler::handleRequest(JsonParser& requestData) {
@@ -66,7 +66,7 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
         }
     }
 
-    LOG_I(TAG, "Processing request id=%s, path=%s, method=%s, body=%s", id.c_str(), path.c_str(), method.c_str(), body.c_str());
+    LOG_I(TAG_rh, "Processing request id=%s, path=%s, method=%s, body=%s", id.c_str(), path.c_str(), method.c_str(), body.c_str());
 
     // Validate timestamp - reject requests older than 1 minute
     struct timeval tv;
@@ -74,7 +74,7 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
     uint64_t currentTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
     // Check timestamp against current time in milliseconds
     if (timestamp < (currentTimeMs - 60000)) { // 60 seconds * 1000 ms/sec
-        LOG_W(TAG, "Request too old. Timestamp: %llu, Current: %llu", timestamp, currentTimeMs);
+        LOG_W(TAG_rh, "Request too old. Timestamp: %llu, Current: %llu", timestamp, currentTimeMs);
         sendErrorResponse(id, "Request too old");
         return;
     }
@@ -85,7 +85,7 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
 
     if (endpoint.type == Endpoint::UNKNOWN) {
         // No endpoint found for this path/method combination
-        LOG_W(TAG, "Endpoint not found for path: %s, method: %s", path.c_str(), method.c_str());
+        LOG_W(TAG_rh, "Endpoint not found for path: %s, method: %s", path.c_str(), method.c_str());
         sendErrorResponse(id, "Endpoint not found");
         return;
     }
@@ -103,7 +103,7 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
 }
 
 void RequestHandler::sendResponse(const zap::Str& requestId, int statusCode, const zap::Str& responseData) {
-    LOG_I(TAG, "Sending response for request %s, status: %d", requestId.c_str(), statusCode);
+    LOG_I(TAG_rh, "Sending response for request %s, status: %d", requestId.c_str(), statusCode);
 
     // Get current epoch time in milliseconds
     struct timeval tv;
@@ -141,7 +141,7 @@ void RequestHandler::sendResponse(const zap::Str& requestId, int statusCode, con
     zap::Str jwt = crypto_create_jwt(header.c_str(), payload.c_str(), PRIVATE_KEY_HEX);
 
     if (jwt.length() == 0) {
-        LOG_E(TAG, "Failed to create JWT for response to request %s", requestId.c_str());
+        LOG_E(TAG_rh, "Failed to create JWT for response to request %s", requestId.c_str());
         return;
     }
 
@@ -150,9 +150,9 @@ void RequestHandler::sendResponse(const zap::Str& requestId, int statusCode, con
 
     // Handle the response
     if (response.isSuccess() && response.data) {
-        LOG_I(TAG, "Response for request %s sent successfully", requestId.c_str());
+        LOG_I(TAG_rh, "Response for request %s sent successfully", requestId.c_str());
     } else {
-        LOG_E(TAG, "Failed to send response for request %s. Error: %s", requestId.c_str(), response.error.c_str());
+        LOG_E(TAG_rh, "Failed to send response for request %s. Error: %s", requestId.c_str(), response.error.c_str());
     }
 }
 
