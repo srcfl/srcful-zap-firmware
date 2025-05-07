@@ -41,6 +41,8 @@ void WifiManager::initNTP() {
 
 bool WifiManager::connectToWiFi(const zap::Str& ssid, const zap::Str& password, bool updateGlobals) {
     if (ssid.length() > 0 && password.length() > 0) {
+        _connectToWiFiProcessing = true;
+
         LOG_D(TAG, "Connecting to WiFi...");
         LOG_D(TAG, "SSID: %s", ssid.c_str());
         LOG_D(TAG, "Password length: %i", password.length());
@@ -92,20 +94,27 @@ bool WifiManager::connectToWiFi(const zap::Str& ssid, const zap::Str& password, 
                 // Save to persistent storage
                 saveCredentials();
             }
-            
+            _connectToWiFiProcessing = true;
             return true;
         } else {
             LOG_W(TAG, "WiFi connection failed");
             WiFi.disconnect(true);  // Clean disconnect on failure
+            _connectToWiFiProcessing = true;
             return false;
         }
     } else {
         LOG_W(TAG, "No WiFi credentials provided");
+        _connectToWiFiProcessing = true;
         return false;
     }
 }
 
 void WifiManager::scanWiFiNetworks() {
+    if (_connectToWiFiProcessing) {
+        LOG_W(TAG, "Cannot scan WiFi networks while connecting to WiFi");
+        return;
+    }
+
     LOG_I(TAG, "Scanning WiFi networks...");
     
     // Set WiFi to station mode to perform scan
@@ -286,6 +295,11 @@ bool WifiManager::clearCredentials() {
 }
 
 bool WifiManager::autoConnect() {
+    if (_connectToWiFiProcessing) {
+        LOG_W(TAG, "Cannot scan WiFi networks while connecting to WiFi");
+        return true;
+    }
+
     LOG_I(TAG, "Attempting to auto-connect to WiFi...");
     
     // Force reload credentials from NVS to ensure we have the latest

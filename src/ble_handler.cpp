@@ -202,6 +202,7 @@ bool BLEHandler::sendResponse(const zap::Str& location, const zap::Str& method,
 }
 
 void BLERequestCallback::onWrite(NimBLECharacteristic* pCharacteristic) {
+    LOG_I(TAG, "Received request from BLE client");
     std::string value = pCharacteristic->getValue();
     if (value.length() > 0) {
         handler->enqueueRequest(zap::Str(value.c_str()));

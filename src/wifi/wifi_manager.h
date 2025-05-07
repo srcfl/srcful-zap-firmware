@@ -67,6 +67,8 @@ private:
     Preferences _preferences;  // Preferences instance for NVS operations
     const char* _mdnsHostname; // Store mDNS hostname
     
+    bool _connectToWiFiProcessing; // Flag to indicate that connectToWiFi is in progress during this time scan or autoConnect will just return
+
     // Constants for NVS storage
     static const char* PREF_NAMESPACE;
     static const char* KEY_SSID;
