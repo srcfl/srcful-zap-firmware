@@ -62,10 +62,6 @@ void setup() {
     Serial.begin(115200);
     delay(1000); // Give some time for serial connection but no loop as we are not using the serial port in the actual meters
 
-
-
-
-
     LOG_I(TAG, "\n\n--- Srcful ZAP Firmware Booting ---");
 
     pinMode(LED_PIN, OUTPUT);
@@ -75,12 +71,12 @@ void setup() {
     digitalWrite(LED_PIN, HIGH);
 
 
-    // LOG_I(TAG, "Starting setup...");
+    LOG_I(TAG, "Starting setup...");
 
-    // LOG_I(TAG, "Total heap: %d\n", ESP.getHeapSize());
-    // LOG_I(TAG, "Free heap: %d\n", ESP.getFreeHeap());
-    // LOG_I(TAG, "Total PSRAM: %d\n", ESP.getPsramSize());
-    // LOG_I(TAG, "Free PSRAM: %d\n", ESP.getFreePsram());
+    LOG_I(TAG, "Total heap: %d\n", ESP.getHeapSize());
+    LOG_I(TAG, "Free heap: %d\n", ESP.getFreeHeap());
+    LOG_I(TAG, "Total PSRAM: %d\n", ESP.getPsramSize());
+    LOG_I(TAG, "Free PSRAM: %d\n", ESP.getFreePsram());
 
     {   // get the private key from the Preferences
         Preferences preferences;
@@ -93,7 +89,7 @@ void setup() {
             bytes_to_hex_string(privateKeyBytes, sizeof(privateKeyBytes), privateKeyHex);
             PRIVATE_KEY_HEX = privateKeyHex;
         } else {
-            Serial.println("No private key found in Preferences");
+            LOG_I(TAG, "No private key found in Preferences");
             uint8_t privateKey[32];
             if (crypto_create_private_key(privateKey)) {
                 // convert to hex string

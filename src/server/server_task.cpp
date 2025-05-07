@@ -1,5 +1,9 @@
 #include "server_task.h"
 #include "endpoints/endpoint_mapper.h"
+#include "zap_log.h" // Added for logging
+
+// Define TAG for logging
+static const char* TAG = "server_task";
 
 // Constructor
 ServerTask::ServerTask(int port, uint32_t stackSize, UBaseType_t priority)
@@ -32,10 +36,10 @@ void ServerTask::begin() {
     );
     
     if (result != pdPASS) {
-        Serial.println("Failed to create server task!");
+        LOG_E(TAG, "Failed to create server task!");
         shouldRun = false;
     } else {
-        Serial.println("Server task created successfully");
+        LOG_I(TAG, "Server task created successfully");
     }
 }
 
@@ -55,7 +59,7 @@ void ServerTask::stop() {
         taskHandle = nullptr;
     }
     
-    Serial.println("Server task stopped");
+    LOG_I(TAG, "Server task stopped");
 }
 
 // The actual task function
@@ -66,7 +70,7 @@ void ServerTask::taskFunction(void* parameter) {
     // Start the web server
     serverTask->webServer.begin();
     
-    Serial.println("Server task started");
+    LOG_I(TAG, "Server task started");
     
     // Main task loop
     while (serverTask->shouldRun) {
@@ -78,8 +82,8 @@ void ServerTask::taskFunction(void* parameter) {
     }
     
     // Task cleanup
-    Serial.println("Server task ending");
+    LOG_I(TAG, "Server task ending");
     
     // Delete the task
     vTaskDelete(nullptr);
-} 
+}

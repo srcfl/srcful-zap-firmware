@@ -7,6 +7,9 @@
 #include "../json_light/json_light.h"
 #include <esp_log.h>
 
+#include "zap_log.h"
+
+static const char* TAG = "data_sender";
 
 zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const char* szPayload) {
     // Create the header
@@ -36,7 +39,7 @@ DataSenderTask::DataSenderTask() {
     // Create the queue for data packages (store up to 3 packages)
     p1DataQueue = xQueueCreate(3, sizeof(DataPackage));
     if (p1DataQueue == nullptr) {
-        Serial.println("Data sender task: Failed to create queue");
+        LOG_E(TAG, "Data sender task: Failed to create queue");
     }
 }
 
@@ -70,7 +73,7 @@ void DataSenderTask::loop() {
 
 void DataSenderTask::sendJWT(const zap::Str& payload) {
     if (payload.length() == 0) {
-        Serial.println("Data sender task: Empty JWT, not sending");
+        LOG_W(TAG, "Data sender task: Empty JWT, not sending");
         return;
     }
 
@@ -95,19 +98,16 @@ void DataSenderTask::sendJWT(const zap::Str& payload) {
         int httpResponseCode = http.POST(jwt.c_str());
         
         if (httpResponseCode > 0) {
-            Serial.print("Data sender task: HTTP Response code: ");
-            Serial.println(httpResponseCode);
+            LOG_I(TAG, "HTTP Response code: %d", httpResponseCode);
             zap::Str response(http.getString().c_str());
-            Serial.print("Data sender task: Response: ");
-            Serial.println(response.c_str());
+            LOG_D(TAG, "Response: %s", response.c_str());
         } else {
-            Serial.print("Data sender task: Error code: ");
-            Serial.println(httpResponseCode);
+            LOG_W(TAG, "HTTP Error code: %d", httpResponseCode);
         }
         
         // Note: Don't call http.end() here to reuse the connection
         // The connection will be closed when needed or in the destructor
     } else {
-        Serial.println("Data sender task: Failed to connect to server");
+        LOG_E(TAG, "Failed to connect to server");
     }
 }

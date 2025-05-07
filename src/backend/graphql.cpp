@@ -4,10 +4,10 @@
 #include "crypto.h"
 #include <time.h>
 #include <HTTPClient.h>
+#include "zap_log.h" // Added for logging
 
-// At the top of the file, outside any function
-static uint8_t* sslBuffer = nullptr;
-const size_t SSL_BUFFER_SIZE = 16 * 1024;  // 16KB buffer
+// Define TAG for logging
+static const char* TAG = "graphql";
 
 zap::Str GQL::prepareGraphQLQuery(const zap::Str& rawQuery) {
     zap::Str prepared = rawQuery;
@@ -32,13 +32,12 @@ GQL::StringResponse GQL::makeGraphQLRequest(const zap::Str& query, const char* e
     zap::Str preparedQuery = prepareGraphQLQuery(query);
     zap::Str requestBody = "{\"query\":\"" + preparedQuery + "\"}";
     
-    Serial.println("Sending GraphQL request:");
-    Serial.println(requestBody.c_str());
+    LOG_D(TAG, "Sending GraphQL request: %s", requestBody.c_str());
     
     int httpResponseCode = http.POST(requestBody.c_str());
     
     if (httpResponseCode != 200) {
-        Serial.printf("HTTP Error: %d\n", httpResponseCode);
+        LOG_E(TAG, "HTTP Error: %d", httpResponseCode);
         http.end();
         return StringResponse::networkError("HTTP error: " + zap::Str(httpResponseCode));
     }
@@ -69,8 +68,7 @@ GQL::StringResponse GQL::makeGraphQLRequest(const zap::Str& query, const char* e
     }
     responseData = responseData.substring(start, end + 1);
 
-    Serial.println("Response received");
-    Serial.println(responseData.c_str());
+    LOG_D(TAG, "Response received: %s", responseData.c_str());
     http.end();
     
     // Check for GraphQL errors
@@ -156,7 +154,7 @@ GQL::StringResponse GQL::getConfiguration(const zap::Str& subKey) {
     // Create the message to sign: deviceId|timestamp
     zap::Str message = serialNumber + ":" + timestampStr;
 
-    Serial.printf("Message to sign: %s\n", message.c_str());
+    LOG_D(TAG, "Message to sign: %s", message.c_str());
     
     // Sign the message
     extern const char* PRIVATE_KEY_HEX;
@@ -198,7 +196,7 @@ GQL::StringResponse GQL::getConfiguration(const zap::Str& subKey) {
     configData.replace("\\u0022", "\"");
     configData.replace("\\u0027", "'");
 
-    Serial.printf("Configuration data: %s\n", configData.c_str());
+    LOG_D(TAG, "Configuration data: %s", configData.c_str());
     
     return StringResponse::ok(configData); 
 }

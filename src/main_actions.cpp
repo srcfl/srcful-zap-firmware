@@ -1,6 +1,10 @@
 #include "main_actions.h"
 #include <Arduino.h>    // For millis()
 
+#include "zap_log.h"
+
+static const char* TAG = "main_actions"; // Tag for logging
+
 MainActions::State MainActions::actionStates[] = {
     {Type::REBOOT, false, 0, 0},
     {Type::WIFI_DISCONNECT, false, 0, 0},
@@ -23,5 +27,5 @@ void MainActions::triggerAction(Type type, unsigned long delayMs) {
             return; // Action found and triggered
         }
     }
-    Serial.printf("MainActions: Warning - Action type %d not found in actionStates array.\n", static_cast<int>(type));
+    LOG_W(TAG, "Action type %d not found in actionStates array.\n", static_cast<int>(type));
 }

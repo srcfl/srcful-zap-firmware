@@ -8,8 +8,6 @@
 
 static const char *TAG = "request_handler";
 
-#include <Arduino.h>
-
 // --- RequestHandler Implementation ---
 
 using namespace zap::backend;
@@ -19,16 +17,15 @@ RequestHandler::RequestHandler(Externals& ext) : _ext(ext) {
 }
 
 void RequestHandler::handleRequestTask(JsonParser& configData) {
-    LOG_I(TAG, "RequestHandler: Processing configuration data");
+    LOG_I(TAG, "Processing configuration data");
 
     // extract the data string and convert it to a json string
     zap::Str data;
     if (!configData.getString("data", data)) {
-        Serial.println("RequestHandler: Failed to extract data from configuration");
+        LOG_E(TAG, "Failed to extract data from configuration");
         return;
     }
-    Serial.println("RequestHandler: Received data: ");
-    Serial.println(data.c_str());
+    LOG_I(TAG, "Received data: %s", data.c_str());
     // Replace escaped characters - TODO: Improve this handling
     //data.replace("\\u0022", "\"");
 
@@ -40,11 +37,11 @@ void RequestHandler::handleRequestTask(JsonParser& configData) {
         handleRequest(dataDoc);
     } else {
         // This is some other type of configuration data
-        Serial.println("RequestHandler: Received non-request configuration");
+        LOG_I(TAG, "Received non-request configuration");
         // Process other configuration types here if needed
     }
 
-    Serial.println("RequestHandler: Configuration processing completed");
+    LOG_I(TAG, "Configuration processing completed");
 }
 
 void RequestHandler::handleRequest(JsonParser& requestData) {
@@ -69,15 +66,7 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
         }
     }
 
-    Serial.print("RequestHandler: Processing request id=");
-    Serial.print(id.c_str());
-    Serial.print(", path=");
-    Serial.print(path.c_str());
-    Serial.print(", method=");
-    Serial.print(method.c_str());
-    Serial.print(", body=");
-    Serial.print(body.c_str());
-    Serial.println(", end");
+    LOG_I(TAG, "Processing request id=%s, path=%s, method=%s, body=%s", id.c_str(), path.c_str(), method.c_str(), body.c_str());
 
     // Validate timestamp - reject requests older than 1 minute
     struct timeval tv;
@@ -85,7 +74,7 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
     uint64_t currentTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
     // Check timestamp against current time in milliseconds
     if (timestamp < (currentTimeMs - 60000)) { // 60 seconds * 1000 ms/sec
-        Serial.printf("RequestHandler: Request too old. Timestamp: %llu, Current: %llu\n", timestamp, currentTimeMs);
+        LOG_W(TAG, "Request too old. Timestamp: %llu, Current: %llu", timestamp, currentTimeMs);
         sendErrorResponse(id, "Request too old");
         return;
     }
@@ -96,7 +85,7 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
 
     if (endpoint.type == Endpoint::UNKNOWN) {
         // No endpoint found for this path/method combination
-        Serial.println("RequestHandler: Endpoint not found");
+        LOG_W(TAG, "Endpoint not found for path: %s, method: %s", path.c_str(), method.c_str());
         sendErrorResponse(id, "Endpoint not found");
         return;
     }
@@ -114,8 +103,7 @@ void RequestHandler::handleRequest(JsonParser& requestData) {
 }
 
 void RequestHandler::sendResponse(const zap::Str& requestId, int statusCode, const zap::Str& responseData) {
-    Serial.print("RequestHandler: Sending response for request ");
-    Serial.println(requestId.c_str());
+    LOG_I(TAG, "Sending response for request %s, status: %d", requestId.c_str(), statusCode);
 
     // Get current epoch time in milliseconds
     struct timeval tv;
@@ -153,7 +141,7 @@ void RequestHandler::sendResponse(const zap::Str& requestId, int statusCode, con
     zap::Str jwt = crypto_create_jwt(header.c_str(), payload.c_str(), PRIVATE_KEY_HEX);
 
     if (jwt.length() == 0) {
-        Serial.println("RequestHandler: Failed to create JWT for response");
+        LOG_E(TAG, "Failed to create JWT for response to request %s", requestId.c_str());
         return;
     }
 
@@ -162,14 +150,9 @@ void RequestHandler::sendResponse(const zap::Str& requestId, int statusCode, con
 
     // Handle the response
     if (response.isSuccess() && response.data) {
-        Serial.print("RequestHandler: Response for request ");
-        Serial.print(requestId.c_str());
-        Serial.println(" sent successfully");
+        LOG_I(TAG, "Response for request %s sent successfully", requestId.c_str());
     } else {
-        Serial.print("RequestHandler: Failed to send response for request ");
-        Serial.println(requestId.c_str());
-        Serial.print("Error: ");
-        Serial.println(response.error.c_str());
+        LOG_E(TAG, "Failed to send response for request %s. Error: %s", requestId.c_str(), response.error.c_str());
     }
 }
 
