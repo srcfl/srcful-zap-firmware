@@ -10,10 +10,8 @@
 
 #include "config_subscription.h"
 #include "data_sender.h"
-
-// Default state update interval (5 minutes = 300,000 ms)
-const uint32_t DEFAULT_STATE_UPDATE_INTERVAL = 300000;
-
+#include "state_handler.h" // Include the new StateHandler header
+#include "ota_checker.h"   // Include the OtaChecker header
 
 class BackendApiTask {
 public:
@@ -24,28 +22,21 @@ public:
     void stop();
     
     // Set the interval for sending state updates (in milliseconds)
-    void setInterval(uint32_t interval);
-    
-    // Set the interval for fetching configuration (in milliseconds)
-    void setConfigFetchInterval(uint32_t interval);
+    void setInterval(uint32_t interval); // Will now delegate to StateHandler
     
     // Check if BLE is active
     void setBleActive(bool active);
     bool isBleActive() const;
     
     // Trigger an immediate state update
-    void triggerStateUpdate();
+    void triggerStateUpdate(); // Will now delegate to StateHandler
 
     QueueHandle_t getQueueHandle() {
         return dataSender.getQueueHandle();
     }
     
 private:
-    bool isTimeForStateUpdate(unsigned long currentTime) const;
     static void taskFunction(void* parameter);
-    void sendStateUpdate();
-
-    void _triggerStateUpdate();
     
     DataSenderTask dataSender;
     
@@ -54,14 +45,15 @@ private:
     UBaseType_t priority;
     bool shouldRun;
     
-    WifiManager* wifiManager;
-    volatile unsigned long lastUpdateTime;
-    uint32_t stateUpdateInterval;
+    WifiManager* wifiManager; // Kept for general WiFi status checks
+    
     bool bleActive;
 
-    bool triggerCalled;
-    
+
     HTTPClient http;  // Reuse HTTPClient instance
 
     GraphQLSubscriptionClient requestSubscription;
+
+    StateHandler stateHandler; // Instance of StateHandler for managing state updates
+    OtaChecker otaChecker;     // Instance of OtaChecker for OTA updates
 };
