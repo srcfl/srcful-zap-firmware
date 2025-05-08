@@ -9,6 +9,9 @@
 #include <WiFiClientSecure.h>
 #include <Update.h>
 
+#include "zap_str.h"
+
+// these structs are used to send data to the task via the queue this seems like a bit of overkill...
 // Define a struct for the OTA update request
 typedef struct {
     char url[256];
@@ -35,7 +38,7 @@ public:
     void stop();
     
     // Queue an update request
-    bool requestUpdate(const String& url, const String& version = "");
+    bool requestUpdate(const zap::Str& url, const zap::Str& version);
     
     // Check if an update is in progress
     bool isUpdateInProgress() const;

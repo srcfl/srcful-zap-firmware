@@ -8,7 +8,7 @@
 #include <freertos/task.h>
 #include "../backend/graphql.h"
 #include "../ble_handler.h"
-#include "ota_handler.h"
+#include "ota/ota_handler.h"
 #include "zap_str.h"
 
 // Crypto Info Handler
@@ -31,12 +31,6 @@ public:
 
 // Crypto Sign Handler
 class CryptoSignHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const zap::Str& contents) override;
-};
-
-// OTA Update Handler
-class OTAUpdateHandler : public EndpointFunction {
 public:
     EndpointResponse handle(const zap::Str& contents) override;
 };

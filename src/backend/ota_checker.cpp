@@ -1,7 +1,8 @@
 #include "ota_checker.h"
 #include "../firmware_version.h" 
-#include "../ota_handler.h"    
+#include "ota/ota_handler.h"    
 #include "../json_light/json_light.h" // Ensure JsonParser is included
+#include "ota/ota_handler.h"
 
 // Define TAG for logging
 static const char* TAG = "OtaChecker";
@@ -12,12 +13,11 @@ static const char* TAG = "OtaChecker";
 #define OTA_CHECK_ENDPOINT "/firmwares/latest"
 
 OtaChecker::OtaChecker()
-    : wifiManagerInstance(nullptr), lastOtaCheckTime(0),
+    : lastOtaCheckTime(0),
       otaCheckInterval(DEFAULT_OTA_CHECK_INTERVAL), initialCheckDone(false) {
 }
 
-void OtaChecker::begin(WifiManager* wifiManager) {
-    this->wifiManagerInstance = wifiManager;
+void OtaChecker::begin() {
     lastOtaCheckTime = 0;
     otaCheckInterval = 0; 
     initialCheckDone = false;
@@ -25,10 +25,6 @@ void OtaChecker::begin(WifiManager* wifiManager) {
 }
 
 void OtaChecker::loop() {
-    if (!wifiManagerInstance || !wifiManagerInstance->isConnected()) {
-        return;
-    }
-
     unsigned long currentTime = millis();
 
     if (isTimeForOtaCheck(currentTime)) {
@@ -46,10 +42,6 @@ bool OtaChecker::isTimeForOtaCheck(unsigned long currentTime) const {
 }
 
 void OtaChecker::checkForUpdate() {
-    if (!wifiManagerInstance || !wifiManagerInstance->isConnected()) {
-        LOG_W(TAG, "WiFi not connected, cannot check for OTA update.");
-        return;
-    }
 
     zap::Str deviceId = crypto_getId();
     if (deviceId.isEmpty()) {
@@ -101,6 +93,8 @@ void OtaChecker::parseFirmwareResponse(const zap::Str& payload) {
                     LOG_I(TAG, "Download URL: %s", downloadUrl.c_str());
                     LOG_I(TAG, "Hash: %s", hash.c_str());
                     // Example: OtaHandler::getInstance()->startOta(downloadUrl, hash);
+                    extern OTAHandler g_otaHandler; // Assuming OtaHandler is defined elsewhere
+                    g_otaHandler.requestOTAUpdate(downloadUrl, newVersion);
                 } else {
                     LOG_W(TAG, "Could not parse download URL or hash from binary object.");
                 }

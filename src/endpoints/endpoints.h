@@ -4,6 +4,7 @@
 
 
 #include "endpoint_handlers.h"
+#include "ota/ota_handler.h"
 #include "wifi_endpoint_handlers.h"
 #include "system_endpoint_handlers.h"
 
@@ -22,3 +23,5 @@ extern OTAUpdateHandler g_otaUpdateHandler;
 extern EchoHandler g_echoHandler;
 extern BLEStopHandler g_bleStopHandler;
 extern DebugHandler g_debugHandler;
+extern OTAUpdateHandler g_otaUpdateHandler;
+extern OTAStatusHandler g_otaStatusHandler;

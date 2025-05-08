@@ -12,7 +12,7 @@
 class OtaChecker {
 public:
     OtaChecker();
-    void begin(WifiManager* wifiManager);
+    void begin();
     void loop();
     void triggerOtaCheck();
     void setInterval(uint32_t interval);
@@ -22,7 +22,6 @@ private:
     void checkForUpdate();
     void parseFirmwareResponse(const zap::Str& payload); // Changed to zap::Str
 
-    WifiManager* wifiManagerInstance;
     HTTPClient httpClient;
     unsigned long lastOtaCheckTime;
     uint32_t otaCheckInterval;

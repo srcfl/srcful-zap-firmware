@@ -1,7 +1,7 @@
 #include "endpoint_mapper.h"
 #include "endpoint_types.h"
 // #include "../ble_handler.h"
-#include "../ota_handler.h"
+// #include "ota/ota_handler.h"
 #include "endpoint_handlers.h"
 
 // Define path constants
@@ -22,7 +22,6 @@ const char* EndpointMapper::ECHO_PATH = "/api/echo";
 
 // Global instance of OTA handler
 // TODO: The endpoint should be passed to the OTA handler
-OTAHandler g_otaHandler;
 
 NameInfoHandler g_nullHandler;
 
@@ -39,8 +38,9 @@ const Endpoint endpoints[] = {
     Endpoint(Endpoint::BLE_STOP, Endpoint::Verb::POST, EndpointMapper::BLE_STOP_PATH, g_bleStopHandler), 
     Endpoint(Endpoint::CRYPTO_SIGN, Endpoint::Verb::POST, EndpointMapper::CRYPTO_SIGN_PATH, g_cryptoSignHandler),
     Endpoint(Endpoint::ECHO, Endpoint::Verb::POST, EndpointMapper::ECHO_PATH, g_echoHandler), 
-    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_nullHandler),
-    Endpoint(Endpoint::OTA_STATUS, Endpoint::Verb::GET, EndpointMapper::OTA_STATUS_PATH, g_nullHandler)
+
+    Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_otaUpdateHandler),
+    Endpoint(Endpoint::OTA_STATUS, Endpoint::Verb::GET, EndpointMapper::OTA_STATUS_PATH, g_otaStatusHandler)
 };
 
 EndpointMapper::Iterator EndpointMapper::begin() const { return EndpointMapper::Iterator(endpoints); }
@@ -75,13 +75,6 @@ zap::Str EndpointMapper::verbToString(Endpoint::Verb verb) {
 }
 
 EndpointResponse EndpointMapper::route(const EndpointRequest& request) {
-    // Handle special cases for endpoints without a dedicated handler class
-    if (request.endpoint.type == Endpoint::OTA_UPDATE) {
-        return g_otaHandler.handleOTAUpdate(request);
-    } else if (request.endpoint.type == Endpoint::OTA_STATUS) {
-        return g_otaHandler.handleOTAStatus(request);
-    }
-    
     // If the endpoint has a handler function, call it directly
     if (&request.endpoint.handler != &g_nullHandler) {
         return request.endpoint.handler.handle(request.content);

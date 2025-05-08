@@ -42,7 +42,7 @@ void BackendApiTask::begin(WifiManager* wifiManager) {
     // stateHandler.setInterval(0); // Ensure immediate update, handled by stateHandler.begin()
     
     // Initialize OtaChecker
-    otaChecker.begin(wifiManager);
+    otaChecker.begin();
         
     xTaskCreatePinnedToCore(
         taskFunction,

@@ -17,26 +17,20 @@ void OTAHandler::stop() {
     otaTask.stop();
 }
 
-EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
+EndpointResponse OTAHandler::handleOTAUpdate(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
-    
-    if (request.endpoint.verb != Endpoint::Verb::POST) {
-        response.statusCode = 405;
-        response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
-        return response;
-    }
 
     // Parse the request body
-    JsonParser parser(request.content.c_str());
-    char url[256] = {0};
-    char version[64] = {0};
-    bool hasUrl = parser.getString("url", url, sizeof(url));
-    bool hasVersion = parser.getString("version", version, sizeof(version));
+    JsonParser parser(contents.c_str());
+    zap::Str url;
+    zap::Str version;
+    bool hasUrl = parser.getString("url", url);
+    bool hasVersion = parser.getString("version", version);
     
-    if (!hasUrl) {
+    if (!hasUrl || !hasVersion) {
         response.statusCode = 400;
-        response.data = "{\"status\":\"error\",\"message\":\"Missing firmware URL\"}";
+        response.data = "{\"status\":\"error\",\"message\":\"Missing firmware URL or version\"}";
         return response;
     }
 
@@ -48,13 +42,9 @@ EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
     }
 
     // Queue the update request
-    bool requestSuccess = otaTask.requestUpdate(
-        String(url),
-        hasVersion ? String(version) : ""
-    );
+    bool requestSuccess = requestOTAUpdate(url, version);
     
     if (requestSuccess) {
-        // otaTask.begin();    // TODO: we likely will need to stop some other tasks also...
         response.statusCode = 202; // Accepted
         response.data = "{\"status\":\"success\",\"message\":\"Update request accepted\"}";
     } else {
@@ -65,15 +55,15 @@ EndpointResponse OTAHandler::handleOTAUpdate(const EndpointRequest& request) {
     return response;
 }
 
-EndpointResponse OTAHandler::handleOTAStatus(const EndpointRequest& request) {
+bool OTAHandler::requestOTAUpdate(const zap::Str& url, const zap::Str& version) {
+    return otaTask.requestUpdate(url, version);
+}
+    
+
+EndpointResponse OTAHandler::handleOTAStatus(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    if (request.endpoint.verb != Endpoint::Verb::GET) {
-        response.statusCode = 405;
-        response.data = "{\"status\":\"error\",\"message\":\"Method not allowed\"}";
-        return response;
-    }
     
     // Check if update is in progress
     bool inProgress = otaTask.isUpdateInProgress();

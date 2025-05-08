@@ -77,7 +77,7 @@ void OTATask::stop() {
     LOG_I(TAG, "Stopped");
 }
 
-bool OTATask::requestUpdate(const String& url, const String& version) {
+bool OTATask::requestUpdate(const zap::Str& url, const zap::Str& version) {
     if (updateQueue == nullptr) {
         LOG_E(TAG, "Queue not created");
         return false;
@@ -170,10 +170,12 @@ void OTATask::taskFunction(void* parameter) {
             
             // Set update in progress flag
             if (task->statusMutex != nullptr) {
-                xSemaphoreTake(task->statusMutex, portMAX_DELAY);
-                task->updateInProgress = true;
-                task->progressPercent = 0;
-                xSemaphoreGive(task->statusMutex);
+
+                if (xSemaphoreTake(task->statusMutex, portMAX_DELAY)) {
+                    task->updateInProgress = true;
+                    task->progressPercent = 0;
+                    xSemaphoreGive(task->statusMutex);
+                }
             }
             
             // Perform the update
@@ -182,11 +184,12 @@ void OTATask::taskFunction(void* parameter) {
             
             // Update the result
             if (task->statusMutex != nullptr) {
-                xSemaphoreTake(task->statusMutex, portMAX_DELAY);
-                memcpy(&task->lastResult, &result, sizeof(OTAUpdateResult));
-                task->updateInProgress = false;
-                task->resultAvailable = true;
-                xSemaphoreGive(task->statusMutex);
+                if (xSemaphoreTake(task->statusMutex, portMAX_DELAY)) {
+                    memcpy(&task->lastResult, &result, sizeof(OTAUpdateResult));
+                    task->updateInProgress = false;
+                    task->resultAvailable = true;
+                    xSemaphoreGive(task->statusMutex);
+                }
             }
             
             // If update was successful, we might reboot here
@@ -336,9 +339,10 @@ void OTATask::updateProgress(size_t current, size_t total) {
     
     // Update the progress percentage in a thread-safe way
     if (statusMutex != nullptr) {
-        xSemaphoreTake(statusMutex, portMAX_DELAY);
-        progressPercent = newPercent;
-        xSemaphoreGive(statusMutex);
+        if (xSemaphoreTake(statusMutex, portMAX_DELAY)) {
+            progressPercent = newPercent;
+            xSemaphoreGive(statusMutex);
+        }
     }
 }
 

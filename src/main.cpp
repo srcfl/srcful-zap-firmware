@@ -15,7 +15,7 @@
 #include "backend/data_sender.h"
 #include "data/data_reader_task.h"
 #include "backend/backend_api_task.h" // Include BackendApiTask
-#include "ota_handler.h"  // Include OTA handler
+#include "ota/ota_handler.h"  // Include OTA handler
 #include "debug.h" // Include Debug header
 #include "main_action_manager.h" // Include the action manager
 #include "main_actions.h" // Include actions for triggering
@@ -33,6 +33,8 @@ WifiManager wifiManager(MDNS_NAME); // Create a WiFi manager instance, pass mDNS
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
 DataReaderTask dataReaderTask; // Create a data reader task instance
 ServerTask serverTask(80); // Create a server task instance
+
+OTAHandler g_otaHandler;
 
 // Instantiate MainActionManager directly
 MainActionManager mainActionManager;

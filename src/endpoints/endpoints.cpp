@@ -14,18 +14,27 @@
 // External variable declarations
 extern WifiManager wifiManager;
 extern BLEHandler bleHandler;
+extern OTAHandler g_otaHandler;
 
-WiFiConfigHandler g_wifiConfigHandler(wifiManager);
-SystemInfoHandler g_systemInfoHandler(wifiManager);
+
 SystemRebootHandler g_systemRebootHandler;
+
 WiFiResetHandler g_wifiResetHandler(wifiManager);
-CryptoInfoHandler g_cryptoInfoHandler;
-NameInfoHandler g_nameInfoHandler;
 WiFiStatusHandler g_wifiStatusHandler(wifiManager);
 WiFiScanHandler g_wifiScanHandler(wifiManager);
+WiFiConfigHandler g_wifiConfigHandler(wifiManager);
+SystemInfoHandler g_systemInfoHandler(wifiManager);
+
+
+CryptoInfoHandler g_cryptoInfoHandler;
+NameInfoHandler g_nameInfoHandler;
+
 InitializeHandler g_initializeHandler;
 CryptoSignHandler g_cryptoSignHandler;
-OTAUpdateHandler g_otaUpdateHandler;
+
+OTAUpdateHandler g_otaUpdateHandler(g_otaHandler);
+OTAStatusHandler g_otaStatusHandler(g_otaHandler);
+
 EchoHandler g_echoHandler;
 DebugHandler g_debugHandler;
 BLEStopHandler g_bleStopHandler(bleHandler);

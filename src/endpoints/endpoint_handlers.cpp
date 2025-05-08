@@ -90,35 +90,6 @@ EndpointResponse InitializeHandler::handle(const zap::Str& contents) {
     return response;
 }
 
-
-
-// OTA Update Handler Implementation
-EndpointResponse OTAUpdateHandler::handle(const zap::Str& contents) {
-    // Implementation for OTA update endpoint
-    EndpointResponse response;
-    response.contentType = "application/json";
-    
-    JsonParser parser(contents.c_str());
-    
-    // Parse the request content
-    char url[256] = {0};
-    bool hasUrl = parser.getString("url", url, sizeof(url));
-    
-    if (!hasUrl) {
-        response.statusCode = 400;
-        response.data = "{\"status\":\"error\",\"message\":\"Invalid JSON or missing URL\"}";
-        return response;
-    }
-    
-    // Start OTA update
-    // This would typically call an OTA update function
-    // For now, just return success
-    response.statusCode = 200;
-    response.data = "{\"status\":\"success\",\"message\":\"OTA update started\"}";
-    
-    return response;
-}
-
 // Debug Info Handler Implementation
 EndpointResponse DebugHandler::handle(const zap::Str& contents) {
     // Implementation for debug info endpoint
