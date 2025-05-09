@@ -117,9 +117,9 @@ EndpointResponse BLEStopHandler::handle(const zap::Str& contents) {
     response.contentType = "application/json";
     
     
-    MainActions::triggerAction(MainActions::Type::BLE_DISCONNECT, 3000);
+    MainActions::triggerAction(MainActions::Type::BLE_DISCONNECT, 1000);
     response.statusCode = 200;
-    response.data = "{\"status\":\"success\",\"message\":\"BLE stopping in 3 secs\"}";
+    response.data = "{\"status\":\"success\",\"message\":\"BLE stopping...\"}";
     
     return response;
 }

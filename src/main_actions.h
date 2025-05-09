@@ -15,8 +15,7 @@ class MainActions {
         struct State {
                 Type type;
                 volatile bool requested;
-                volatile unsigned long requestTime;
-                volatile unsigned long delayMs;
+                volatile unsigned long triggerTime;
         };
 
         // --- Action Trigger Function ---

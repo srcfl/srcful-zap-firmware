@@ -15,7 +15,6 @@ public:
     void begin();
     void loop();
     void triggerOtaCheck();
-    void setInterval(uint32_t interval);
 
 private:
     bool isTimeForOtaCheck(unsigned long currentTime) const;

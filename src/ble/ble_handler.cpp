@@ -27,6 +27,7 @@ BLEHandler::BLEHandler() {
     pResponseChar = nullptr;
     pServerCallbacks = nullptr;
     isAdvertising = false;
+    stopTimer = 0;
 
     // Create the queue
     _requestQueue = xQueueCreate(REQUEST_QUEUE_LENGTH, REQUEST_QUEUE_ITEM_SIZE);
@@ -109,7 +110,7 @@ void BLEHandler::init() {
 }
 
 void BLEHandler::hardStop() {
-    if (pServer != nullptr) {
+    if (pServer != nullptr && isAdvertising) {
         LOG_I(TAG, "Stopping NimBLE advertising and deinitializing...");
         NimBLEDevice::stopAdvertising();
         isAdvertising = false;
@@ -121,7 +122,9 @@ void BLEHandler::hardStop() {
 }
 
 void BLEHandler::stop() {
-    stopTimer = millis();
+    if (stopTimer == 0) {
+        stopTimer = millis();
+    }
 }
 
 bool BLEHandler::shouldHardStop(unsigned long timeout) const {
