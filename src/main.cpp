@@ -25,6 +25,9 @@
 static const char* TAG = "main"; // Tag for logging
 
 
+static constexpr LogTag TAGT = LogTag("main", ZLOG_LEVEL_INFO);
+
+
 #define IO_BUTTON 9
 
 // Global variables
@@ -161,6 +164,17 @@ void loop() {
 
     // Handle button press for WiFi reset
     int buttonState = digitalRead(IO_BUTTON);
+
+    static unsigned long lastLoggedSecond = 0; // Track the last logged second
+    if ((millis() / 1000) % 2 == 0) {
+        unsigned long currentSecond = millis() / 1000;
+        if (currentSecond != lastLoggedSecond) {
+            
+            LOG_TV(TAGT, "Hello World");
+            lastLoggedSecond = currentSecond;
+        }
+    }
+    
     
     // Button is active LOW (pressed when reading LOW)
     if (buttonState == LOW) {

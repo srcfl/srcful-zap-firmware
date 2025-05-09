@@ -23,11 +23,27 @@ static const char* level_to_string(zap_log_level_t level) {
     }
 }
 
+void zap_log_message_i(zap_log_level_t level, const char *tag, const char *format, va_list args);
+
 void zap_log_message(zap_log_level_t level, const char *tag, const char *format, ...) {
     if (level == ZLOG_LEVEL_NONE || level > current_log_level) {
         return;
     }
 
+    va_list args;
+    va_start(args, format);
+    zap_log_message_i(level, tag, format, args);
+    va_end(args);
+}
+
+void zap_log_message_f(zap_log_level_t level, const char *tag, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    zap_log_message_i(level, tag, format, args);
+    va_end(args);
+}
+
+void zap_log_message_i(zap_log_level_t level, const char *tag, const char *format, va_list args) {
     // Only attempt to log if Serial is available or if it's an error message.
     // This check relies on the Arduino Serial object's boolean conversion.
     // This basically checks if Serial is initialized in the main setup it will not react on plugging in or out
@@ -54,8 +70,8 @@ void zap_log_message(zap_log_level_t level, const char *tag, const char *format,
     if (p_log_buffer < log_buffer_end) *p_log_buffer++ = ' ';
 
     // Format the rest of the message
-    va_list args;
-    va_start(args, format);
+    // va_list args;
+    // va_start(args, format);
 
     for (const char* c = format; *c != '\0' && p_log_buffer < log_buffer_end; c++) {
         if (*c != '%') {
@@ -171,7 +187,7 @@ void zap_log_message(zap_log_level_t level, const char *tag, const char *format,
                 break;
         }
     }
-    va_end(args);
+    // va_end(args);
     *p_log_buffer = '\0'; // Null-terminate the buffer
 
     if (Serial) { // Check if Serial is connected/initialized
