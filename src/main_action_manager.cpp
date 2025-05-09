@@ -27,7 +27,12 @@ void MainActionManager::executeStateUpdate(BackendApiTask& backendApiTask) {
     backendApiTask.triggerStateUpdate();
 }
 
-void MainActionManager::checkAndExecute(WifiManager& wifiManager, BackendApiTask& backendApiTask) {
+void MainActionManager::executeBleDisconnect(BLEHandler& bleHandler) {
+    bleHandler.stop();
+}
+
+
+void MainActionManager::checkAndExecute(WifiManager& wifiManager, BackendApiTask& backendApiTask, BLEHandler& bleHandler) {
     unsigned long currentTime = millis();
 
     // Loop through all defined actions
@@ -61,6 +66,9 @@ void MainActionManager::checkAndExecute(WifiManager& wifiManager, BackendApiTask
                         break;
                     case MainActions::Type::SEND_STATE:
                         executeStateUpdate(backendApiTask);
+                        break;
+                    case MainActions::Type::BLE_DISCONNECT:
+                        executeBleDisconnect(bleHandler);
                         break;
 
                     // Add cases for other actions here

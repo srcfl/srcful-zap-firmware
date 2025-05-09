@@ -17,6 +17,11 @@ zap_log_level_t get_log_level();
 void zap_log_message(zap_log_level_t level, const char *tag, const char *format, ...);
 void zap_log_message_f(zap_log_level_t level, const char *tag, const char *format, ...);
 
+
+
+// use like:
+// static constexpr LogTag TAG = LogTag("main", ZLOG_LEVEL_INFO);
+// this will enable compile time removal of logging code that will not be used due to the log level.
 struct LogTag {
     const char* tag;
     const zap_log_level_t defaultLevel;

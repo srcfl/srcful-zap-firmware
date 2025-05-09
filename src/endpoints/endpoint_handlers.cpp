@@ -2,6 +2,7 @@
 #include "wifi/wifi_manager.h"
 #include "crypto.h"
 #include "debug.h"
+#include "main_actions.h"
 
 
 #include "config.h"
@@ -113,12 +114,10 @@ EndpointResponse BLEStopHandler::handle(const zap::Str& contents) {
     EndpointResponse response;
     response.contentType = "application/json";
     
-    // Stop BLE
-    // This would typically call a BLE stop function
-    // For now, just return success
-    bleHandler.stop();
+    
+    MainActions::triggerAction(MainActions::Type::BLE_DISCONNECT, 3000);
     response.statusCode = 200;
-    response.data = "{\"status\":\"success\",\"message\":\"BLE stopped\"}";
+    response.data = "{\"status\":\"success\",\"message\":\"BLE stopping in 3 secs\"}";
     
     return response;
 }

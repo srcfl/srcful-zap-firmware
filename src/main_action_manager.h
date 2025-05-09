@@ -2,6 +2,7 @@
 
 class WifiManager; // Forward declaration
 class BackendApiTask; // Forward declaration
+class BLEHandler; // Forward declaration
 
 class MainActionManager {
     public:
@@ -13,12 +14,13 @@ class MainActionManager {
          *        has passed and executes it.
          *        This should be called repeatedly in the main loop.
          */
-        void checkAndExecute(WifiManager& wifiManager, BackendApiTask& backendApiTask);
+        void checkAndExecute(WifiManager& wifiManager, BackendApiTask& backendApiTask, BLEHandler& bleHandler);
 
     private:
         void executeReboot();
         void executeWifiDisconnect(WifiManager& wifiManager);
         void executeStateUpdate(BackendApiTask& backendApiTask);
+        void executeBleDisconnect(BLEHandler& bleHandler);
 
         
 };

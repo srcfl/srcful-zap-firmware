@@ -22,10 +22,7 @@
 
 #include "zap_log.h" // Include crypto functions
 
-static const char* TAG = "main"; // Tag for logging
-
-
-static constexpr LogTag TAGT = LogTag("main", ZLOG_LEVEL_INFO);
+static constexpr LogTag TAG = LogTag("main", ZLOG_LEVEL_INFO);
 
 
 #define IO_BUTTON 9
@@ -55,9 +52,6 @@ const unsigned long REBOOT_PRESS_DURATION = 2000; // 2 seconds for reboot
 BLEHandler bleHandler; 
 unsigned long lastBLECheck = 0;  // Track last BLE check time
 
-
-
-
 void setup() {
 
     // --- Get and store the reset reason ---
@@ -67,7 +61,7 @@ void setup() {
     Serial.begin(115200);
     delay(1000); // Give some time for serial connection but no loop as we are not using the serial port in the actual meters
 
-    LOG_I(TAG, "\n\n--- Srcful ZAP Firmware Booting ---");
+    LOG_TI(TAG, "\n\n--- Srcful ZAP Firmware Booting ---");
 
     pinMode(LED_PIN, OUTPUT);
     pinMode(IO_BUTTON, INPUT_PULLUP); // Initialize button pin with internal pull-up
@@ -76,12 +70,12 @@ void setup() {
     digitalWrite(LED_PIN, HIGH);
 
 
-    LOG_I(TAG, "Starting setup...");
+    LOG_TI(TAG, "Starting setup...");
 
-    LOG_I(TAG, "Total heap: %d\n", ESP.getHeapSize());
-    LOG_I(TAG, "Free heap: %d\n", ESP.getFreeHeap());
-    LOG_I(TAG, "Total PSRAM: %d\n", ESP.getPsramSize());
-    LOG_I(TAG, "Free PSRAM: %d\n", ESP.getFreePsram());
+    LOG_TI(TAG, "Total heap: %d\n", ESP.getHeapSize());
+    LOG_TI(TAG, "Free heap: %d\n", ESP.getFreeHeap());
+    LOG_TI(TAG, "Total PSRAM: %d\n", ESP.getPsramSize());
+    LOG_TI(TAG, "Free PSRAM: %d\n", ESP.getFreePsram());
 
     {   // get the private key from the Preferences
         Preferences preferences;
@@ -94,7 +88,7 @@ void setup() {
             bytes_to_hex_string(privateKeyBytes, sizeof(privateKeyBytes), privateKeyHex);
             PRIVATE_KEY_HEX = privateKeyHex;
         } else {
-            LOG_I(TAG, "No private key found in Preferences");
+            LOG_TI(TAG, "No private key found in Preferences");
             uint8_t privateKey[32];
             if (crypto_create_private_key(privateKey)) {
                 // convert to hex string
@@ -105,9 +99,10 @@ void setup() {
                 // Store the private key in Preferences
                 preferences.putBytes("private_key", privateKey, sizeof(privateKey));
             } else {
-                LOG_E(TAG, "Failed to create private key!!");
+                LOG_TE(TAG, "Failed to create private key!!");
             }
         }
+
         preferences.end();
         Serial.printf("serial number: %s\n", crypto_getId().c_str());
         Serial.printf("Public key: %s\n", crypto_get_public_key(PRIVATE_KEY_HEX).c_str());
@@ -117,11 +112,11 @@ void setup() {
     // Try to connect using saved credentials first.
     // if there is no saved credentials we need to start the BLE
     if (!wifiManager.loadCredentials()) {
-        LOG_I(TAG, "No saved credentials found, starting BLE setup...");
+        LOG_TI(TAG, "No saved credentials found, starting BLE setup...");
     
         bleHandler.init();
     } else {
-        LOG_I(TAG, "Found saved credentials, attempting to connect...");
+        LOG_TI(TAG, "Found saved credentials, attempting to connect...");
     }
     
     
@@ -154,27 +149,16 @@ void setup() {
     // serverTask.begin();
 
 
-    LOG_I(TAG, "Setup completed successfully!");
-    LOG_I(TAG, "Free heap after setup: %i", ESP.getFreeHeap());
+    LOG_TI(TAG, "Setup completed successfully!");
+    LOG_TI(TAG, "Free heap after setup: %i", ESP.getFreeHeap());
 }
 
 void loop() {
     // --- Check for deferred actions FIRST ---
-    mainActionManager.checkAndExecute(wifiManager, backendApiTask); // Call method on the instance
+    mainActionManager.checkAndExecute(wifiManager, backendApiTask, bleHandler); // Call method on the instance
 
     // Handle button press for WiFi reset
-    int buttonState = digitalRead(IO_BUTTON);
-
-    static unsigned long lastLoggedSecond = 0; // Track the last logged second
-    if ((millis() / 1000) % 2 == 0) {
-        unsigned long currentSecond = millis() / 1000;
-        if (currentSecond != lastLoggedSecond) {
-            
-            LOG_TV(TAGT, "Hello World");
-            lastLoggedSecond = currentSecond;
-        }
-    }
-    
+    int buttonState = digitalRead(IO_BUTTON);  
     
     // Button is active LOW (pressed when reading LOW)
     if (buttonState == LOW) {
@@ -209,7 +193,7 @@ void loop() {
         
         if (pressDuration > CLEAR_WIFI_PRESS_DURATION) {
             // Long press confirmed and button released, now reset WiFi and restart
-            // LOG_V(TAG, "Long press confirmed! Resetting WiFi settings...");
+            LOG_TD(TAG, "Long press confirmed! Resetting WiFi settings...");
             
             // Clear WiFi credentials
             wifiManager.clearCredentials();
@@ -219,7 +203,7 @@ void loop() {
         // i.e. this is a reboot without wifi credentials clearing.
         if (pressDuration > REBOOT_PRESS_DURATION) {
             // Short press confirmed, trigger a reboot
-            // LOG_V(TAG, "Short press confirmed! Rebooting...");
+            LOG_TD(TAG, "Short press confirmed! Rebooting...");
             
             // Trigger a deferred reboot using the new system (e.g., 1 second delay)
             MainActions::triggerAction(MainActions::Type::REBOOT, 10); // Request reboot in 1000ms
@@ -234,14 +218,17 @@ void loop() {
          }
     }
 
-    // Check if the server task is running
     if (wifiManager.isConnected()) {
-        
         
         // Check if the server task is running, restart if needed
         if (!serverTask.isRunning()) {
-            Serial.println("Server task not running, restarting...");
+            LOG_TD(TAG, "Server task not running, restarting...");
             serverTask.begin();
+        }
+
+        if (bleHandler.isActive()) {
+            LOG_TV(TAG, "BLE is active, scheduling stop");
+            MainActions::triggerAction(MainActions::Type::BLE_DISCONNECT, 30 * 1000); // Request BLE disconnect in 30 seconds
         }
     }
 
@@ -250,20 +237,19 @@ void loop() {
         digitalWrite(LED_PIN, LOW);
     }
     
-    #if defined(USE_BLE_SETUP)
     // Update BLE state in data sender task and backend API task
     backendApiTask.setBleActive(bleHandler.isActive());
     
+    // TODO: move to bleHandler loop method?
     // Handle BLE request queue in the main loop
     if (millis() - lastBLECheck > 1000) {
         lastBLECheck = millis();
         bleHandler.handlePendingRequest();
     }
 
-    if (bleHandler.shouldHardStop(3000)) {
+    if (bleHandler.shouldHardStop(2000)) {
         bleHandler.hardStop();
     }
-    #endif
     
     yield();
 }

@@ -13,46 +13,44 @@
 
 // Crypto Info Handler
 class CryptoInfoHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const zap::Str& contents) override;
+    public:
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 // Name Info Handler
 class NameInfoHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const zap::Str& contents) override;
+    public:
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 // Initialize Handler
 class InitializeHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const zap::Str& contents) override;
+    public:
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 // Crypto Sign Handler
 class CryptoSignHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const zap::Str& contents) override;
+    public:
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 class DebugHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const zap::Str& contents) override;
+    public:
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 // Echo Handler - returns the data it received
 class EchoHandler : public EndpointFunction {
-public:
-    EndpointResponse handle(const zap::Str& contents) override;
+    public:
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 // BLE Stop Handler
 class BLEStopHandler : public EndpointFunction {
-    private:
-        BLEHandler & bleHandler;
     public:
-    BLEStopHandler(BLEHandler & bleHandler) : bleHandler(bleHandler) {}
-    EndpointResponse handle(const zap::Str& contents) override;
+        BLEStopHandler() {}
+        EndpointResponse handle(const zap::Str& contents) override;
 };
 
 #endif // ENDPOINT_HANDLERS_H

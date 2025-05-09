@@ -13,9 +13,7 @@
 
 // External variable declarations
 extern WifiManager wifiManager;
-extern BLEHandler bleHandler;
 extern OTAHandler g_otaHandler;
-
 
 SystemRebootHandler g_systemRebootHandler;
 
@@ -37,6 +35,6 @@ OTAStatusHandler g_otaStatusHandler(g_otaHandler);
 
 EchoHandler g_echoHandler;
 DebugHandler g_debugHandler;
-BLEStopHandler g_bleStopHandler(bleHandler);
+BLEStopHandler g_bleStopHandler;
 
 
