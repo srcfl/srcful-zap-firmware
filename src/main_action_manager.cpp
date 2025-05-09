@@ -1,13 +1,14 @@
-#include "main_action_manager.h"
-#include "main_actions.h" // Include the definitions
-#include "wifi/wifi_manager.h" // Include WifiManager header
-#include "backend/backend_api_task.h" // Include BackendApiTask header
-#include <Arduino.h>      // For millis()
-#include <WiFi.h>         // Keep for direct WiFi calls if needed, though manager is preferred
+#include <Arduino.h>      // For millis() a bit sad maybe send time to checkAndExecute instead... also better for testing
 #include <esp_system.h>   // For ESP.restart()
-// #include "debug.h"     // Include if logging is desired inside execute functions
 
-#include "zap_log.h"     // Include for logging
+#include "main_action_manager.h"
+#include "main_actions.h"
+#include "wifi/wifi_manager.h"
+#include "backend/backend_api_task.h"
+#include "ble/ble_handler.h"
+
+
+#include "zap_log.h" 
 
 static const char* TAG = "main_action_manager"; // Tag for logging
 

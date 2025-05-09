@@ -14,13 +14,14 @@
 #include "wifi/wifi_status_task.h"
 #include "backend/data_sender.h"
 #include "data/data_reader_task.h"
-#include "backend/backend_api_task.h" // Include BackendApiTask
-#include "ota/ota_handler.h"  // Include OTA handler
-#include "debug.h" // Include Debug header
-#include "main_action_manager.h" // Include the action manager
-#include "main_actions.h" // Include actions for triggering
+#include "backend/backend_api_task.h"
+#include "ota/ota_handler.h"
+#include "debug.h"
+#include "main_action_manager.h"
+#include "main_actions.h" 
+#include "ble/ble_handler.h"
 
-#include "zap_log.h" // Include crypto functions
+#include "zap_log.h"
 
 static constexpr LogTag TAG = LogTag("main", ZLOG_LEVEL_INFO);
 
@@ -48,7 +49,7 @@ bool buttonPressed = false;
 const unsigned long CLEAR_WIFI_PRESS_DURATION = 5000; // 5 seconds for long press
 const unsigned long REBOOT_PRESS_DURATION = 2000; // 2 seconds for reboot
 
-#include "ble_handler.h"
+
 BLEHandler bleHandler; 
 unsigned long lastBLECheck = 0;  // Track last BLE check time
 

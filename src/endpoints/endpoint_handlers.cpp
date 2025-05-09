@@ -4,6 +4,8 @@
 #include "debug.h"
 #include "main_actions.h"
 
+#include "backend/graphql.h"
+
 
 #include "config.h"
 

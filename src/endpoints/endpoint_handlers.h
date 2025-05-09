@@ -2,13 +2,9 @@
 #define ENDPOINT_HANDLERS_H
 
 #include "endpoint_types.h"
-#include "wifi/wifi_manager.h"
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include "../backend/graphql.h"
-#include "../ble_handler.h"
-#include "ota/ota_handler.h"
 #include "zap_str.h"
 
 // Crypto Info Handler
