@@ -8,7 +8,7 @@ static constexpr LogTag TAG = LogTag("ota_checker", ZLOG_LEVEL_DEBUG);
 
 // Define default OTA check interval
 // #define DEFAULT_OTA_CHECK_INTERVAL (30 * 60 * 1000) // 30 minutes
-#define DEFAULT_OTA_CHECK_INTERVAL (3 * 60 * 1000) // 3 minutes
+// #define DEFAULT_OTA_CHECK_INTERVAL (3 * 60 * 1000) // 3 minutes
 
 #define OTA_CHECK_BASE_URL "https://sleipner.srcful.dev/api/devices/sn/"
 #define OTA_CHECK_ENDPOINT "/firmwares/latest"
