@@ -132,7 +132,7 @@ private:
                 _length = static_cast<size_t>(written_len);
             } else {
                 // Handle potential snprintf error during writing. Clear the string.
-                if (_buffer) _buffer[0] = '\0';
+                _buffer[0] = '\0';
                 _length = 0;
             }
         }

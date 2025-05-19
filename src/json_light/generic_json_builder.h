@@ -364,7 +364,7 @@ public:
          if (written < 0 || static_cast<size_t>(written) >= remaining_capacity) {
              // Encoding error or buffer full
              _overflow = true;
-             if (_buffer && _length < _capacity) {
+             if (_length < _capacity) {
                  _buffer[_length] = '\0'; // Ensure null termination at the current point
              }
          } else {
