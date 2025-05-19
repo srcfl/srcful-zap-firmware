@@ -14,6 +14,7 @@
 #include "../src/backend/graphql.cpp"
 #include "../src/backend/request_handler.cpp"
 
+#include "../src/main_actions.cpp"
 
 #include "../src/json_light/json_light.cpp"
 #include "../src/data/decoding/ascii_decoder.cpp"
@@ -23,6 +24,7 @@
 
 #include "zap_str_test.cpp"
 #include "debug_test.cpp"
+#include "main_actions_test.cpp"
 
 #include "data/circular_buffer_test.cpp"
 #include "data/frame_detector_test.cpp"
@@ -104,6 +106,7 @@ int main() {
         zap_str_test::run();
         debug_test::run();
         request_handler_test::run();
+        main_actions_test::run();
 
         std::cout << "All tests passed!" << std::endl;
         return 0;

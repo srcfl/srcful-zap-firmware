@@ -2,6 +2,11 @@
 
 SerialClass Serial;
 
+const long millis_default_return_value = 17;
+unsigned long millis_return_value = millis_default_return_value;
+
+
+
 unsigned long millis() {
-    return 17;
+    return millis_return_value;
 }

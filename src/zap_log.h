@@ -60,4 +60,10 @@ struct LogTag {
     #define LOG_D( tag, format, ... ) 
     #define LOG_V( tag, format, ... ) 
 
+    #define LOG_TE( tag_struct, format, ... ) 
+    #define LOG_TW( tag_struct, format, ... ) 
+    #define LOG_TI( tag_struct, format, ... ) 
+    #define LOG_TD( tag_struct, format, ... ) 
+    #define LOG_TV( tag_struct, format, ... ) 
+
 #endif

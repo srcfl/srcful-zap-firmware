@@ -14,13 +14,14 @@
 #include "wifi/wifi_status_task.h"
 #include "backend/data_sender.h"
 #include "data/data_reader_task.h"
-#include "backend/backend_api_task.h" // Include BackendApiTask
-#include "ota/ota_handler.h"  // Include OTA handler
-#include "debug.h" // Include Debug header
-#include "main_action_manager.h" // Include the action manager
-#include "main_actions.h" // Include actions for triggering
+#include "backend/backend_api_task.h"
+#include "ota/ota_handler.h"
+#include "debug.h"
+#include "main_action_manager.h"
+#include "main_actions.h" 
+#include "ble/ble_handler.h"
 
-#include "zap_log.h" // Include crypto functions
+#include "zap_log.h"
 
 static constexpr LogTag TAG = LogTag("main", ZLOG_LEVEL_INFO);
 
@@ -48,7 +49,7 @@ bool buttonPressed = false;
 const unsigned long CLEAR_WIFI_PRESS_DURATION = 5000; // 5 seconds for long press
 const unsigned long REBOOT_PRESS_DURATION = 2000; // 2 seconds for reboot
 
-#include "ble_handler.h"
+
 BLEHandler bleHandler; 
 unsigned long lastBLECheck = 0;  // Track last BLE check time
 
@@ -154,8 +155,9 @@ void setup() {
 }
 
 void loop() {
+    const unsigned long currentTime = millis();
     // --- Check for deferred actions FIRST ---
-    mainActionManager.checkAndExecute(wifiManager, backendApiTask, bleHandler); // Call method on the instance
+    mainActionManager.checkAndExecute(currentTime, wifiManager, backendApiTask, bleHandler); // Call method on the instance
 
     // Handle button press for WiFi reset
     int buttonState = digitalRead(IO_BUTTON);  
@@ -175,7 +177,7 @@ void loop() {
             digitalWrite(LED_PIN, HIGH);
         } else {
             // Button is being held, check for long press
-            unsigned long pressDuration = millis() - buttonPressStartTime;
+            unsigned long pressDuration = currentTime - buttonPressStartTime;
             
             // When we reach 5 seconds threshold, start continuous fast blinking
             if (pressDuration > CLEAR_WIFI_PRESS_DURATION) {
@@ -188,7 +190,7 @@ void loop() {
         }
     } else if (buttonPressed) {
         // Button was released
-        unsigned long pressDuration = millis() - buttonPressStartTime;
+        unsigned long pressDuration = currentTime - buttonPressStartTime;
         buttonPressed = false;
         
         if (pressDuration > CLEAR_WIFI_PRESS_DURATION) {
@@ -242,8 +244,8 @@ void loop() {
     
     // TODO: move to bleHandler loop method?
     // Handle BLE request queue in the main loop
-    if (millis() - lastBLECheck > 1000) {
-        lastBLECheck = millis();
+    if (currentTime - lastBLECheck > 1000) {
+        lastBLECheck = currentTime;
         bleHandler.handlePendingRequest();
     }
 

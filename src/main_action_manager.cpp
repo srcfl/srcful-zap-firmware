@@ -1,13 +1,13 @@
-#include "main_action_manager.h"
-#include "main_actions.h" // Include the definitions
-#include "wifi/wifi_manager.h" // Include WifiManager header
-#include "backend/backend_api_task.h" // Include BackendApiTask header
-#include <Arduino.h>      // For millis()
-#include <WiFi.h>         // Keep for direct WiFi calls if needed, though manager is preferred
 #include <esp_system.h>   // For ESP.restart()
-// #include "debug.h"     // Include if logging is desired inside execute functions
 
-#include "zap_log.h"     // Include for logging
+#include "main_action_manager.h"
+#include "main_actions.h"
+#include "wifi/wifi_manager.h"
+#include "backend/backend_api_task.h"
+#include "ble/ble_handler.h"
+
+
+#include "zap_log.h" 
 
 static const char* TAG = "main_action_manager"; // Tag for logging
 
@@ -32,8 +32,8 @@ void MainActionManager::executeBleDisconnect(BLEHandler& bleHandler) {
 }
 
 
-void MainActionManager::checkAndExecute(WifiManager& wifiManager, BackendApiTask& backendApiTask, BLEHandler& bleHandler) {
-    unsigned long currentTime = millis();
+void MainActionManager::checkAndExecute(const unsigned long currentTime, WifiManager& wifiManager, BackendApiTask& backendApiTask, BLEHandler& bleHandler) {
+
 
     // Loop through all defined actions
     for (size_t i = 0; i < MainActions::numActions; ++i) {
@@ -41,19 +41,14 @@ void MainActionManager::checkAndExecute(WifiManager& wifiManager, BackendApiTask
         // Need to read volatile vars inside the loop before checking 'requested'
         if (MainActions::actionStates[i].requested) {
             const bool requested = MainActions::actionStates[i].requested; // Re-read after check for atomicity (though unlikely needed here)
-            const unsigned long requestTime = MainActions::actionStates[i].requestTime;
-            const unsigned long delayMs = MainActions::actionStates[i].delayMs;
+            const unsigned long triggerTime = MainActions::actionStates[i].triggerTime;
             const MainActions::Type actionType = MainActions::actionStates[i].type;
 
-            // Check if delay has passed (handle potential millis() rollover)
-            if (currentTime - requestTime >= delayMs) {
-                // Serial.printf("MainActionManager: Executing action %d (requested %lu ms ago, delay %lu ms).\n",
-                //        static_cast<int>(actionType), currentTime - requestTime, delayMs);
 
-                // IMPORTANT: Clear the flag *before* executing the action
+            if (triggerTime <= currentTime) {
+               
                 MainActions::actionStates[i].requested = false;
-                MainActions::actionStates[i].requestTime = 0; // Clear time info
-                MainActions::actionStates[i].delayMs = 0;
+                MainActions::actionStates[i].triggerTime = 0; // Clear time info
 
                 // Execute the action based on its type using a switch statement
                 switch (actionType) {
