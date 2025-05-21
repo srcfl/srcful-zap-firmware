@@ -8,7 +8,7 @@
 class ServerTask {
 public:
     // Constructor
-    ServerTask(int port = 80, uint32_t stackSize = 8192, UBaseType_t priority = 5);
+    explicit ServerTask(int port = 80, uint32_t stackSize = 8192, UBaseType_t priority = 5);
     
     // Initialize and start the task
     void begin();

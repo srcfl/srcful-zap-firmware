@@ -11,7 +11,7 @@ class StateHandler {
 public:
     StateHandler();
     void begin(WifiManager* wifiManager);
-    void loop();
+    void loop(const unsigned long currentTime);
     void triggerStateUpdate();
     void setInterval(uint32_t interval);
 

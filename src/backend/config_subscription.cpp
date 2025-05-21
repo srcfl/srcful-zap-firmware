@@ -37,8 +37,7 @@ public:
 RequestHandlerExternals g_requestHandlerExternals;
 
 // Constructor
-GraphQLSubscriptionClient::GraphQLSubscriptionClient(const char* wsUrl) : requestHandler(g_requestHandlerExternals) {
-    url = String(wsUrl);
+GraphQLSubscriptionClient::GraphQLSubscriptionClient(const char* wsUrl) : requestHandler(g_requestHandlerExternals), url(wsUrl) {
     parseUrl(url);
     LOG_I(TAG, "GraphQLSubscriptionClient initialized with URL: %s", wsUrl);
 }
@@ -175,9 +174,8 @@ bool GraphQLSubscriptionClient::performWebSocketHandshake() {
 }
 
 // Main loop function to handle WebSocket events
-void GraphQLSubscriptionClient::loop() {
+void GraphQLSubscriptionClient::loop(const unsigned long currentMillis) {
     if (!_isConnected) {
-        unsigned long currentMillis = millis();
         if (currentMillis - lastConnectAttempt > RECONNECT_DELAY) {
             lastConnectAttempt = currentMillis;
             LOG_I(TAG, "Attempting to reconnect WebSocket...");
@@ -187,7 +185,6 @@ void GraphQLSubscriptionClient::loop() {
     }
     
     // Check if we need to send a ping
-    unsigned long currentMillis = millis();
     if (currentMillis - lastPingTime > PING_INTERVAL) {
         LOG_D(TAG, "Websocket Sending ping");
         sendPing();
@@ -470,7 +467,7 @@ void GraphQLSubscriptionClient::sendPing() {
 // Send connection initialization message
 void GraphQLSubscriptionClient::sendConnectionInit() {
     if (_isConnected && isWebSocketHandshakeDone) {       
-        sendFrame("{\"type\":\"connection_init\", \"payload\": {}}");
+        sendFrame(zap::Str("{\"type\":\"connection_init\", \"payload\": {}}"));
         LOG_I(TAG, "Sent connection_init message");
     }
 }

@@ -10,7 +10,7 @@
 
 class WifiManager {
 public:
-    WifiManager(const char* mdnsHostname); // Update constructor signature
+    explicit WifiManager(const char* mdnsHostname); // Update constructor signature
     ~WifiManager();
 
     // Setup methods

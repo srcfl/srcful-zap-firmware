@@ -18,7 +18,7 @@ public:
             virtual EndpointResponse route(const EndpointRequest& request) = 0;
     };
 
-    RequestHandler(Externals& ext);
+    explicit RequestHandler(Externals& ext);
 
     /**
      * @brief Processes incoming configuration data, specifically looking for requests.

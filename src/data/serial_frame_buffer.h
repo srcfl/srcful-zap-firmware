@@ -31,7 +31,7 @@ public:
      * @param endDelimiter Character that marks the end of a frame
      * @param interFrameTimeout Maximum time (ms) between bytes in the same frame
      */
-    SerialFrameBuffer(
+    explicit SerialFrameBuffer(
         size_t bufferSize = 1024,
         uint8_t startDelimiter = '/',  // Default for many P1 protocols
         uint8_t endDelimiter = '!',    // Default for many P1 protocols

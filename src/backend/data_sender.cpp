@@ -34,7 +34,7 @@ zap::Str createP1JWT(const char* privateKey, const zap::Str& deviceId, const cha
     return jwt;
 }
 
-DataSenderTask::DataSenderTask() {
+DataSenderTask::DataSenderTask() : bleActive(true) {    // ble will need to be actively disabled for the sending to start
     
     // Create the queue for data packages (store up to 3 packages)
     p1DataQueue = xQueueCreate(3, sizeof(DataPackage));

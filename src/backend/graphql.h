@@ -28,7 +28,7 @@ public:
         
         // Constructors for common responses
         static Response<T> ok(const T& result) {
-            return {Status::SUCCESS, result, ""};
+            return {Status::SUCCESS, result, zap::Str()};
         }
         
         static Response<T> operationFailed(const zap::Str& errorMsg) {
@@ -48,7 +48,7 @@ public:
         }
         
         static Response<T> gqlError(const zap::Str& errorMsg) {
-            return {Status::GQL_ERROR, "", errorMsg};
+            return {Status::GQL_ERROR, T(), errorMsg};
         }
     };
     

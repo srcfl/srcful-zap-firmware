@@ -48,11 +48,11 @@ public:
      * @param delimiterConfigs A vector of FrameDelimiterInfo structs defining the supported frame types.
      * @param interFrameTimeout Maximum time (ms) between bytes in the same frame
      */
-    FrameDetector(
+    explicit FrameDetector(
         const std::vector<FrameDelimiterInfo>& delimiterConfigs,
         unsigned long interFrameTimeout = 500
     );
-    FrameDetector(unsigned long interFrameTimeout = 500)
+    explicit FrameDetector(unsigned long interFrameTimeout = 500)
         : FrameDetector({}, interFrameTimeout) {} // Default constructor with empty delimiters
     
     /**

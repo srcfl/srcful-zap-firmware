@@ -36,7 +36,7 @@ public:
     // Iterator support
     class Iterator {
     public:
-        Iterator(const Endpoint* ptr) : ptr_(ptr) {}
+        explicit Iterator(const Endpoint* ptr) : ptr_(ptr) {}
         
         // Dereference operator
         const Endpoint& operator*() const { return *ptr_; }

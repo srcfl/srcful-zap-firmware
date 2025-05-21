@@ -6,7 +6,7 @@ class WifiManager; // Forward declaration
 
 class SystemInfoHandler : public EndpointFunction {
     public:
-    SystemInfoHandler(const WifiManager& wifiManager);
+        explicit SystemInfoHandler(const WifiManager& wifiManager);
         EndpointResponse handle(const zap::Str& contents) override;
         
     private:

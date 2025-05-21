@@ -17,7 +17,7 @@ public:
      * 
      * @param bufferSize Size of the buffer in bytes
      */
-    CircularBuffer(size_t bufferSize = 1024);
+    explicit CircularBuffer(size_t bufferSize = 1024);
     
     /**
      * @brief Destroy the Circular Buffer

@@ -21,7 +21,7 @@ EndpointResponse CryptoSignHandler::handle(const zap::Str& contents) {
     bool hasTimestamp = parser.getString("timestamp", timestamp, sizeof(timestamp));
     
     // Get message to sign if provided, otherwise use an empty string
-    zap::Str messageStr = hasMessage ? zap::Str(message) : "";
+    zap::Str messageStr = hasMessage ? zap::Str(message) : zap::Str();
     
     // Check for pipe characters which are not allowed
     if (hasMessage && messageStr.indexOf('|') != -1) {
@@ -49,9 +49,9 @@ EndpointResponse CryptoSignHandler::handle(const zap::Str& contents) {
         // Generate timestamp in UTC format (Y-m-dTH:M:SZ)
         time_t now;
         time(&now);
-        char timestamp[24];
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
-        timestampStr = zap::Str(timestamp);
+        char _timestamp[24];
+        strftime(_timestamp, sizeof(_timestamp), "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
+        timestampStr = zap::Str(_timestamp);
     }
     
     // Get device serial number

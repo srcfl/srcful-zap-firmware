@@ -27,13 +27,11 @@ void StateHandler::begin(WifiManager* wifiManager) {
     initialUpdateDone = false;
 }
 
-void StateHandler::loop() {
+void StateHandler::loop(const unsigned long currentTime) {
     if (!wifiManagerInstance || !wifiManagerInstance->isConnected()) {
         // LOG_D(TAG, "WiFi not connected, skipping state update loop.");
         return;
     }
-
-    unsigned long currentTime = millis();
 
     if (isTimeForStateUpdate(currentTime)) {
         if (!initialUpdateDone) {
@@ -80,23 +78,20 @@ void StateHandler::sendStateUpdate() {
         .endObject()
         .beginObject("network")
             .beginObject("wifi")
-                .add("connected", wifiManagerInstance->isConnected() ? wifiManagerInstance->getConfiguredSSID().c_str() : "")
+                .add("connected", wifiManagerInstance->getConfiguredSSID())
                 .addArray("ssids", wifiManagerInstance->getLastScanResults())
             .endObject()
             .beginObject("address")
-                .add("ip", wifiManagerInstance->isConnected() ? wifiManagerInstance->getLocalIP().c_str() : "")
+                .add("ip", wifiManagerInstance->getLocalIP())
                 .add("port", 80)
-                .add("wlan0_mac", wifiManagerInstance->getMacAddress().c_str())
+                .add("wlan0_mac", wifiManagerInstance->getMacAddress())
                 .beginObject("interfaces")
-                    .add("wlan0", wifiManagerInstance->isConnected() ? wifiManagerInstance->getLocalIP().c_str() : "")
+                    .add("wlan0", wifiManagerInstance->getLocalIP())
                 .endObject()
             .endObject()
         .endObject()
         .add("timestamp", epochTimeMs);
     zap::Str payload = payloadBuilder.end();
-
-    // External signature key (from config.h or a secure storage)
-    extern const char* PRIVATE_KEY_HEX;
 
     // Sign and generate JWT
     zap::Str jwt = crypto_create_jwt(header.c_str(), payload.c_str(), PRIVATE_KEY_HEX);

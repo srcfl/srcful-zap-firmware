@@ -22,7 +22,7 @@ public:
     using FrameReceivedCallback = std::function<void(const IFrameData&)>;
     
     // Constructor with default values
-    P1Meter(int rxPin = P1_DEFAULT_RX_PIN, 
+    explicit P1Meter(int rxPin = P1_DEFAULT_RX_PIN, 
             int dtrPin = P1_DEFAULT_DTR_PIN, 
             int baudRate = P1_DEFAULT_BAUD_RATE);
     

@@ -11,7 +11,7 @@
 
 class WebServerHandler {
 public:
-    WebServerHandler(int port = 80);
+    explicit WebServerHandler(int port = 80);
     void begin();
     void handleClient();
     void setupEndpoints();

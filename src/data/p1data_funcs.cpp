@@ -37,9 +37,6 @@ bool createP1JWTPayload(const P1Data& p1data, char* outBuffer, size_t outBufferS
     // but we also need it in msek for the jwt format
     // This is not needed anymore and should be moved to the binary decoder and just added as the obis string
     
-    
-    zap::Str checksum = "DEAD"; // Fixed checksum for now
-    
     // Add the rows to the data object
     payload.addArray("rows", rows);
     

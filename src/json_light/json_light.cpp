@@ -679,7 +679,7 @@ zap::Str JsonParser::getStringOrEmpty(const char* key) {
     if (getString(key, value)) {
         return value;
     }
-    return "";
+    return zap::Str("");
 }
 
 bool JsonParser::getUInt64(const char* key, uint64_t& value) {

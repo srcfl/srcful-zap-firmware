@@ -47,7 +47,7 @@ esp_reset_reason_t Debug::getResetReason() {
     return lastResetReason;
 }
 
-zap::Str toHexString(CircularBuffer *pBuffer) {
+zap::Str toHexString(const CircularBuffer *pBuffer) {
     zap::Str hexString;
     hexString.reserve(pBuffer->available() * 2); // Reserve space for hex string
     char temp[3]; // 2 hex digits + null terminator

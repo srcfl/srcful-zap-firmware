@@ -123,8 +123,8 @@ void zap_log_message_i(zap_log_level_t level, const char *tag, const char *forma
                 break;
             }
             case 's': {
-                char* str = va_arg(args, char*);
-                if (str == nullptr) str = (char*)"(null)";
+                const char* str = va_arg(args, const char*);
+                if (str == nullptr) str = reinterpret_cast<const char*>("(null)");  
                 while (*str && p_log_buffer < log_buffer_end) *p_log_buffer++ = *str++;
                 break;
             }

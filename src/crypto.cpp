@@ -241,12 +241,12 @@ zap::Str crypto_get_public_key(const char* private_key_hex) {
     
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
         LOG_E(TAG, "Failed to convert private key hex to bytes");
-        return "";
+        return zap::Str();
     }
     
     if (!Crypto::generateKeyPair(privateKey, publicKey)) {
         LOG_E(TAG, "Failed to generate key pair");
-        return "";
+        return zap::Str();
     }
     
     char hex_result[129];  // Changed to 129 to accommodate 64 bytes (128 hex chars + null terminator)
@@ -257,7 +257,7 @@ zap::Str crypto_get_public_key(const char* private_key_hex) {
 zap::Str crypto_create_jwt(const char* header, const char* payload, const char* private_key_hex) {
     uint8_t privateKey[32];
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
-        return "";
+        return zap::Str();
     }
     
     // Create the JWT parts
@@ -268,7 +268,7 @@ zap::Str crypto_create_jwt(const char* header, const char* payload, const char* 
     // Create signature
     uint8_t signature[64];  // Changed to 64 bytes
     if (!Crypto::signMessage(privateKey, (const uint8_t*)signatureInput.c_str(), signatureInput.length(), signature)) {
-        return "";
+        return zap::Str();
     }
     
     // Encode signature
@@ -281,12 +281,12 @@ zap::Str crypto_create_jwt(const char* header, const char* payload, const char* 
 zap::Str crypto_create_signature_base64url(const char* data, const char* private_key_hex) {
     uint8_t privateKey[32];
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
-        return "";
+        return zap::Str();
     }
     
     uint8_t signature[64];  // Changed to 64 bytes
     if (!Crypto::signMessage(privateKey, (const uint8_t*)data, strlen(data), signature)) {
-        return "";
+        return zap::Str();
     }
     
     return base64url_encode((const char*)signature, 64);  // Changed to 64 bytes
@@ -295,12 +295,12 @@ zap::Str crypto_create_signature_base64url(const char* data, const char* private
 zap::Str crypto_create_signature_hex(const char* data, const char* private_key_hex) {
     uint8_t privateKey[32];
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
-        return "";
+        return zap::Str();
     }
     
     uint8_t signature[64];  // Changed to 64 bytes
     if (!Crypto::signMessage(privateKey, (const uint8_t*)data, strlen(data), signature)) {
-        return "";
+        return zap::Str();
     }
     
     char hex_result[129];  // Changed to 129 to accommodate 64 bytes (128 hex chars + null terminator)
@@ -314,7 +314,7 @@ zap::Str crypto_create_signature_der_hex(const char* data, const char* private_k
 
     uint8_t privateKey[32];
     if (!hex_string_to_bytes(private_key_hex, privateKey, 32)) {
-        return "";
+        return zap::Str();
     }
     
     if (!Crypto::signMessage(privateKey, (const uint8_t*)data, strlen(data), signature)) {

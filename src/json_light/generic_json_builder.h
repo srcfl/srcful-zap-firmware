@@ -175,7 +175,7 @@ public:
     }
 
     // Adds raw binary data as a hex string (already safe)
-    GenericJsonBuilder& add(const char* key, uint8_t* data, size_t size) {
+    GenericJsonBuilder& add(const char* key, const uint8_t* data, size_t size) {
         if (!_firstItem) _buffer.append(',');
         _buffer.append('"');
         _buffer.append(key);

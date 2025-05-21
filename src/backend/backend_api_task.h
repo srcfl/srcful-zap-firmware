@@ -15,7 +15,7 @@
 
 class BackendApiTask {
 public:
-    BackendApiTask(uint32_t stackSize = 1024*8, UBaseType_t priority = 5);
+    explicit BackendApiTask(uint32_t stackSize = 1024*8, UBaseType_t priority = 5);
     ~BackendApiTask();
     
     void begin(WifiManager* wifiManager);

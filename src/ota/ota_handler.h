@@ -26,7 +26,7 @@ private:
 
 class OTAUpdateHandler : public EndpointFunction {
     public:
-        OTAUpdateHandler(OTAHandler& handler) : handler(handler) {}
+        explicit OTAUpdateHandler(OTAHandler& handler) : handler(handler) {}
         EndpointResponse handle(const zap::Str& contents) override {
             return handler.handleOTAUpdate(contents);
         }
@@ -36,7 +36,7 @@ class OTAUpdateHandler : public EndpointFunction {
 
 class OTAStatusHandler : public EndpointFunction {
     public:
-        OTAStatusHandler(OTAHandler& handler) : handler(handler) {}
+        explicit OTAStatusHandler(OTAHandler& handler) : handler(handler) {}
         EndpointResponse handle(const zap::Str& contents) override {
             return handler.handleOTAStatus(contents);
         }

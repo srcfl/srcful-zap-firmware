@@ -25,8 +25,7 @@ void OtaChecker::begin() {
     httpClient.setTimeout(15000); 
 }
 
-void OtaChecker::loop() {
-    unsigned long currentTime = millis();
+void OtaChecker::loop(const unsigned long currentTime) {
 
     if (isTimeForOtaCheck(currentTime)) {
         if (!initialCheckDone) {

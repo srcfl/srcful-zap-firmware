@@ -57,7 +57,7 @@ struct EndpointResponse {
 
 // Request structure that normalizes input from both BLE and HTTP
 struct EndpointRequest {
-    EndpointRequest(const Endpoint& endpoint) : endpoint(endpoint), offset(0) {}
+    explicit EndpointRequest(const Endpoint& endpoint) : endpoint(endpoint), offset(0) {}
     const Endpoint& endpoint;
     zap::Str content;
     int offset;

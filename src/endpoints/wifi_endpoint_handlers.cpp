@@ -47,6 +47,10 @@ EndpointResponse WiFiConfigHandler::handle(const zap::Str& contents) {
             response.statusCode = 500;
             response.data = "{\"status\":\"error\",\"message\":\"Failed to connect with provided credentials\"}";
         }
+    } else {
+        LOG_W(TAG, "Empty request body");
+        response.statusCode = 400;
+        response.data = "{\"status\":\"error\",\"message\":\"Empty request body\"}";
     }
     
     return response;
@@ -107,7 +111,8 @@ EndpointResponse WiFiScanHandler::handle(const zap::Str& contents) {
     wifiManager.setScanWiFiNetworks(true);
     json.add("status", "sucess");
     json.add("message", "scan initiated");
-    
+
+    response.statusCode = 200;
     response.data = json.end();
     return response;
 }

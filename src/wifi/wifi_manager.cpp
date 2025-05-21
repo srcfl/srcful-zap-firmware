@@ -15,7 +15,8 @@ WifiManager::WifiManager(const char* mdnsHostname)
     : _isProvisioned(false), 
       _lastScanTime(0),
       _mdnsHostname(mdnsHostname),
-      _scanWiFiNetworks(true) {
+      _scanWiFiNetworks(true),
+      _connectToWiFiProcessing(false)  {
     
     LOG_D(TAG, "Initializing WiFi Manager...");
     
@@ -137,7 +138,7 @@ void WifiManager::scanWiFiNetworks() {
         // Store unique SSIDs (some networks might broadcast on multiple channels)
         std::vector<zap::Str> uniqueSSIDs;
         for (int i = 0; i < n; ++i) {
-            zap::Str ssid = WiFi.SSID(i).c_str();
+            zap::Str ssid(WiFi.SSID(i).c_str());
             if (std::find(uniqueSSIDs.begin(), uniqueSSIDs.end(), ssid) == uniqueSSIDs.end()) {
                 uniqueSSIDs.push_back(ssid);
             }
@@ -166,7 +167,7 @@ bool WifiManager::isConnected() const {
 }
 
 zap::Str WifiManager::getLocalIP() const {
-    return WiFi.localIP().toString().c_str();
+    return zap::Str(WiFi.localIP().toString().c_str());
 }
 
 zap::Str WifiManager::getMacAddress() const {

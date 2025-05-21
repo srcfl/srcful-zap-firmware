@@ -23,7 +23,7 @@ GQL::StringResponse GQL::makeGraphQLRequest(const zap::Str& query, const char* e
     http.setTimeout(10000);
     
     if (!http.begin(endpoint)) {
-        return StringResponse::networkError("Unable to begin HTTP connection");
+        return StringResponse::networkError(zap::Str("Unable to begin HTTP connection"));
     }
     
     http.addHeader("Content-Type", "application/json");
@@ -60,11 +60,11 @@ GQL::StringResponse GQL::makeGraphQLRequest(const zap::Str& query, const char* e
     //
     //
 
-    size_t start = responseData.indexOf('{');
-    size_t end = responseData.lastIndexOf('}');
+    const int start = responseData.indexOf('{');
+    const int end = responseData.lastIndexOf('}');
     if (start < 0 || end < 0 || start >= end) {
         http.end();
-        return StringResponse::invalidResponse("Invalid response format");
+        return StringResponse::invalidResponse(zap::Str("Invalid response format"));
     }
     responseData = responseData.substring(start, end + 1);
 
@@ -103,7 +103,7 @@ GQL::StringResponse GQL::fetchGatewayName(const zap::Str& serialNumber) {
 
     JsonParser parser(response.data.c_str());
     if (!parser.getStringByPath("data.gatewayConfiguration.gatewayName.name", name)) {
-        return StringResponse::invalidResponse("Invalid response structure");;
+        return StringResponse::invalidResponse(zap::Str("Invalid response structure"));
     }
     
     return StringResponse::ok(name);
@@ -130,11 +130,11 @@ GQL::BoolResponse GQL::setConfiguration(const zap::Str& jwt) {
 
     JsonParser parser(response.data.c_str());
     if (!parser.getBoolByPath("data.setConfiguration.success", successValue)) {
-        return BoolResponse::invalidResponse("No success field in response");
+        return BoolResponse::invalidResponse(zap::Str("No success field in response"));
     }
     
     if (!successValue) {
-        return BoolResponse::operationFailed("Server reported operation failure");
+        return BoolResponse::operationFailed(zap::Str("Server reported operation failure"));
     }
     
     return BoolResponse::ok(true);
@@ -186,11 +186,11 @@ GQL::StringResponse GQL::getConfiguration(const zap::Str& subKey) {
 
     if (parser.isFieldNullByPath("data.gatewayConfiguration.configuration.data")) {
         // Handle null data case - return empty string
-        return StringResponse::ok("");
+        return StringResponse::ok(zap::Str(""));
     }
     
     if (!parser.getStringByPath("data.gatewayConfiguration.configuration.data", configData)) {
-        return StringResponse::invalidResponse("No configuration data in response");
+        return StringResponse::invalidResponse(zap::Str("No configuration data in response"));
     }
     // the configuration data is a json string within the json object, the " are escaped
     configData.replace("\\u0022", "\"");

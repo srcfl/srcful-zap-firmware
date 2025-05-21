@@ -13,7 +13,7 @@ class OtaChecker {
 public:
     OtaChecker();
     void begin();
-    void loop();
+    void loop(const unsigned long currentTime);
     void triggerOtaCheck();
 
 private:

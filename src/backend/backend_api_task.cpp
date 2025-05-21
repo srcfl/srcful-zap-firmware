@@ -88,13 +88,13 @@ void BackendApiTask::taskFunction(void* parameter) {
     vTaskDelay(pdMS_TO_TICKS(2000));
     
     while (task->shouldRun) {
-        unsigned long currentTime = millis(); // Keep for other potential uses or remove if only for state update timing
+        const unsigned long currentTime = millis(); // Keep for other potential uses or remove if only for state update timing
 
         if (task->wifiManager && task->wifiManager->isConnected() && !task->bleActive) {
             task->dataSender.loop();
-            task->requestSubscription.loop();
-            task->stateHandler.loop(); // Call StateHandler's loop
-            task->otaChecker.loop();   // Call OtaChecker's loop
+            task->requestSubscription.loop(currentTime);
+            task->stateHandler.loop(currentTime); // Call StateHandler's loop
+            task->otaChecker.loop(currentTime);   // Call OtaChecker's loop
         }
         
         // Small delay to prevent task from hogging CPU

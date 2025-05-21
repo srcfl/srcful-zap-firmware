@@ -48,7 +48,7 @@ private:
     
 public:
     // Constructor for full buffer
-    JsonParser(const char* jsonData) 
+    explicit JsonParser(const char* jsonData) 
         : data(jsonData), 
           dataLen(strlen(jsonData)), 
           startPos(0), 

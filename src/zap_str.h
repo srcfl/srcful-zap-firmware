@@ -58,11 +58,11 @@ private:
 
         // Allocate or reallocate memory
         if (_buffer) {
-            char* newBuffer = (char*)realloc(_buffer, newCapacity);
+            char* newBuffer = reinterpret_cast<char*>(realloc(_buffer, newCapacity));
             if (!newBuffer) return false;
             _buffer = newBuffer;
         } else {
-            _buffer = (char*)malloc(newCapacity);
+            _buffer = reinterpret_cast<char*>(malloc(newCapacity));
             if (!_buffer) return false;
             _buffer[0] = '\0'; // Initialize as empty string
         }
@@ -76,7 +76,7 @@ private:
         reserve(1); // Reserve space for at least the null terminator
     }
 
-    Str(const char* cstr) : _buffer(nullptr), _length(0), _capacity(0) {
+    explicit Str(const char* cstr) : _buffer(nullptr), _length(0), _capacity(0) {
         if (cstr) {
             _length = strlen(cstr);
             if (reserve(_length + 1)) {
@@ -87,7 +87,7 @@ private:
         }
     }
 
-    Str(char c) : _buffer(nullptr), _length(0), _capacity(0) {
+    explicit Str(char c) : _buffer(nullptr), _length(0), _capacity(0) {
         if (reserve(2)) {
             _buffer[0] = c;
             _buffer[1] = '\0';
@@ -425,7 +425,7 @@ private:
         size_t subLen = endIndex - beginIndex;
         
         // Create a temporary buffer for the substring
-        char* temp = (char*)malloc(subLen + 1);
+        char* temp = reinterpret_cast<char*>(malloc(subLen + 1));
         if (!temp) return Str(); // Return empty string on allocation failure
         
         // Copy the substring
@@ -627,7 +627,7 @@ private:
         // Create a new buffer for the result
         // We'll allocate more than needed to avoid frequent reallocation
         size_t maxNewLen = _length + (_length / fromLen + 1) * (toLen > fromLen ? (toLen - fromLen) : 0) + 1;
-        char* newBuf = (char*)malloc(maxNewLen);
+        char* newBuf = reinterpret_cast<char*>(malloc(maxNewLen));
         if (!newBuf) {
             return; // Memory allocation failed
         }

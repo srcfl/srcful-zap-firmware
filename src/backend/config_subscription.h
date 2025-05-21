@@ -43,13 +43,13 @@ private:
 
 public:
 
-    GraphQLSubscriptionClient(const char* wsUrl);
+    explicit GraphQLSubscriptionClient(const char* wsUrl);
     
     // Initialize connection
     bool begin();
     
     // Must be called in the main loop
-    void loop();
+    void loop(const unsigned long currentMillis);
     
     // Restart connection
     void restart();

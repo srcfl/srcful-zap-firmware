@@ -52,9 +52,9 @@ const Endpoint& EndpointMapper::toEndpoint(const zap::Str& path, const zap::Str&
     static const Endpoint unknownEndpoint = Endpoint(Endpoint::UNKNOWN, Endpoint::Verb::UNKNOWN, "", g_nullHandler);
     
     for (const Endpoint& endpoint : endpointMapper) {
-    // Use endpoint here
         if (path == endpoint.path && endpoint.verb == eVerb) return endpoint;
     }
+    
     return unknownEndpoint;
 }
 
@@ -67,10 +67,10 @@ Endpoint::Verb EndpointMapper::stringToVerb(const zap::Str& verb) {
 
 zap::Str EndpointMapper::verbToString(Endpoint::Verb verb) {
     switch (verb) {
-        case Endpoint::Verb::GET: return "GET";
-        case Endpoint::Verb::POST: return "POST";
-        case Endpoint::Verb::DELETE: return "DELETE";
-        default: return "UNKNOWN";
+        case Endpoint::Verb::GET: return zap::Str("GET");
+        case Endpoint::Verb::POST: return zap::Str("POST");
+        case Endpoint::Verb::DELETE: return zap::Str("DELETE");
+        default: return zap::Str("UNKNOWN");
     }
 }
 

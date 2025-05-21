@@ -74,7 +74,7 @@ bool P1Meter::update() {
     // Read available data
     while ((availableBytes = _serial.available()) > 0) {
         LOG_V(TAG, "Available bytes: %d", availableBytes);
-        size_t leftInBuffer = bufferSize - readBytes;
+        const int leftInBuffer = bufferSize - readBytes;
         if (leftInBuffer <= 0) {
             break;
         }
