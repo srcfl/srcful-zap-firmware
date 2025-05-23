@@ -14,16 +14,21 @@ static const char* TAG = "p1_meter";
 #define P1_DEFAULT_END_CHAR 0x7E
 #define P1_FRAME_TIMEOUT 500 // ms between bytes in same frame
 
-P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate)
+// Constructor updated to include output pins
+P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate, int txOutPin, int dtrOutPin, int ledPin)
     : _rxPin(rxPin),
       _dtrPin(dtrPin),
       _baudRate(baudRate),
-      _serial(1), // Use UART1
-      _frameBuffer(P1_DEFAULT_BUFFER_SIZE, P1_DEFAULT_START_CHAR, P1_DEFAULT_END_CHAR, P1_FRAME_TIMEOUT), // Removed serialPortSpeed from this call
+      _txOutPin(txOutPin),
+      _dtrOutPin(dtrOutPin),
+      _ledPin(ledPin),
+      _serial(1), // Use UART1 for input
+      _outputSerial(2), // Use UART2 for output
+      _frameBuffer(P1_DEFAULT_BUFFER_SIZE, P1_DEFAULT_START_CHAR, P1_DEFAULT_END_CHAR, P1_FRAME_TIMEOUT),
       _lastDataTime(0),
       _frameCallback(nullptr) {
     
-    LOG_I(TAG, "P1Meter constructor called");
+    LOG_I(TAG, "P1Meter constructor called with output forwarding support");
     
     // Set up frame buffer callback
     _frameBuffer.setFrameCallback([this](const IFrameData& frame) -> bool {
@@ -33,95 +38,107 @@ P1Meter::P1Meter(int rxPin, int dtrPin, int baudRate)
 
 P1Meter::~P1Meter() {
     LOG_I(TAG, "P1Meter destructor called");
+    if (_dtrOutPin >= 0) {
+        digitalWrite(_dtrOutPin, LOW); // Optionally turn off DTR for output device
+    }
+    if (_ledPin >= 0) {
+        digitalWrite(_ledPin, HIGH); // Ensure LED is off
+    }
 }
 
 bool P1Meter::begin() {
-    LOG_I(TAG, "Initializing P1 meter...");
+    LOG_I(TAG, "Initializing P1 meter with output forwarding...");
     
-    // Configure DTR pin
+    // Configure DTR pin for input P1 port
     if (_dtrPin >= 0) {
         pinMode(_dtrPin, OUTPUT);
-        digitalWrite(_dtrPin, HIGH); // Enable P1 port
-        LOG_D(TAG, "Set DTR pin %d HIGH", _dtrPin);
+        digitalWrite(_dtrPin, HIGH); // Enable P1 input port
+        LOG_D(TAG, "Set input DTR pin %d HIGH", _dtrPin);
     }
     
-    // Initialize serial
-    // try {
-        _serial.setRxBufferSize(2048); // Set RX buffer size
-        _serial.begin(_baudRate, SERIAL_8N1, _rxPin, -1, true); // Inverted logic
-        LOG_I(TAG, "Initialized UART1 with baud rate %d, RX pin %d", _baudRate, _rxPin);
-    // } catch (...) {
-    //     LOG_E(TAG, "EXCEPTION: Failed to initialize P1 serial");
-    //     return false;
-    // }
+    // Initialize input serial (UART1)
+    _serial.setRxBufferSize(2048);
+    _serial.begin(_baudRate, SERIAL_8N1, _rxPin, -1, true); // RX on _rxPin, TX for UART1 not used for input
+    LOG_I(TAG, "Initialized input UART1 with baud rate %d, RX pin %d", _baudRate, _rxPin);
+
+    // Initialize output serial (UART2)
+    // RX for UART2 not used for output, TX on _txOutPin
+    _outputSerial.begin(_baudRate, SERIAL_8N1, -1, _txOutPin); 
+    LOG_I(TAG, "Initialized output UART2 with baud rate %d, TX pin %d", _baudRate, _txOutPin);
+
+    // Configure DTR pin for output device (as GPIO)
+    if (_dtrOutPin >= 0) {
+        pinMode(_dtrOutPin, OUTPUT);
+        digitalWrite(_dtrOutPin, HIGH); // Set DTR for output device (e.g., active)
+        LOG_D(TAG, "Set output DTR pin %d HIGH", _dtrOutPin);
+    }
+
+    // Configure LED pin
+    if (_ledPin >= 0) {
+        pinMode(_ledPin, OUTPUT);
+        digitalWrite(_ledPin, HIGH); // Assuming HIGH is LED OFF initially
+        LOG_D(TAG, "Initialized LED pin %d", _ledPin);
+    }
     
     // Reset state
     clearBuffer();
-    // _protocolDetected = false;
     _lastDataTime = millis();
     
-    LOG_I(TAG, "P1 meter initialized successfully");
+    LOG_I(TAG, "P1 meter with output forwarding initialized successfully");
     return true;
 }
 
 bool P1Meter::update() {
     bool dataProcessed = false;
     int availableBytes;
-    static const int bufferSize = 1024;
-    static uint8_t buffer[bufferSize];
-    size_t readBytes = 0;
+    static const int localBufferSize = 256; // Smaller buffer for chunking reads/writes
+    static uint8_t buffer[localBufferSize];
+    size_t totalBytesReadThisUpdate = 0;
+    static unsigned long ledOnTime = 0; // LED state for toggling
     
-    // Read available data
+    // Read available data in chunks
     while ((availableBytes = _serial.available()) > 0) {
-        LOG_V(TAG, "Available bytes: %d", availableBytes);
-        const int leftInBuffer = bufferSize - readBytes;
-        if (leftInBuffer <= 0) {
-            break;
+        digitalWrite(_ledPin, HIGH); // Turn LED ON
+        size_t bytesToRead = (availableBytes > localBufferSize) ? localBufferSize : availableBytes;
+        size_t bytesActuallyRead = _serial.readBytes(buffer, bytesToRead);
+        ledOnTime = millis(); // Update LED ON time
+
+        if (bytesActuallyRead > 0) {
+            _lastDataTime = millis();
+            totalBytesReadThisUpdate += bytesActuallyRead;
+
+            // 1. Forward data to _outputSerial
+            // if (_ledPin >= 0) {
+            // }
+            _outputSerial.write(buffer, bytesActuallyRead);
+            // if (_ledPin >= 0) {
+            // }
+            // LOG_I(TAG, "Forwarded %i bytes to output serial", bytesActuallyRead);
+
+            // 2. Add data to frameBuffer for P1 frame processing
+            if (_frameBuffer.addData(buffer, bytesActuallyRead, _lastDataTime)) {
+                dataProcessed = true; // Indicates frame buffer processed something (might have completed a frame)
+            }
+        } else {
+            // readBytes returned 0, break to avoid busy loop if _serial.available() is buggy
+            break; 
         }
-
-        readBytes += _serial.readBytes(&buffer[readBytes], availableBytes < leftInBuffer ? availableBytes : leftInBuffer);
-        // LOG_V(TAG, "Read bytes: %d", readBytes);
-        
-        // LOG_V(TAG, "%02X ", inByte); // Example for logging hex bytes if needed
-        // Process byte through frame buffer
-        // if (_frameBuffer.addByte(inByte)) {
-        //     dataProcessed = true;
-        // }
-        _lastDataTime = millis();
     }
-
-    if (readBytes) {
-        
-        LOG_V(TAG, "Processing read bytes: %d", readBytes);
-        if (_frameBuffer.addData(buffer, readBytes, _lastDataTime)) {
-            dataProcessed = true;
-        }
-    }
-
     
-    // Check for timeouts and process any frames that might be complete
+    // Check for timeouts and process any frames that might be complete due to timeout
     if (_frameBuffer.processBufferForFrames(millis())) {
+       
         dataProcessed = true;
     }
+
+    if (!dataProcessed) {
+        // Check if LED should be turned off
+        if (_ledPin >= 0 && (millis() - ledOnTime > 500)) { // Turn off after 1 second of inactivity
+            digitalWrite(_ledPin, LOW); // Turn LED OFF
+        }
+    }
     
-    // Try to detect protocol if needed
-    // if (!_protocolDetected) {
-    //     if (getBufferUsed() > 30 || millis() - _lastDataTime > PROTOCOL_DETECTION_TIMEOUT) {
-    //         detectProtocol();
-    //     }
-    // } else if (_reader) {
-    //     // If protocol detected, process data with the appropriate reader
-    //     try {
-    //         if (_reader->hasNewData()) {
-    //             dataProcessed = _reader->processData();
-    //         }
-    //     } catch (...) {
-    //         LOG_E(TAG, "ERROR: Exception in reader processData()");
-    //         return false;
-    //     }
-    // }
-    
-    return dataProcessed;
+    return dataProcessed; // Returns true if data was added to frame buffer or a frame was processed
 }
 
 int P1Meter::getBufferSize() const {
@@ -149,8 +166,6 @@ bool P1Meter::onFrameDetected(const IFrameData& frame) {
     if (_frameCallback) {
         _frameCallback(frame);
     }
-    
-    // Here would be a good place to integrate with protocol detection or decoding
     
     return true;
 }
