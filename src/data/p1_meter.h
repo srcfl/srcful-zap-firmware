@@ -20,7 +20,12 @@
 
 class P1Meter {
 public:
-    using FrameReceivedCallback = std::function<void(const IFrameData&)>; 
+    using FrameReceivedCallback = std::function<void(const IFrameData&)>;
+    
+    struct Config {
+        unsigned long baudRate;
+        uint32_t config; // Serial configuration (e.g., SERIAL_8N1)
+    };
     
     explicit P1Meter(int rxPin = P1_DEFAULT_RX_PIN, 
             int dtrPin = P1_DEFAULT_DTR_PIN, 
@@ -29,8 +34,13 @@ public:
             int ledPin = P1_DEFAULT_LED_PIN);      // New parameter
     
     ~P1Meter();
+
     
-    bool begin(int baudRate = P1_DEFAULT_BAUD_RATE);
+    const Config* configs() const;
+    size_t getNumConfigs() const;
+    const Config& getConfig(size_t index) const; 
+    
+    bool begin(const Config& config);
     bool update();
     
     int getBufferSize() const;

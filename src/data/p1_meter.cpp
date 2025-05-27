@@ -40,7 +40,24 @@ P1Meter::~P1Meter() {
     }
 }
 
-bool P1Meter::begin(int baudRate) {
+static const P1Meter::Config CONFIGS[] = {{9600, SERIAL_7E1}, {115200, SERIAL_8N1}};
+const P1Meter::Config* P1Meter::configs() const {
+   return CONFIGS;   
+}
+
+size_t P1Meter::getNumConfigs() const {
+    return sizeof(CONFIGS) / sizeof(Config);
+}
+
+const P1Meter::Config& P1Meter::getConfig(size_t index) const {
+    if (index < getNumConfigs()) {
+        return CONFIGS[index];
+    }
+    LOG_E(TAG, "Invalid config index %zu", index);
+    return CONFIGS[0]; // Return default config if index is invalid
+}
+
+bool P1Meter::begin(const Config& config) {
     LOG_I(TAG, "Initializing P1 meter with output forwarding...");
 
     // baudRate = 9600; // HARDCODE BAD
@@ -69,9 +86,9 @@ bool P1Meter::begin(int baudRate) {
     // Initialize input serial (UART1)
     _serial.setRxBufferSize(2048); delay(100);
     _serial.setTxBufferSize(2048); delay(100);
-    _serial.begin(baudRate, SERIAL_8N1, _rxPin, _txOutPin); delay(100);// RX on _rxPin, TX for UART1 not used for input
+    _serial.begin(config.baudRate, config.config, _rxPin, _txOutPin); delay(100);// RX on _rxPin, TX for UART1 not used for input
     _serial.setRxInvert(true); delay(100); // Invert RX signal for P1 meter compatibility
-    LOG_I(TAG, "Initialized input UART1 with baud rate %d, RX pin %d", baudRate, _rxPin);
+    LOG_I(TAG, "Initialized input UART1 with baud rate %d, config %d", config.baudRate, config.baudRate);
 
     // Configure LED pin
     if (_ledPin >= 0) {

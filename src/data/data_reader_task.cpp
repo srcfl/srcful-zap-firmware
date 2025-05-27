@@ -8,21 +8,6 @@
 // Define TAG for logging
 static const char* TAG = "data_reader_task";
 
-
-const int COMMON_BAUD_RATES[] = {
- //   9600,   // Sometimes used by older or specific P1 meters
-    115200, // Standard for most modern P1 meters
-    // 19200,
-    // 38400,
-    // 57600
-    // // You could add higher rates if you suspect some meters might use them,
-    // but the above cover the most typical scenarios for P1.
-    // 230400,
-    // 460800,
-    // 921600
-};
-const size_t NUM_COMMON_BAUD_RATES = sizeof(COMMON_BAUD_RATES) / sizeof(COMMON_BAUD_RATES[0]);
-
 DataReaderTask::DataReaderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
       p1DataQueue(nullptr), readInterval(10000), lastReadTime(0), baudRateIx(0) {
@@ -42,7 +27,7 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
         this->handleFrame(frame);
     });
 
-    if (!p1Meter.begin(COMMON_BAUD_RATES[baudRateIx])) {
+    if (!p1Meter.begin(p1Meter.getConfig(baudRateIx))) {
         LOG_E(TAG, "Failed to initialize P1 meter");
     }
 
@@ -164,16 +149,15 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
 }
 
 void DataReaderTask::rotateP1MeterBaudRate() {
-    if (NUM_COMMON_BAUD_RATES > 1) {
-        baudRateIx = (baudRateIx + 1) % NUM_COMMON_BAUD_RATES;
-        int newBaudRate = COMMON_BAUD_RATES[baudRateIx];
+    if (p1Meter.getNumConfigs() > 1) {
+        baudRateIx = (baudRateIx + 1) % p1Meter.getNumConfigs();
         
-        LOG_D(TAG, "Rotating P1 meter baud rate to %d", newBaudRate);
+        LOG_D(TAG, "Rotating P1 meter condfig to %d", baudRateIx);
         
-        if (!p1Meter.begin(newBaudRate)) {
-            LOG_E(TAG, "Failed to reinitialize P1 meter with baud rate %d", newBaudRate);
+        if (!p1Meter.begin(p1Meter.getConfig(baudRateIx))) {
+            LOG_E(TAG, "Failed to reinitialize P1 meter with config ix", baudRateIx);
         } else {
-            LOG_I(TAG, "P1 meter reinitialized successfully with baud rate %d", newBaudRate);
+            LOG_I(TAG, "P1 meter reinitialized successfully with config ix", baudRateIx);
         }
     }
 
