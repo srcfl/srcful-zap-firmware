@@ -5,7 +5,7 @@
 namespace zap_str_test {
 
     int test_replace() {
-        zap::Str str = "Hello, \\u0022World!\\u0022";
+        zap::Str str("Hello, \\u0022World!\\u0022");
         str.replace("\\u0022", "\"");
         str.replace("World", "Zap");
         assert(str == "Hello, \"Zap!\"");
@@ -13,7 +13,7 @@ namespace zap_str_test {
     }
 
     int test_complex_replace() {
-        zap::Str str = "{\"data\":{\"gatewayConfiguration\":{\"configuration\":{\"data\":\"{\\u0022status\\u0022: {\\u0022uptime\\u0022: 13615, \\u0022version\\u0022: \\u00221.0.3\\u0022}, \\u0022timestamp\\u0022: 1745331729711}\"}}}}";
+        zap::Str str("{\"data\":{\"gatewayConfiguration\":{\"configuration\":{\"data\":\"{\\u0022status\\u0022: {\\u0022uptime\\u0022: 13615, \\u0022version\\u0022: \\u00221.0.3\\u0022}, \\u0022timestamp\\u0022: 1745331729711}\"}}}}");
     
         str.replace("\\u0022", "\"");
 

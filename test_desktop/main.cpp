@@ -68,7 +68,7 @@ int test_decoder_frame() {
     DLMSDecoder decoder;
 
     // Provide a type ID (e.g., 0 for DLMS, 1 for ASCII - adjust as needed)
-    FrameData frameData(faulty_aidon_frame_2, sizeof(faulty_aidon_frame_2)); 
+    FrameData frameData(output_input_data, sizeof(output_input_data)); 
 
     decoder.decodeBuffer(frameData, p1data);
 

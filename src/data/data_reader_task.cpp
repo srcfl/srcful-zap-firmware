@@ -8,9 +8,24 @@
 // Define TAG for logging
 static const char* TAG = "data_reader_task";
 
+
+const int COMMON_BAUD_RATES[] = {
+ //   9600,   // Sometimes used by older or specific P1 meters
+    115200, // Standard for most modern P1 meters
+    // 19200,
+    // 38400,
+    // 57600
+    // // You could add higher rates if you suspect some meters might use them,
+    // but the above cover the most typical scenarios for P1.
+    // 230400,
+    // 460800,
+    // 921600
+};
+const size_t NUM_COMMON_BAUD_RATES = sizeof(COMMON_BAUD_RATES) / sizeof(COMMON_BAUD_RATES[0]);
+
 DataReaderTask::DataReaderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
-      p1DataQueue(nullptr), readInterval(10000), lastReadTime(0) {
+      p1DataQueue(nullptr), readInterval(10000), lastReadTime(0), baudRateIx(0) {
 }
 
 DataReaderTask::~DataReaderTask() {
@@ -27,7 +42,7 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
         this->handleFrame(frame);
     });
 
-    if (!p1Meter.begin()) {
+    if (!p1Meter.begin(COMMON_BAUD_RATES[baudRateIx])) {
         LOG_E(TAG, "Failed to initialize P1 meter");
     }
 
@@ -137,6 +152,7 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     if (isDecoded) {
         Debug::addFrame();
         enqueueData(p1data);
+        lastReadTime = millis();
     } else {
         Debug::addFailedFrame();
         Debug::clearFaultyFrameData();
@@ -147,6 +163,23 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     }
 }
 
+void DataReaderTask::rotateP1MeterBaudRate() {
+    if (NUM_COMMON_BAUD_RATES > 1) {
+        baudRateIx = (baudRateIx + 1) % NUM_COMMON_BAUD_RATES;
+        int newBaudRate = COMMON_BAUD_RATES[baudRateIx];
+        
+        LOG_D(TAG, "Rotating P1 meter baud rate to %d", newBaudRate);
+        
+        if (!p1Meter.begin(newBaudRate)) {
+            LOG_E(TAG, "Failed to reinitialize P1 meter with baud rate %d", newBaudRate);
+        } else {
+            LOG_I(TAG, "P1 meter reinitialized successfully with baud rate %d", newBaudRate);
+        }
+    }
+
+    lastReadTime = millis();
+}
+
 void DataReaderTask::taskFunction(void* parameter) {
     DataReaderTask* task = static_cast<DataReaderTask*>(parameter);
     
@@ -154,6 +187,10 @@ void DataReaderTask::taskFunction(void* parameter) {
         // Update P1 meter - this will read available data and call our frame callback
         // when complete frames are detected
         task->p1Meter.update();
+
+        if (millis() - task->lastReadTime > 30 * 1000) { // 30 seconds without reading data
+            task->rotateP1MeterBaudRate();
+        }
         
         // Small delay to prevent task from hogging CPU
         vTaskDelay(pdMS_TO_TICKS(100));

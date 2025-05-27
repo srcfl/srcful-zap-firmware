@@ -5,8 +5,6 @@
 
 SerialFrameBuffer::SerialFrameBuffer(
     size_t bufferSize,
-    uint8_t startDelimiter,
-    uint8_t endDelimiter,
     unsigned long interFrameTimeout
 ) : _circularBuffer(bufferSize),
     _frameDetector(interFrameTimeout), 

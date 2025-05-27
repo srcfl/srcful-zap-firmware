@@ -26,8 +26,11 @@ public:
     
     // Set the interval for reading data (in milliseconds)
     void setInterval(uint32_t interval);
+
+
     
 private:
+    void rotateP1MeterBaudRate();
     static void taskFunction(void* parameter);
     zap::Str generateP1JWT();
     void enqueueData(const P1Data& p1data);
@@ -42,7 +45,9 @@ private:
     
     QueueHandle_t p1DataQueue;
     uint32_t readInterval;
+
     unsigned long lastReadTime;
+    unsigned char baudRateIx;
 
     P1Meter p1Meter;  // Pointer to the P1Meter instance for reading data
 };

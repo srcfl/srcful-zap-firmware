@@ -11,7 +11,7 @@
 #define P1_DEFAULT_RX_PIN      20     
 #define P1_DEFAULT_DTR_PIN     -1     
 #define P1_DEFAULT_BAUD_RATE   115200 
-#define P1_DEFAULT_BUFFER_SIZE 2048   // Increased buffer size
+#define P1_DEFAULT_BUFFER_SIZE 2048
 
 // Configuration for P1 data output and LED
 #define P1_OUTPUT_DEFAULT_TX_PIN  10    
@@ -24,35 +24,29 @@ public:
     
     explicit P1Meter(int rxPin = P1_DEFAULT_RX_PIN, 
             int dtrPin = P1_DEFAULT_DTR_PIN, 
-            int baudRate = P1_DEFAULT_BAUD_RATE,
             int txOutPin = P1_OUTPUT_DEFAULT_TX_PIN, // New parameter
             int dtrOutPin = P1_OUTPUT_DEFAULT_DTR_PIN, // New parameter
             int ledPin = P1_DEFAULT_LED_PIN);      // New parameter
     
     ~P1Meter();
     
-    bool begin();
+    bool begin(int baudRate = P1_DEFAULT_BAUD_RATE);
     bool update();
     
     int getBufferSize() const;
     int getBufferUsed() const;
     void clearBuffer();
     void setFrameCallback(FrameReceivedCallback callback);
-    
-    HardwareSerial* getSerial() { return &_serial; }
-    HardwareSerial* getOutputSerial() { return &_outputSerial; } // Getter for output serial
 
 private:
     int _rxPin;
     int _dtrPin;
-    int _baudRate;
     HardwareSerial _serial; 
     
     // New members for output and LED
     int _txOutPin;
     int _dtrOutPin;     
     int _ledPin;
-    HardwareSerial _outputSerial; 
 
     SerialFrameBuffer _frameBuffer;
     

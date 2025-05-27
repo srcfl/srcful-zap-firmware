@@ -8,7 +8,7 @@ zap::Str crypto_create_signature_hex(const char* data, const char* private_key_h
 
 zap::Str crypto_getId() {
     
-    return "zap-testtesttestee";
+    return zap::Str("zap-testtesttestee");
 }
 
 zap::Str crypto_create_jwt(const char* header, const char* payload, const char* private_key_hex) {

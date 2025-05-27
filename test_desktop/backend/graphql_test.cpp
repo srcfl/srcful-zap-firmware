@@ -16,7 +16,7 @@ namespace graphql_test {
                                         }
                                     })";
 
-        GQL::BoolResponse response = GQL::setConfiguration("magic_jwt_token");
+        GQL::BoolResponse response = GQL::setConfiguration(zap::Str("magic_jwt_token"));
         WiFiClient::read_buffer = nullptr; // reset the mock response
         assert(response.isSuccess());
         assert(response.data == true);
@@ -28,7 +28,7 @@ namespace graphql_test {
         // set up the mock response
         WiFiClient::read_buffer = (char*)"{\"data\":{\"gatewayConfiguration\":{\"configuration\":{\"data\":\"{\\u0022status\\u0022: {\\u0022uptime\\u0022: 13615, \\u0022version\\u0022: \\u00221.0.3\\u0022}, \\u0022timestamp\\u0022: 1745331729711}\"}}}}";
 
-        GQL::StringResponse response = GQL::getConfiguration("state");
+        GQL::StringResponse response = GQL::getConfiguration(zap::Str("state"));
         WiFiClient::read_buffer = nullptr; // reset the mock response
         assert(response.isSuccess());
         assert(response.data == "{\"status\": {\"uptime\": 13615, \"version\": \"1.0.3\"}, \"timestamp\": 1745331729711}");
@@ -45,7 +45,7 @@ namespace graphql_test {
         // set up the mock response
         WiFiClient::read_buffer = (char*)"{\"data\":{\"gatewayConfiguration\":{\"configuration\":{\"data\":null}}}}";
 
-        GQL::StringResponse response = GQL::getConfiguration("state");
+        GQL::StringResponse response = GQL::getConfiguration(zap::Str("state"));
         WiFiClient::read_buffer = nullptr; // reset the mock response
         assert(response.isSuccess());
         assert(response.data == "");
@@ -70,7 +70,7 @@ namespace graphql_test {
                                         }
                                     })";
 
-        GQL::StringResponse response = GQL::fetchGatewayName("fake_serial_number");
+        GQL::StringResponse response = GQL::fetchGatewayName(zap::Str("fake_serial_number"));
         WiFiClient::read_buffer = nullptr; // reset the mock response
         assert(response.isSuccess());
         assert(response.data == "Mors Lilla Olle");

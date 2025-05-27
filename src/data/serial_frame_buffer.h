@@ -33,8 +33,6 @@ public:
      */
     explicit SerialFrameBuffer(
         size_t bufferSize = 1024,
-        uint8_t startDelimiter = '/',  // Default for many P1 protocols
-        uint8_t endDelimiter = '!',    // Default for many P1 protocols
         unsigned long interFrameTimeout = 500
     );
     

@@ -90,8 +90,8 @@ namespace json_light_test {
         std::vector<zap::Str> arr;
         uint8_t data [] = {0x01, 0xff, 0x00};
 
-        arr.push_back("item1");
-        arr.push_back("item2");
+        arr.push_back(zap::Str("item1"));
+        arr.push_back(zap::Str("item2"));
 
         builder.beginObject();
         builder.add("key", "value");
@@ -120,8 +120,8 @@ namespace json_light_test {
         std::vector<zap::Str> arr;
         uint8_t data [] = {0x01, 0xff, 0x00};
 
-        arr.push_back("item1");
-        arr.push_back("item2");
+        arr.push_back(zap::Str("item1"));
+        arr.push_back(zap::Str("item2"));
 
         builder.beginObject();
         builder.add("key", "value");
@@ -129,7 +129,7 @@ namespace json_light_test {
         builder.add("boolean", true);
         builder.addArray("array", arr);
         builder.add("hex", data, sizeof(data));
-        zap::Str json = builder.end();
+        zap::Str json(builder.end());
         
         assert(json.indexOf("{") == 0);
         assert(json.indexOf("}") == json.length() - 1);
@@ -150,15 +150,15 @@ namespace json_light_test {
         std::vector<zap::Str> arr;
         uint8_t data [] = {0x01, 0xff, 0x00};
 
-        arr.push_back("item1");
-        arr.push_back("item2");
+        arr.push_back(zap::Str("item1"));
+        arr.push_back(zap::Str("item2"));
 
         builder.add("key", "value");
         builder.add("number", 42);
         builder.add("boolean", true);
         builder.addArray("array", arr);
         builder.add("hex", data, sizeof(data));
-        zap::Str json = builder.end();
+        zap::Str json(builder.end());
         
         assert(builder.hasOverflow() == true);
 
