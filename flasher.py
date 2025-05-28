@@ -26,6 +26,7 @@ import time
 import json
 import argparse
 import sys
+import csv  # Add csv import
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import re
@@ -466,7 +467,7 @@ class ESP32SequentialFlasher:
         
         return result
     
-    def run_sequential_flashing(self, port: str, erase_first: bool = True, chip_type: str = 'auto', verify: bool = False):
+    def run_sequential_flashing(self, port: str, erase_first: bool = True, chip_type: str = 'auto', verify: bool = False, output_file_base: str = None):
         """Run sequential flashing process"""
         print(f"Starting sequential flashing on port: {port}")
         print(f"Flash files ready: {len(self.flash_files)}")
@@ -504,21 +505,59 @@ class ESP32SequentialFlasher:
         
         # Save results and show summary
         if all_results:
-            self.save_results(all_results)
+            self.save_results(all_results, output_file_base=output_file_base)
             self.print_summary(all_results)
         
         return all_results
     
-    def save_results(self, results: List[Dict], output_file: str = None):
-        """Save results to JSON file"""
-        if not output_file:
-            output_file = f"flash_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        
-        with open(output_file, 'w') as f:
+    def save_results(self, results: List[Dict], output_file_base: str = None):
+        """Save results to JSON and CSV files"""
+        if not output_file_base:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_file_base = f"flash_results_{timestamp}"
+        else:
+            # If a base name is provided, append a timestamp to avoid overwriting if run multiple times with same base
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_file_base = f"{output_file_base}_{timestamp}"
+
+        # Save JSON results
+        json_output_file = f"{output_file_base}.json"
+        with open(json_output_file, 'w') as f:
             json.dump(results, f, indent=2)
+        print(f"\nJSON results saved to: {json_output_file}")
+
+        # Save CSV results
+        csv_output_file = f"{output_file_base}.csv"
+        csv_headers = ['ecc_serial', 'mac_eth0', 'mac_wlan0', 'helium_public_key', 'full_public_key']
         
-        print(f"\nResults saved to: {output_file}")
-    
+        successful_results = [r for r in results if r.get('success')]
+
+        if not successful_results:
+            print("No successful devices to write to CSV.")
+            return
+
+        try:
+            with open(csv_output_file, 'w', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=csv_headers)
+                writer.writeheader()
+                for result in successful_results:
+                    # Ensure serial_number and public_key are not None before writing
+                    ecc_serial = result.get('serial_number', '')
+                    full_public_key = result.get('public_key', '')
+                    
+                    writer.writerow({
+                        'ecc_serial': ecc_serial,
+                        'mac_eth0': '',  # Empty as per requirement
+                        'mac_wlan0': '',  # Empty as per requirement
+                        'helium_public_key': '',  # Empty as per requirement
+                        'full_public_key': full_public_key
+                    })
+            print(f"CSV results saved to: {csv_output_file}")
+        except IOError as e:
+            print(f"Error writing CSV file: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred while writing CSV: {e}")
+
     def print_summary(self, results: List[Dict]):
         """Print summary of results"""
         successful = sum(1 for r in results if r['success'])
@@ -663,6 +702,7 @@ def main():
     parser.add_argument('--baudrate', type=int, default=115200, help='Serial baudrate')
     parser.add_argument('--no-erase', action='store_true', help='Skip flash erase step')
     parser.add_argument('--timeout', type=int, default=30, help='Serial read timeout in seconds')
+    parser.add_argument('--output-base', help='Base name for output files (e.g., my_flash_run). A timestamp will be appended.')
     
     args = parser.parse_args()
     
@@ -712,7 +752,7 @@ def main():
         
         # Run sequential flashing
         chip_type = args.chip or 'auto'
-        flasher.run_sequential_flashing(port, not args.no_erase, chip_type, args.verify_flash)
+        flasher.run_sequential_flashing(port, not args.no_erase, chip_type, args.verify_flash, args.output_base)
         
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
