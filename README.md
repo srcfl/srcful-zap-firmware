@@ -42,7 +42,7 @@ The firmware is designed for an ESP32-C3 based board equipped with:
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/srcful/srcful-zap-firmware.git # Replace if necessary
+    git clone https://github.com/srcfl/srcful-zap-firmware.git # Replace if necessary
     cd srcful-zap-firmware
     ```
 
