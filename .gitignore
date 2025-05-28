@@ -8,7 +8,9 @@ build/
 
 # python scripts
 *.py
+flasher_env
 
+test_desktop/ams/
 
 # Sensitive configuration
 src/config.h

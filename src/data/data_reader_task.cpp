@@ -152,12 +152,13 @@ void DataReaderTask::rotateP1MeterBaudRate() {
     if (p1Meter.getNumConfigs() > 1) {
         baudRateIx = (baudRateIx + 1) % p1Meter.getNumConfigs();
         
+        Debug::setP1MeterConfigIndex(baudRateIx);
         LOG_D(TAG, "Rotating P1 meter condfig to %d", baudRateIx);
         
         if (!p1Meter.begin(p1Meter.getConfig(baudRateIx))) {
             LOG_E(TAG, "Failed to reinitialize P1 meter with config ix", baudRateIx);
         } else {
-            LOG_I(TAG, "P1 meter reinitialized successfully with config ix", baudRateIx);
+            LOG_D(TAG, "P1 meter reinitialized successfully with config ix", baudRateIx);
         }
     }
 

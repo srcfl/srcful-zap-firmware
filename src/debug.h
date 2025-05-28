@@ -21,11 +21,16 @@ class Debug {
             pMeterDatabuffer = pBuffer;
         }
 
+        static void setP1MeterConfigIndex(int index) {
+            p1MeterConfigIndex = index;
+        }
+
         // Methods for reset reason
         static void setResetReason(esp_reset_reason_t reason);
         static esp_reset_reason_t getResetReason();
     
     private:
+        static int p1MeterConfigIndex;
         static int failedFrames;
         static int frames;
         static char deviceId[32];
