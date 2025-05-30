@@ -232,6 +232,7 @@ class ESP32SequentialFlasher:
                 if ser.is_open:
                     print(f"✓ Device ready on {port}")
                     time.sleep(0.5)  # Brief stabilization
+                    # Serial port is automatically closed when exiting the 'with' block
                     return True
         except (serial.SerialException, FileNotFoundError, PermissionError) as e:
             print(f"✗ Cannot connect to {port}: {e}")
@@ -247,6 +248,10 @@ class ESP32SequentialFlasher:
         """Completely erase the ESP32 flash memory"""
         try:
             print(f"Erasing flash on {port}...")
+            
+            # Add a small delay to ensure port is free
+            time.sleep(0.5)
+            
             cmd = [
                 'esptool.py',
                 '--port', port,
@@ -279,6 +284,14 @@ class ESP32SequentialFlasher:
         """Flash all required files to ESP32"""
         try:
             print(f"Flashing firmware to {port}...")
+            
+            # Add a small delay and verify port exists before flashing
+            time.sleep(0.5)
+            
+            # Check if port still exists
+            if not Path(port).exists():
+                print(f"✗ Port {port} no longer exists. Device may have disconnected.")
+                return False
             
             # Build esptool command with all flash files
             cmd = [
@@ -422,6 +435,7 @@ class ESP32SequentialFlasher:
             'serial_number': None,
             'public_key': None,
             'errors': [],
+            'warnings': [],
             'timestamp': datetime.now().isoformat()
         }
         
@@ -434,10 +448,14 @@ class ESP32SequentialFlasher:
             # Step 2: Erase flash (optional but recommended for clean state)
             if erase_first:
                 if not self.erase_flash(port, chip_type):
-                    result['errors'].append('Flash erase failed')
-                    return result
+                    # Don't fail completely if erase fails - continue with flashing
+                    warning_msg = 'Flash erase failed, but continuing with flashing (this is normal for fresh devices)'
+                    result['warnings'].append(warning_msg)
+                    print(f"⚠️  {warning_msg}")
+                else:
+                    print("✓ Flash erase completed successfully")
             
-            # Step 3: Flash firmware
+            # Step 3: Flash firmware (continue regardless of erase result)
             if not self.flash_firmware(port, chip_type, verify):
                 result['errors'].append('Firmware flash failed')
                 return result
@@ -457,6 +475,8 @@ class ESP32SequentialFlasher:
                     print(f"  Serial: {result['serial_number']}")
                     pub_key_display = f"{result['public_key'][:16]}...{result['public_key'][-8:]}" if len(result['public_key']) > 24 else result['public_key']
                     print(f"  Public Key: {pub_key_display}")
+                    if result['warnings']:
+                        print(f"  Warnings: {'; '.join(result['warnings'])}")
                 else:
                     result['errors'].append('Could not extract serial number or public key')
             else:
