@@ -32,3 +32,6 @@ Thumbs.db
 
 cert.pem
 key.pem
+
+*.csv
+*.json
