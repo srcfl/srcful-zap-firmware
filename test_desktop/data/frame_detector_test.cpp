@@ -2,6 +2,8 @@
 #include "../frames.h"
 
 #include "../src/data/decoding/IFrameData.h"
+#include "../src/data/frame_detector.h"
+#include "../src/data/mbus_frame_detector.h"
 
 #include <assert.h>
 
@@ -83,11 +85,34 @@ namespace frame_detector_test {
         return 0;
     }
 
+    int test_detect_mbus() {
+
+        MbusFrameDetector frameDetector;
+        CircularBuffer buffer(1024);
+        FrameInfo frameInfo;
+        unsigned long currentTime = 1000;
+
+        for (int i = 0; i < sizeof(mbus_frame); i++) {
+            buffer.addByte(mbus_frame[i], currentTime);
+            currentTime += 100;
+        }
+
+        const bool found = frameDetector.detect(buffer, currentTime, frameInfo);
+        assert(found == true);
+        assert(frameInfo.startIndex == 0);
+        assert(frameInfo.endIndex == sizeof(mbus_frame) - 1);
+        assert(frameInfo.size == sizeof(mbus_frame));
+        assert(frameInfo.complete == true);
+
+        return 0;
+    }
+
 
     int run() {
         test_detect_aidon();
         test_detect_ascii();
         test_detect_ascii_incomplete();
+        test_detect_mbus();
         return 0;
     }
 }

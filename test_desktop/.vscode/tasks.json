@@ -15,7 +15,6 @@
                 "${workspaceFolder}/mock/HTTPClient.cpp",
                 "${workspaceFolder}/mock/crypto.cpp",
                 "${workspaceFolder}/main.cpp",
-                "${workspaceFolder}/ams/HdlcParser.cpp",
            
                 "-o",
                 "${workspaceFolder}/build/zap_test"

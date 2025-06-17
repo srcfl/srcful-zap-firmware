@@ -21,6 +21,20 @@
             ],
             "preLaunchTask": "Build Simple Test",
             "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "C/C++: g++ build and debug active file",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/zap_test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "Build Simple Test",
+            "miDebuggerPath": "/usr/bin/gdb"
         }
     ]
 }

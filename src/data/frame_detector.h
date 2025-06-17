@@ -5,7 +5,7 @@
 #include <cstdint> // For uint8_t
 
 #include "data/decoding/IFrameData.h"
-
+#include "data/frame_info.h" 
 /**
  * @brief Configuration for a specific frame delimiter type
  */
@@ -20,18 +20,7 @@ struct FrameDelimiterInfo {
         : startDelimiter(start), endDelimiter(end), frameType(type), isLineBased(lineBased) {}
 };
 
-/**
- * @brief Frame information structure
- * 
- * Contains details about a detected frame in the circular buffer
- */
-struct FrameInfo {
-    size_t startIndex;        // Start position of the frame in the buffer
-    size_t endIndex;          // End position of the frame in the buffer 
-    size_t size;              // Total size of the frame including delimiters (and newline if line-based)
-    bool complete;            // Whether the frame is complete
-    IFrameData::Type frameTypeId;          // ID of the detected frame type (from FrameDelimiterInfo)
-};
+
 
 /**
  * @brief A class to detect framed data in a circular buffer

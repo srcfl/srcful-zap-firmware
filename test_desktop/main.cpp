@@ -21,6 +21,7 @@
 #include "../src/data/decoding/dlms_decoder.cpp"
 #include "../src/data/decoding/p1data.cpp"
 #include "../src/data/frame_detector.cpp"
+#include "../src/data/mbus_frame_detector.cpp"
 
 #include "zap_str_test.cpp"
 #include "debug_test.cpp"
@@ -68,7 +69,7 @@ int test_decoder_frame() {
     DLMSDecoder decoder;
 
     // Provide a type ID (e.g., 0 for DLMS, 1 for ASCII - adjust as needed)
-    FrameData frameData(output_input_data, sizeof(output_input_data)); 
+    FrameData frameData(hdlc_small_frame, sizeof(hdlc_small_frame)); 
 
     decoder.decodeBuffer(frameData, p1data);
 

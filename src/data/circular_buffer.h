@@ -1,5 +1,4 @@
-#ifndef CIRCULAR_BUFFER_H
-#define CIRCULAR_BUFFER_H
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -114,5 +113,3 @@ private:
     unsigned long _lastByteTime;
     uint32_t _overflowCount;
 };
-
-#endif // CIRCULAR_BUFFER_H

@@ -53,7 +53,9 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned lon
 bool SerialFrameBuffer::processBufferForFrames(unsigned long currentTime) {
     // Process all data in the buffer to find complete frames
     FrameInfo frameInfo;
-    if (_frameDetector.detect(_circularBuffer, currentTime, frameInfo) && frameInfo.complete) {
+    if ((_frameDetector.detect(_circularBuffer, currentTime, frameInfo) ||
+        _mbusDetector.detect(_circularBuffer, currentTime, frameInfo)) &&
+        frameInfo.complete) {
         // Update current frame information for IFrameData interface
         updateCurrentFrame(frameInfo);
         
