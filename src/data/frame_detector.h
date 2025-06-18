@@ -21,7 +21,6 @@ struct FrameDelimiterInfo {
 };
 
 
-
 /**
  * @brief A class to detect framed data in a circular buffer
  * 
@@ -64,13 +63,6 @@ public:
     void reset();
     
     /**
-     * @brief Set the frame delimiter configurations
-     * 
-     * @param delimiterConfigs A vector of FrameDelimiterInfo structs.
-     */
-    void setFrameDelimiters(const std::vector<FrameDelimiterInfo>& delimiterConfigs);
-    
-    /**
      * @brief Set the inter-frame timeout
      * 
      * @param timeout Maximum time (ms) between bytes in the same frame
@@ -86,7 +78,7 @@ public:
 
 private:
     // Frame detection configuration
-    std::vector<FrameDelimiterInfo> _delimiterConfigs;
+    const std::vector<FrameDelimiterInfo>& _delimiterConfigs;
     unsigned long _interFrameTimeout;
 
     // Frame detection state

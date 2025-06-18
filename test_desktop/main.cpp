@@ -21,7 +21,7 @@
 #include "../src/data/decoding/dlms_decoder.cpp"
 #include "../src/data/decoding/p1data.cpp"
 #include "../src/data/frame_detector.cpp"
-#include "../src/data/mbus_frame_detector.cpp"
+#include "../src/data/serial_frame_buffer.cpp"
 
 #include "zap_str_test.cpp"
 #include "debug_test.cpp"

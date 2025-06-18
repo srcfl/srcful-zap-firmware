@@ -13,11 +13,6 @@ FrameDetector::FrameDetector(
     _frameCount(0) {
 }
 
-void FrameDetector::setFrameDelimiters(const std::vector<FrameDelimiterInfo>& delimiterConfigs) {
-    _delimiterConfigs = delimiterConfigs;
-    reset();
-}
-
 void FrameDetector::reset() {
     _frameInProgress = false;
     _frameStartIndex = 0;
@@ -120,11 +115,8 @@ bool FrameDetector::extractCompleteFrame(const CircularBuffer& buffer, FrameInfo
     return false;
 }
 
-bool FrameDetector::detect(
-    const CircularBuffer& buffer,
-    unsigned long currentTime,
-    FrameInfo& frameInfo
-) {
+bool FrameDetector::detect( const CircularBuffer& buffer, unsigned long currentTime, FrameInfo& frameInfo) {
+
     if (_frameInProgress && _interFrameTimeout > 0 && (currentTime - buffer.getLastByteTime() > _interFrameTimeout)) {
         reset();
     }

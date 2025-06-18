@@ -3,6 +3,10 @@
 #include <vector> // Include vector
 #include <utility> // Include pair
 
+
+
+
+
 SerialFrameBuffer::SerialFrameBuffer(
     size_t bufferSize,
     unsigned long interFrameTimeout
@@ -14,18 +18,23 @@ SerialFrameBuffer::SerialFrameBuffer(
     _currentFrameTypeId(IFrameData::Type::FRAME_TYPE_UNKNOWN) {
 
     Debug::setMeterDataBuffer(&_circularBuffer);
-
-    std::vector<FrameDelimiterInfo> delims = {
-        FrameDelimiterInfo('/', '!', IFrameData::Type::FRAME_TYPE_ASCII, true), // Start and end delimiter for ascii
-        FrameDelimiterInfo(0x7e, 0x7e, IFrameData::Type::FRAME_TYPE_DLMS, false) // Start and end delimiter for aidon
-    };
-    _frameDetector.setFrameDelimiters(delims);
     
     clear(0); // Passing 0 as placeholder time
 }
 
 SerialFrameBuffer::~SerialFrameBuffer() {
     // CircularBuffer and FrameDetector will clean up in their own destructors
+}
+
+const std::vector<FrameDelimiterInfo>& SerialFrameBuffer::getFrameDelimiters() {
+
+    static const std::vector<FrameDelimiterInfo> ret = {
+        FrameDelimiterInfo('/', '!', IFrameData::Type::FRAME_TYPE_ASCII, true), // Start and end delimiter for ascii
+        FrameDelimiterInfo(0x7e, 0x7e, IFrameData::Type::FRAME_TYPE_DLMS, false), // Start and end delimiter for aidon
+        FrameDelimiterInfo(0x68, 0x16, IFrameData::Type::FRAME_TYPE_MBUS, false) // Start and end delimiter for M-Bus
+    };
+
+    return ret;
 }
 
 bool SerialFrameBuffer::addByte(uint8_t byte, unsigned long currentTime) {
@@ -53,8 +62,7 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned lon
 bool SerialFrameBuffer::processBufferForFrames(unsigned long currentTime) {
     // Process all data in the buffer to find complete frames
     FrameInfo frameInfo;
-    if ((_frameDetector.detect(_circularBuffer, currentTime, frameInfo) ||
-        _mbusDetector.detect(_circularBuffer, currentTime, frameInfo)) &&
+    if ((_frameDetector.detect(_circularBuffer, currentTime, frameInfo)) &&
         frameInfo.complete) {
         // Update current frame information for IFrameData interface
         updateCurrentFrame(frameInfo);

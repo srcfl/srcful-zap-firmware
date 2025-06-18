@@ -129,6 +129,10 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
                 isDecoded = true;
             }
             break;
+        case IFrameData::Type::FRAME_TYPE_MBUS:
+            LOG_D(TAG, "M-Bus frame detected");
+            // M-Bus decoding is not implemented yet, but we can log it
+            isDecoded=false;
         default:
             LOG_W(TAG, "Unknown frame type");
             break;

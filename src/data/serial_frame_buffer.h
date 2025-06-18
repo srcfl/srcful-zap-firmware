@@ -6,7 +6,6 @@
 #include "frame_detector.h"
 #include "decoding/IFrameData.h"
 #include <vector> // Include vector
-#include "mbus_frame_detector.h"
 
 /**
  * @brief A robust buffer for handling serial data frames
@@ -131,10 +130,11 @@ public:
         return _currentFrameTypeId;
     }
 
+    static const std::vector<FrameDelimiterInfo>& getFrameDelimiters();
+
 private:
     CircularBuffer _circularBuffer;
     FrameDetector _frameDetector;
-    MbusFrameDetector _mbusDetector;
     
     // Frame information for IFrameData interface
     size_t _currentFrameSize;
