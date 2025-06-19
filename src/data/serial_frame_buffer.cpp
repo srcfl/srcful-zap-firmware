@@ -17,7 +17,8 @@ SerialFrameBuffer::SerialFrameBuffer(
 
     std::vector<FrameDelimiterInfo> delims = {
         FrameDelimiterInfo('/', '!', IFrameData::Type::FRAME_TYPE_ASCII, true), // Start and end delimiter for ascii
-        FrameDelimiterInfo(0x7e, 0x7e, IFrameData::Type::FRAME_TYPE_DLMS, false) // Start and end delimiter for aidon
+        FrameDelimiterInfo(0x7e, 0x7e, IFrameData::Type::FRAME_TYPE_DLMS, false), // Start and end delimiter for aidon
+        FrameDelimiterInfo(0x68, 0x16, IFrameData::Type::FRAME_TYPE_MBUS, false) // Start and end delimiter for M-Bus
     };
     _frameDetector.setFrameDelimiters(delims);
     

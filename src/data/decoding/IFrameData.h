@@ -17,6 +17,7 @@ public:
         FRAME_TYPE_UNKNOWN = -1,
         FRAME_TYPE_ASCII = 0,
         FRAME_TYPE_DLMS = 1,
+        FRAME_TYPE_MBUS = 2,
     } Type;
 
 

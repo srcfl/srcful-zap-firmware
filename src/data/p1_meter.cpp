@@ -40,7 +40,11 @@ P1Meter::~P1Meter() {
     }
 }
 
-static const P1Meter::Config CONFIGS[] = {{9600, SERIAL_7E1}, {115200, SERIAL_8N1}};
+static const P1Meter::Config CONFIGS[] = {
+    {2400, SERIAL_8N1},
+    {2400, SERIAL_8E1},
+    {9600, SERIAL_7E1},
+    {115200, SERIAL_8N1}};
 const P1Meter::Config* P1Meter::configs() const {
    return CONFIGS;   
 }
