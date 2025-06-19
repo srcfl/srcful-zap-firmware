@@ -31,6 +31,7 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
         LOG_E(TAG, "Failed to initialize P1 meter");
     }
 
+    LOG_I(TAG, "P1 meter initialized with baud rate %d", p1Meter.getConfig(baudRateIx).baudRate);
     this->p1DataQueue = dataQueue;
     shouldRun = true;
     xTaskCreatePinnedToCore(
@@ -42,6 +43,8 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
         &taskHandle,
         0  // Run on core 0
     );
+
+    LOG_I(TAG, "DataReaderTask started with stack size %d and priority %d", stackSize, priority);
 }
 
 void DataReaderTask::stop() {
@@ -137,6 +140,8 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
             LOG_W(TAG, "Unknown frame type");
             break;
     }
+
+    LOG_I(TAG, "Frame decoded %s", isDecoded ? "true" : "false");
     
     if (isDecoded) {
         Debug::addFrame();
@@ -171,6 +176,7 @@ void DataReaderTask::rotateP1MeterBaudRate() {
 
 void DataReaderTask::taskFunction(void* parameter) {
     DataReaderTask* task = static_cast<DataReaderTask*>(parameter);
+
     
     while (task->shouldRun) {
         // Update P1 meter - this will read available data and call our frame callback

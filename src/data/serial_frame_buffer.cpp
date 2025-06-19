@@ -31,7 +31,7 @@ const std::vector<FrameDelimiterInfo>& SerialFrameBuffer::getFrameDelimiters() {
     static const std::vector<FrameDelimiterInfo> ret = {
         FrameDelimiterInfo('/', '!', IFrameData::Type::FRAME_TYPE_ASCII, true), // Start and end delimiter for ascii
         FrameDelimiterInfo(0x7e, 0x7e, IFrameData::Type::FRAME_TYPE_DLMS, false), // Start and end delimiter for aidon
-        FrameDelimiterInfo(0x68, 0x16, IFrameData::Type::FRAME_TYPE_MBUS, false) // Start and end delimiter for M-Bus
+        // FrameDelimiterInfo(0x68, 0x16, IFrameData::Type::FRAME_TYPE_MBUS, false) // Start and end delimiter for M-Bus
     };
 
     return ret;
@@ -62,6 +62,7 @@ bool SerialFrameBuffer::addData(const uint8_t* data, size_t length, unsigned lon
 bool SerialFrameBuffer::processBufferForFrames(unsigned long currentTime) {
     // Process all data in the buffer to find complete frames
     FrameInfo frameInfo;
+
     if ((_frameDetector.detect(_circularBuffer, currentTime, frameInfo)) &&
         frameInfo.complete) {
         // Update current frame information for IFrameData interface

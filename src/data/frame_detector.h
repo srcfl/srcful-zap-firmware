@@ -78,7 +78,7 @@ public:
 
 private:
     // Frame detection configuration
-    const std::vector<FrameDelimiterInfo>& _delimiterConfigs;
+    const std::vector<FrameDelimiterInfo> _delimiterConfigs;
     unsigned long _interFrameTimeout;
 
     // Frame detection state
