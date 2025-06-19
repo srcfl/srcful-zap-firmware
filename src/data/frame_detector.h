@@ -40,8 +40,6 @@ public:
         const std::vector<FrameDelimiterInfo>& delimiterConfigs,
         unsigned long interFrameTimeout = 500
     );
-    explicit FrameDetector(unsigned long interFrameTimeout = 500)
-        : FrameDetector({}, interFrameTimeout) {} // Default constructor with empty delimiters
     
     /**
      * @brief Process a chunk of data and check if it completes a frame

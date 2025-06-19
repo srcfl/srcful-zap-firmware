@@ -11,14 +11,13 @@ SerialFrameBuffer::SerialFrameBuffer(
     size_t bufferSize,
     unsigned long interFrameTimeout
 ) : _circularBuffer(bufferSize),
-    _frameDetector(interFrameTimeout), 
+    _frameDetector(getFrameDelimiters(), interFrameTimeout),
     _currentFrameSize(0),
     _currentFrameStartIndex(0),
     _frameCallback(nullptr),
     _currentFrameTypeId(IFrameData::Type::FRAME_TYPE_UNKNOWN) {
 
     Debug::setMeterDataBuffer(&_circularBuffer);
-    
     clear(0); // Passing 0 as placeholder time
 }
 
