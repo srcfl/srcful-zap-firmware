@@ -28,6 +28,8 @@ public:
     
     // Main decode function - decodes a complete P1 frame
     bool decodeBuffer(const IFrameData& frame, P1Data& p1data);
+
+    bool decodeDLSM(const IFrameData& frame, P1Data& p1data, const int startPos = 0);
     
     // Static OBIS codes (text format)
     static const char* OBIS_ELECTRICITY_DELIVERED_TARIFF1;
@@ -60,7 +62,7 @@ private:
 
 
     // Binary DLMS format decoding
-    bool decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data);
+    bool decodeHDLCBuffer(const IFrameData& frame, P1Data& p1data);
     
     // Text format decoding
     bool decodeTextBuffer(const IFrameData& frame, P1Data& p1data);

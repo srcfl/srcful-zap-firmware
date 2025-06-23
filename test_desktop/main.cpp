@@ -19,6 +19,7 @@
 #include "../src/json_light/json_light.cpp"
 #include "../src/data/decoding/ascii_decoder.cpp"
 #include "../src/data/decoding/dlms_decoder.cpp"
+#include "../src/data/decoding/mbus_decoder.cpp"
 #include "../src/data/decoding/p1data.cpp"
 #include "../src/data/frame_detector.cpp"
 #include "../src/data/serial_frame_buffer.cpp"
@@ -30,6 +31,7 @@
 #include "data/circular_buffer_test.cpp"
 #include "data/frame_detector_test.cpp"
 #include "data/ascii_decoder_test.cpp"
+#include "data/mbus_decoder_test.cpp"
 
 #include "json_light/json_light_test.cpp"
 
@@ -102,6 +104,8 @@ int main() {
         circular_buffer_test::run();
         frame_detector_test::run();
         ascii_decoder_test::run();
+        mbus_decoder_test::run();
+
         json_light_test::run();
         graphql_test::run();
         zap_str_test::run();

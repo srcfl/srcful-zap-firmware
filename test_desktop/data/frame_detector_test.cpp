@@ -3,7 +3,6 @@
 
 #include "../src/data/decoding/IFrameData.h"
 #include "../src/data/frame_detector.h"
-#include "../src/data/mbus_frame_detector.h"
 #include "../src/data/serial_frame_buffer.h"
 
 #include <assert.h>

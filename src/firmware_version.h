@@ -3,7 +3,7 @@
 // Firmware version information
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 1
-#define FIRMWARE_VERSION_PATCH 0
+#define FIRMWARE_VERSION_PATCH 1    // 0.1.1 mbus frame detection.
 
 // Helper macro to create version string
 #define STRINGIFY(x) #x

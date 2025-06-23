@@ -8,8 +8,8 @@
 // P1Data class to store P1 meter data
 class P1Data {
 public:
-    static const uint8_t MAX_OBIS_STRINGS = 32;
-    static const uint8_t MAX_OBIS_STRING_LEN = 32;
+    static const uint8_t MAX_OBIS_STRINGS = 36;
+    static const uint8_t MAX_OBIS_STRING_LEN = 36;
     char obisStrings[MAX_OBIS_STRINGS][MAX_OBIS_STRING_LEN]; // Array to store OBIS strings TODO: We could pack the strings into a single buffer instead
     uint8_t obisStringCount; // Number of OBIS strings stored
 

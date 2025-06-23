@@ -376,7 +376,7 @@ uint16_t DLMSDecoder::_ntohs(uint16_t netshort) {
 }
 
 
-bool DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) {
+bool DLMSDecoder::decodeHDLCBuffer(const IFrameData& frame, P1Data& p1data) {
     // Validate frame
     if (frame.getFrameByte(0) != FRAME_FLAG || frame.getFrameByte(frame.getFrameSize() -1) != FRAME_FLAG) {
         return false; // Invalid frame start/end
@@ -425,7 +425,13 @@ bool DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) {
 
     
     P1_DLMS_LOG(println("\n--- Debug Decoding DLMS Frame ---"));
+    return decodeDLSM(frame, p1data, currentPos);
+}
     
+
+ bool DLMSDecoder::decodeDLSM(const IFrameData& frame, P1Data& p1data, const int startPos) {
+    int currentPos = startPos;
+    bool dataFound = false;
     while (currentPos < frame.getFrameSize() - 10) {
         int startPos = currentPos;
         
@@ -487,7 +493,7 @@ bool DLMSDecoder::decodeBinaryBuffer(const IFrameData& frame, P1Data& p1data) {
 
 bool DLMSDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
     // Try binary decoding first
-    if (decodeBinaryBuffer(frame, p1data)) {
+    if (decodeHDLCBuffer(frame, p1data)) {
         return true;
     }
     
