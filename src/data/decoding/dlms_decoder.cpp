@@ -27,9 +27,7 @@ const char* DLMSDecoder::OBIS_CURRENT_L1 = "1-0:31.7.0";
 const char* DLMSDecoder::OBIS_CURRENT_L2 = "1-0:51.7.0";
 const char* DLMSDecoder::OBIS_CURRENT_L3 = "1-0:71.7.0";
 
-// DLMS/OBIS binary format defines
-#define FRAME_FLAG 0x7E
-#define DECODER_START_OFFSET 20
+
 
 // Data types
 #define DATA_NULL 0x00
@@ -369,67 +367,9 @@ uint16_t crc16(const IFrameData& frame, int position, int len) {
     return crc;
 }
 
-uint16_t DLMSDecoder::_ntohs(uint16_t netshort) {
-    // Split into bytes and reconstruct in reverse order
-    return ((netshort & 0xFF00) >> 8) | 
-           ((netshort & 0x00FF) << 8);
-}
 
 
-bool DLMSDecoder::decodeHDLCBuffer(const IFrameData& frame, P1Data& p1data) {
-    // Validate frame
-    if (frame.getFrameByte(0) != FRAME_FLAG || frame.getFrameByte(frame.getFrameSize() -1) != FRAME_FLAG) {
-        return false; // Invalid frame start/end
-    }
-    if (frame.getFrameSize() < DECODER_START_OFFSET) {
-        return false; // Buffer too short
-    }
-
-    bool dataFound = false;
-    int currentPos = DECODER_START_OFFSET;
-
-    
-    HDLCHeader header;
-    header.bytes[0] = frame.getFrameByte(0);
-    header.bytes[1] = frame.getFrameByte(1);
-    header.bytes[2] = frame.getFrameByte(2);
-
-    // check that it is type 3 frame
-    if((header.format & 0xF0) != 0xA0) {
-        P1_DLMS_LOG(println("Invalid frame format"));
-        return false; // Invalid frame format
-    }
-
-    int len = (_ntohs(header.format) & 0x7FF) + 2;
-    if(len > frame.getFrameSize()) {
-        P1_DLMS_LOG(println("Invalid frame length"));
-        return false; // Invalid frame length
-    }
-
-
-
-
-    currentPos = 3; // Skip the first byte (frame start) and header 3 bytes
-    // Skip destination and source address, LSB marks last byte
-    while((frame.getFrameByte(currentPos) & 0x01) == 0x00) {
-        currentPos++;
-    }
-    currentPos++;
-    while((frame.getFrameByte(currentPos) & 0x01) == 0x00) {
-        currentPos++;
-    }
-    currentPos++;
-
-    // Skip confrol field, HCS abd LLC
-    currentPos += 3 + 3;
-
-    
-    P1_DLMS_LOG(println("\n--- Debug Decoding DLMS Frame ---"));
-    return decodeDLSM(frame, p1data, currentPos);
-}
-    
-
- bool DLMSDecoder::decodeDLSM(const IFrameData& frame, P1Data& p1data, const int startPos) {
+ bool DLMSDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data, const int startPos) {
     int currentPos = startPos;
     bool dataFound = false;
     while (currentPos < frame.getFrameSize() - 10) {
@@ -489,14 +429,4 @@ bool DLMSDecoder::decodeHDLCBuffer(const IFrameData& frame, P1Data& p1data) {
     
     P1_DLMS_LOG(println("--- Decoding Frame Done ---"));
     return dataFound;
-}
-
-bool DLMSDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
-    // Try binary decoding first
-    if (decodeHDLCBuffer(frame, p1data)) {
-        return true;
-    }
-    
-    // Fall back to text decoding if binary fails
-    return false; // decodeTextBuffer(buffer, length, p1data);
 }

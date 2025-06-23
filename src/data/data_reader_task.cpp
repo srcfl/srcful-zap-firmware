@@ -118,7 +118,7 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     bool isDecoded = false;
 
     switch (frame.getFrameTypeId()) {
-        case IFrameData::Type::FRAME_TYPE_DLMS:
+        case IFrameData::Type::FRAME_TYPE_HDLC:
             LOG_D(TAG, "DLMS frame detected");
             if (decoder.decodeBuffer(frame, p1data)) {
                 LOG_I(TAG, "DLMS data decoded successfully");

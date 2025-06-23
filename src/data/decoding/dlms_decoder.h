@@ -26,10 +26,7 @@ public:
     // Constructor
     DLMSDecoder();
     
-    // Main decode function - decodes a complete P1 frame
-    bool decodeBuffer(const IFrameData& frame, P1Data& p1data);
-
-    bool decodeDLSM(const IFrameData& frame, P1Data& p1data, const int startPos = 0);
+    bool decodeBuffer(const IFrameData& frame, P1Data& p1data, const int startPos = 0);
     
     // Static OBIS codes (text format)
     static const char* OBIS_ELECTRICITY_DELIVERED_TARIFF1;
@@ -49,31 +46,7 @@ public:
     
 private:
 
-    struct HDLCHeader {
-        union {
-            struct {
-                uint8_t  flag;
-                uint16_t format;
-            } __attribute__((packed));
-            uint8_t bytes[3];
-        };
-        
-    };
-
-
-    // Binary DLMS format decoding
-    bool decodeHDLCBuffer(const IFrameData& frame, P1Data& p1data);
-    
-    // Text format decoding
-    bool decodeTextBuffer(const IFrameData& frame, P1Data& p1data);
-    // bool processTextLine(const String& line, P1Data& p1data);
-    
-    // Helper functions
-    // String extractValue(const String& line);
-    // float stringToFloat(const String& valueStr);
-
-    uint16_t _ntohs(uint16_t netshort);
-    
+   
     // Binary format helpers
     uint16_t swap_uint16(uint16_t val);
     uint32_t swap_uint32(uint32_t val);

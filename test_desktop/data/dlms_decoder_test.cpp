@@ -1,10 +1,10 @@
-#include "../src/data/decoding/mbus_decoder.h"    
+#include "../src/data/decoding/dlms_decoder.h"    
     
 #include <assert.h>
 #include "../frames.h"
 #include <iostream>
 
-namespace mbus_decoder_test {
+namespace dlms_decoder_test {
 
     class FrameData : public IFrameData {
         public:
@@ -41,14 +41,14 @@ namespace mbus_decoder_test {
         return false; // Not found
     }
 
-    int test_mbus_decoder() {
+    int test_dlms_decoder() {
         P1Data p1data;
         p1data.setDeviceId("12345678901234567890");
-        MBusDecoder decoder;
+        DLMSDecoder decoder;
 
-        FrameData frameData(mbus_with_decoded_dlsm_cosem_data, sizeof(mbus_with_decoded_dlsm_cosem_data)); 
+        FrameData frameData(decoded_dlsm_cosem_data, sizeof(decoded_dlsm_cosem_data)); 
 
-        assert(decoder.decodeBuffer(frameData, p1data));
+        assert(decoder.decodeBuffer(frameData, p1data, 0));
 
         assert(p1data.obisStringCount == 11);
         assert(isin("1-0:1.8.0(12.937000*kWh)", p1data));
@@ -62,11 +62,12 @@ namespace mbus_decoder_test {
         assert(isin("1-0:51.7.0", p1data));
         assert(isin("1-0:71.7.0", p1data));
         assert(isin("1-0:13.7.0", p1data));
+
         return 0;
     }
    
     int run() {
-        test_mbus_decoder();
+        test_dlms_decoder();
         return 0;
     }
 }

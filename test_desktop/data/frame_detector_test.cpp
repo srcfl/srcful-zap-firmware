@@ -27,7 +27,7 @@ namespace frame_detector_test {
         assert(frameInfo.endIndex == sizeof(aidon_test_buffer) - 1);
         assert(frameInfo.size == sizeof(aidon_test_buffer));
         assert(frameInfo.complete == true);
-        assert(frameInfo.frameTypeId == IFrameData::Type::FRAME_TYPE_DLMS);
+        assert(frameInfo.frameTypeId == IFrameData::Type::FRAME_TYPE_HDLC);
 
         return 0;
     }

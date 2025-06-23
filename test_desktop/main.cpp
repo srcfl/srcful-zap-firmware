@@ -32,6 +32,7 @@
 #include "data/frame_detector_test.cpp"
 #include "data/ascii_decoder_test.cpp"
 #include "data/mbus_decoder_test.cpp"
+#include "data/dlms_decoder_test.cpp"
 
 #include "json_light/json_light_test.cpp"
 
@@ -105,6 +106,7 @@ int main() {
         frame_detector_test::run();
         ascii_decoder_test::run();
         mbus_decoder_test::run();
+        dlms_decoder_test::run();
 
         json_light_test::run();
         graphql_test::run();
