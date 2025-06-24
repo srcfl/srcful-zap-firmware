@@ -22,57 +22,20 @@ bool MBusDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
         return false;
     }
 
-    // Calculate expected frame size
-    size_t expectedSize = 4 + length + 2; // header + data + checksum + stop
-    if (frameSize < expectedSize) {
-        return false;
+    // ok we check the first byte not part of the MBus frame and see if it is the dlsm start byte 0x0F
+    DLMSDecoder dlmsDecoder;
+    if (frame.getFrameByte(11) != 0x0F) {
+        return false; // Not a DLMS frame
     }
 
-    // Extract control field, address, and CI field
-    uint8_t controlField = frame.getFrameByte(4);
-    uint8_t address = frame.getFrameByte(5);
-    uint8_t ciField = frame.getFrameByte(6);
-
-    // Check if this is an encrypted/manufacturer specific frame
-    // Your original frame might be encrypted and need special handling
-    if (ciField != 0x72 && ciField != 0x76) {
-        // This might be encrypted or manufacturer-specific data
-        // For now, return false - you may need decryption
-        return false;
+    // this is likely very specific for the NöNetz P1 meter: https://www.netz-noe.at/Download-(1)/Smart-Meter/218_9_SmartMeter_Kundenschnittstelle_lektoriert_14.aspx
+    // MBus header 4 bytes + 7 bytes of MBUS stuff 
+    // 8 bytes system title (?) + 3 bytes of something + 4 bytes frame counter  - this is part of the DLSM encryption and security, 
+    // actual data
+    if (frameSize < 26 + 2) {
+        return false; // Not enough data for a complete frame
     }
-
-    size_t pos = 7; // Start after C, A, CI fields
-    size_t dataEnd = 4 + length; // End before checksum
-
-    // For variable data structure (CI = 0x72/0x76), skip identification block
-    if (ciField == 0x72 || ciField == 0x76) {
-        // Check if we have enough bytes for identification block
-        if (pos + 11 > dataEnd) {
-            return false; // Not enough data
-        }
-        
-        // Skip meter identification (8 bytes):
-        // - ID number (4 bytes)
-        // - Manufacturer ID (2 bytes) 
-        // - Version (1 byte)
-        // - Device type (1 byte)
-        pos += 8;
-        
-        // For standard variable data structure, skip fixed-size blocks
-        // Skip status information (3 bytes minimum):
-        // - Access number (1 byte) 
-        // - Status (1 byte)
-        // - Signature (2 bytes)
-        pos += 3;
-        
-        // Some implementations may have additional padding/signature bytes
-        // Skip any remaining non-data bytes by looking for first valid data record
-        
-        DLMSDecoder dlmsDecoder;
-        return dlmsDecoder.decodeBuffer(frame, p1data, pos);
-    }
-
-    return false; // Unsupported CI field or not enough data
+    return dlmsDecoder.decodeBuffer(frame, p1data, 26);
 }
 
 // Helper function for BCD conversion (improved)

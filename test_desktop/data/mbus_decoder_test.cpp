@@ -46,7 +46,7 @@ namespace mbus_decoder_test {
         p1data.setDeviceId("12345678901234567890");
         MBusDecoder decoder;
 
-        FrameData frameData(mbus_with_decoded_dlsm_cosem_data, sizeof(mbus_with_decoded_dlsm_cosem_data)); 
+        FrameData frameData(mbus_with_decoded_german_dlsm_cosem_data, sizeof(mbus_with_decoded_german_dlsm_cosem_data)); 
 
         assert(decoder.decodeBuffer(frameData, p1data));
 
