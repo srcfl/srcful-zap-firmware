@@ -530,15 +530,20 @@ const uint8_t mbus_energy_frame[] = {
 
 
 // example from https://www.netz-noe.at/Download-(1)/Smart-Meter/218_9_SmartMeter_Kundenschnittstelle_lektoriert_14.aspx
+// note that this is slightly different from the one in the link ie. 9 byte system title
 const uint8_t mbus_with_decoded_german_dlsm_cosem_data[] = {   // this is the same contents as the decoded_dlsm_cosem_data
     0x68, 0xFA, 0xFA, 0x68, // MBus start length 250
     0x53, // MBus control field
     0xFF, // MBus address, 0xFF means broadcast
+    // LLC
     0x00, // Control information field
-    0x01, 0x67, 0xDB, 0x08, // Logical Link Control (LLC) header? This is likely some German/meter specific stuff.
-    0x4B, 0x46, 0x4D, 0x67, 0x50, 0x00, 0x00, 0x09, // System title, fixed length? This is actually the start of the DLSM/Cosem structure in the encrypted frame case
-    0x81, 0xF8, 0x20, // possibly some kind of security header
+    0x01, // Source SAP
+    0x67, // Destination SAP
+    0xDB, // Encrypted
+    0x08, 0x4B, 0x46, 0x4D, 0x67, 0x50, 0x00, 0x00, 0x09, // System title, fixed length? This is actually the start of the DLSM/Cosem structure in the encrypted frame case
+    0x81, 0xF8, 0x20, // possibly some kind of security header: 81 // Prefix for 1-byte length F8 Length (248), starting from 0xDB and including end byte 20 // Security tag 0010 0000, 0=Compression off, 0=Unicast, 1=Encryption, 0=No auth, 0000= Security Suite ID
     0x00, 0x00, 0x00, 0x23, // frame counter, guessing this is 4 byte unsigned integer
+
     0x0F, 0x80, 0x06, 0x87, 0x0E, 0x0C, 0x07, 0xE5, 0x09, 0x1B, 0x01, 0x09, 0x2F, 0x0F, 0x00, 0xFF, // dlsm/cosem data starts here in this frame it is already decrypted for testing purposes
     0x88, 0x80, 0x02, 0x23, 0x09, 0x0C,
     0x07, 0xE5, 0x09, 0x1B, 0x01, 0x09, 0x2F, 0x0F, 0x00, 0xFF, 0x88, 0x80, 0x09, 0x06, 0x01, 0x00,

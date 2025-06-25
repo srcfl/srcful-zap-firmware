@@ -3,9 +3,6 @@
 #include <cmath>
 
 bool MBusDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
-
-    return false;
-
     size_t frameSize = frame.getFrameSize();
     if (frameSize < 6) {
         return false;
@@ -22,20 +19,35 @@ bool MBusDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data) {
         return false;
     }
 
-    // ok we check the first byte not part of the MBus frame and see if it is the dlsm start byte 0x0F
+    // byte 4, is control, byte 5 is the address, byte 6 is the control information field, byte 7 is the SourceSap and byte 8 is the destination SAP
+    // next we can have a frame byte, or an encrypted flag (0xBD) or the data may start directly
     DLMSDecoder dlmsDecoder;
-    if (frame.getFrameByte(11) != 0x0F) {
-        return false; // Not a DLMS frame
+
+    // if we have a encrypted flag
+    if (frame.getFrameByte(9) == 0xBD) {
+        // TODO: actual decoding of the encrypted frame
+        // this is likely very specific for the NöNetz P1 meter: https://www.netz-noe.at/Download-(1)/Smart-Meter/218_9_SmartMeter_Kundenschnittstelle_lektoriert_14.aspx
+        // MBus header 4 bytes + 3 bytes of MBUS stuff + 4 bytes of DLSM header?
+        // 8 bytes system title (?) + 3 bytes of something + 4 bytes frame counter  - this is part of the DLSM encryption and security, 
+        // actual data
+        if (frameSize < 26 + 2) {
+            return false; // Not enough data for a complete frame
+        }
+        return dlmsDecoder.decodeBuffer(frame, p1data, 26);
+    }
+    
+
+    // ok we we are not encrypted, so we have a normal MBus frame just try to find the DLMS frame and decode it
+    
+    if (frame.getFrameByte(9) == 0x0F) {
+        return dlmsDecoder.decodeBuffer(frame, p1data, 7);
+    }
+    if (frame.getFrameByte(10) != 0x0F) {
+        return dlmsDecoder.decodeBuffer(frame, p1data, 8);
     }
 
-    // this is likely very specific for the NöNetz P1 meter: https://www.netz-noe.at/Download-(1)/Smart-Meter/218_9_SmartMeter_Kundenschnittstelle_lektoriert_14.aspx
-    // MBus header 4 bytes + 7 bytes of MBUS stuff 
-    // 8 bytes system title (?) + 3 bytes of something + 4 bytes frame counter  - this is part of the DLSM encryption and security, 
-    // actual data
-    if (frameSize < 26 + 2) {
-        return false; // Not enough data for a complete frame
-    }
-    return dlmsDecoder.decodeBuffer(frame, p1data, 26);
+    return false; // No valid MBus frame found
+    
 }
 
 // Helper function for BCD conversion (improved)
