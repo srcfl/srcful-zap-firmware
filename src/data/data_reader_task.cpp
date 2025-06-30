@@ -6,7 +6,7 @@
 #include "../zap_log.h" // Added for logging
 
 // Define TAG for logging
-static const char* TAG = "data_reader_task";
+static constexpr LogTag TAG = LogTag("data_reader_task", ZLOG_LEVEL_DEBUG);
 
 DataReaderTask::DataReaderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),
@@ -28,10 +28,10 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
     });
 
     if (!p1Meter.begin(p1Meter.getConfig(baudRateIx))) {
-        LOG_E(TAG, "Failed to initialize P1 meter");
+        LOG_TE(TAG, "Failed to initialize P1 meter");
     }
 
-    LOG_I(TAG, "P1 meter initialized with baud rate %d", p1Meter.getConfig(baudRateIx).baudRate);
+    LOG_TI(TAG, "P1 meter initialized with baud rate %d", p1Meter.getConfig(baudRateIx).baudRate);
     this->p1DataQueue = dataQueue;
     shouldRun = true;
     xTaskCreatePinnedToCore(
@@ -44,7 +44,7 @@ void DataReaderTask::begin(QueueHandle_t dataQueue) {
         0  // Run on core 0
     );
 
-    LOG_I(TAG, "DataReaderTask started with stack size %d and priority %d", stackSize, priority);
+    LOG_TI(TAG, "DataReaderTask started with stack size %d and priority %d", stackSize, priority);
 }
 
 void DataReaderTask::stop() {
@@ -74,7 +74,7 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
         
         // Check if the JWT was created successfully
         if (createP1JWTPayload(p1data, package.data, MAX_DATA_SIZE)) {
-            LOG_E(TAG, "Failed to create JWT");
+            LOG_TE(TAG, "Failed to create JWT");
             return;
         }
         // Copy the JWT to the data object
@@ -83,15 +83,15 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
             // Queue is full, remove the oldest item first
             DataPackage oldPackage;
             xQueueReceive(p1DataQueue, &oldPackage, 0);
-            LOG_W(TAG, "Queue full, removed oldest item");
+            LOG_TW(TAG, "Queue full, removed oldest item");
         }
         
         // Add the new package to the back (FIFO behavior)
         BaseType_t result = xQueueSendToBack(p1DataQueue, &package, pdMS_TO_TICKS(100));
         if (result == pdPASS) {
-            LOG_D(TAG, "Added data package to queue");
+            LOG_TD(TAG, "Added data package to queue");
         } else {
-            LOG_E(TAG, "Failed to add data package to queue");
+            LOG_TE(TAG, "Failed to add data package to queue");
         }            
     }
 }
@@ -102,13 +102,13 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     const size_t size = frame.getFrameSize();
 
     // Debug output print first 15 and last 15 bytes of the frame
-    LOG_D(TAG, "Received P1 frame (%d bytes)", size);
+    LOG_TD(TAG, "Received P1 frame (%d bytes)", size);
     for (size_t i = 0; i < min(size, size_t(15)); i++) {
-        LOG_D(TAG, "%c", (char)frame.getFrameByte(i));
+        LOG_TD(TAG, "%c", (char)frame.getFrameByte(i));
     }
-    if (size > 30) LOG_D(TAG, "...");
+    if (size > 30) LOG_TD(TAG, "...");
     for (size_t i = max(size - 15, size_t(15)); i < size; i++) {
-        LOG_D(TAG, "%c", (char)frame.getFrameByte(i));
+        LOG_TD(TAG, "%c", (char)frame.getFrameByte(i));
     }
     
     // Decode the frame
@@ -119,29 +119,29 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
 
     switch (frame.getFrameTypeId()) {
         case IFrameData::Type::FRAME_TYPE_HDLC:
-            LOG_D(TAG, "DLMS frame detected");
+            LOG_TD(TAG, "DLMS frame detected");
             if (decoder.decodeBuffer(frame, p1data)) {
-                LOG_I(TAG, "DLMS data decoded successfully");
+                LOG_TI(TAG, "DLMS data decoded successfully");
                 isDecoded = true;
             }
             break;
         case IFrameData::Type::FRAME_TYPE_ASCII:
-            LOG_D(TAG, "ASCII frame detected");
+            LOG_TD(TAG, "ASCII frame detected");
             if (asciiDecoder.decodeBuffer(frame, p1data)) {
-                LOG_I(TAG, "ASCII data decoded successfully");
+                LOG_TI(TAG, "ASCII data decoded successfully");
                 isDecoded = true;
             }
             break;
         case IFrameData::Type::FRAME_TYPE_MBUS:
-            LOG_D(TAG, "M-Bus frame detected");
+            LOG_TD(TAG, "M-Bus frame detected");
             // M-Bus decoding is not implemented yet, but we can log it
             isDecoded=false;
         default:
-            LOG_W(TAG, "Unknown frame type");
+            LOG_TW(TAG, "Unknown frame type");
             break;
     }
 
-    LOG_I(TAG, "Frame decoded %s", isDecoded ? "true" : "false");
+    LOG_TI(TAG, "Frame decoded %s", isDecoded ? "true" : "false");
     
     if (isDecoded) {
         Debug::addFrame();
@@ -153,7 +153,7 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
         for (size_t i = 0; i < size; i++) {
             Debug::addFaultyFrameData(frame.getFrameByte(i));
         }
-        LOG_E(TAG, "Failed to decode P1 data frame");
+        LOG_TE(TAG, "Failed to decode P1 data frame");
     }
 }
 
@@ -162,12 +162,12 @@ void DataReaderTask::rotateP1MeterBaudRate() {
         baudRateIx = (baudRateIx + 1) % p1Meter.getNumConfigs();
         
         Debug::setP1MeterConfigIndex(baudRateIx);
-        LOG_D(TAG, "Rotating P1 meter condfig to %d", baudRateIx);
+        LOG_TD(TAG, "Rotating P1 meter condfig to %d", baudRateIx);
         
         if (!p1Meter.begin(p1Meter.getConfig(baudRateIx))) {
-            LOG_E(TAG, "Failed to reinitialize P1 meter with config ix", baudRateIx);
+            LOG_TE(TAG, "Failed to reinitialize P1 meter with config ix", baudRateIx);
         } else {
-            LOG_D(TAG, "P1 meter reinitialized successfully with config ix", baudRateIx);
+            LOG_TD(TAG, "P1 meter reinitialized successfully with config ix", baudRateIx);
         }
     }
 
