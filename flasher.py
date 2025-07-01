@@ -22,6 +22,7 @@ Usage:
 
 import subprocess
 import serial
+import serial.tools.list_ports
 import time
 import json
 import argparse
@@ -143,8 +144,6 @@ class ESP32SequentialFlasher:
     
     def find_esp32_port(self) -> Optional[str]:
         """Find the first available ESP32 serial port"""
-        import serial.tools.list_ports
-        
         try:
             available_ports = list(serial.tools.list_ports.comports())
             print(f"Available ports: {[p.device for p in available_ports]}")
@@ -244,13 +243,26 @@ class ESP32SequentialFlasher:
         
         return False
     
+    def wait_for_device_disconnection(self, port: str, timeout: int = 120):
+        """Wait for the device on the specified port to be disconnected."""
+        print(f"Flashing complete. Please disconnect the device from port {port}.")
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if not self.check_port_ready(port):
+                print(f"✓ Device disconnected from {port}. Ready for the next one.")
+                time.sleep(1)  # Brief pause before next cycle
+                return True
+            time.sleep(0.5)
+        print(f"✗ Timed out waiting for device on {port} to be disconnected.")
+        return False
+    
     def erase_flash(self, port: str, chip_type: str = 'auto') -> bool:
         """Completely erase the ESP32 flash memory"""
         try:
             print(f"Erasing flash on {port}...")
             
             # Add a small delay to ensure port is free
-            time.sleep(0.5)
+            time.sleep(1.5)
             
             cmd = [
                 'esptool.py',
@@ -286,7 +298,7 @@ class ESP32SequentialFlasher:
             print(f"Flashing firmware to {port}...")
             
             # Add a small delay and verify port exists before flashing
-            time.sleep(0.5)
+            time.sleep(1.5)
             
             # Check if port still exists
             if not Path(port).exists():
@@ -422,6 +434,19 @@ class ESP32SequentialFlasher:
             print(f"✗ Serial read error on {port}: {e}")
             return None
     
+    def check_port_ready(self, port: str) -> bool:
+        """Quietly check if a port is connected and ready."""
+        try:
+            # Check if port exists in the list of comports
+            if port not in [p.device for p in serial.tools.list_ports.comports()]:
+                return False
+            # Try to open it briefly to ensure it's responsive
+            with serial.Serial(port, self.baudrate, timeout=0.5):
+                pass
+            return True
+        except (serial.SerialException, FileNotFoundError, PermissionError):
+            return False
+
     def process_device(self, port: str, device_number: int, erase_first: bool = True, chip_type: str = 'auto', verify: bool = False) -> Dict:
         """Process a single device: erase, flash, and read output"""
         print(f"\n{'='*60}")
@@ -440,10 +465,7 @@ class ESP32SequentialFlasher:
         }
         
         try:
-            # Step 1: Wait for device connection
-            if not self.wait_for_device_connection(port):
-                result['errors'].append('Device connection timeout')
-                return result
+            # Step 1: Device connection is already confirmed by the main loop.
             
             # Step 2: Erase flash (optional but recommended for clean state)
             if erase_first:
@@ -490,8 +512,7 @@ class ESP32SequentialFlasher:
     def run_sequential_flashing(self, port: str, erase_first: bool = True, chip_type: str = 'auto', verify: bool = False, output_file_base: str = None):
         """Run sequential flashing process"""
         print(f"Starting sequential flashing on port: {port}")
-        print(f"Flash files ready: {len(self.flash_files)}")
-        print("\nInstructions:")
+        print("This script will automatically detect device connection and disconnection.")
         print("1. Connect an ESP32 device to the port")
         print("2. Wait for flashing to complete")
         print("3. Disconnect the device and connect the next one")
@@ -515,28 +536,34 @@ class ESP32SequentialFlasher:
         
         try:
             while True:
-                print(f"\n--- Ready for device #{device_number} ---")
-                input("Press Enter when device is connected (or Ctrl+C to quit)...")
+                print(f"\n--- Waiting for device #{device_number} on {port} ---")
                 
+                # 1. Wait for connection
+                while not self.check_port_ready(port):
+                    time.sleep(0.5)
+                
+                print(f"✓ Device #{device_number} detected on {port}. Starting flash process...")
+                time.sleep(1) # Allow port to stabilize before processing
+
                 result = self.process_device(port, device_number, erase_first, chip_type, verify)
                 all_results.append(result)
                 
                 if result['success']:
-                    print(f"\n✓ Device #{device_number} completed successfully!")
                     self.append_to_csv(result, csv_output_file)
-                    print("You can now disconnect this device and connect the next one.")
                 else:
-                    print(f"\n✗ Device #{device_number} failed: {', '.join(result['errors'])}")
-                    retry = input("Retry this device? (y/N): ")
-                    if retry.lower() == 'y':
-                        continue  # Don't increment device_number
-                
+                    print(f"\n✗ Device #{device_number} failed. See errors above.")
+
+                # 2. Wait for disconnection, whether it succeeded or failed
+                if not self.wait_for_device_disconnection(port):
+                    print("Stopping due to timeout waiting for disconnection.")
+                    break # Exit the main loop if timeout occurs
+
                 device_number += 1
                 
         except KeyboardInterrupt:
             print(f"\n\nFlashing stopped by user after {len(all_results)} devices.")
         
-        # Save results and show summary
+        # Save final JSON summary and show summary
         if all_results:
             self.save_json_results(all_results, output_file_base=output_file_base)
             self.print_summary(all_results)
@@ -615,7 +642,6 @@ class ESP32SequentialFlasher:
 def list_available_ports():
     """List all available serial ports for debugging"""
     try:
-        import serial.tools.list_ports
         available_ports = list(serial.tools.list_ports.comports())
         
         print("=== AVAILABLE SERIAL PORTS ===")
