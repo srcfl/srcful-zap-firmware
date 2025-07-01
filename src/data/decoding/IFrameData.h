@@ -37,9 +37,9 @@ public:
     /**
      * @brief Get the total size of the frame in bytes
      * 
-     * @return size_t The frame size
+     * @return int The frame size
      */
-    virtual size_t getFrameSize() const = 0;
+    virtual int getFrameSize() const = 0;
 
     /**
      * @brief Get the type ID of the frame

@@ -99,17 +99,17 @@ void DataReaderTask::enqueueData(const P1Data& p1data) {
 // New method to handle complete frames received from P1Meter
 void DataReaderTask::handleFrame(const IFrameData& frame) {
     
-    const size_t size = frame.getFrameSize();
+    const size_t frameSize = frame.getFrameSize();
 
     // Debug output print first 15 and last 15 bytes of the frame
-    LOG_TD(TAG, "Received P1 frame (%d bytes)", size);
-    for (size_t i = 0; i < min(size, size_t(15)); i++) {
-        LOG_TD(TAG, "%c", (char)frame.getFrameByte(i));
-    }
-    if (size > 30) LOG_TD(TAG, "...");
-    for (size_t i = max(size - 15, size_t(15)); i < size; i++) {
-        LOG_TD(TAG, "%c", (char)frame.getFrameByte(i));
-    }
+    // LOG_TD(TAG, "Received P1 frame (%d bytes)", size);
+    // for (size_t i = 0; i < min(size, size_t(15)); i++) {
+    //     LOG_TD(TAG, "%c", (char)frame.getFrameByte(i));
+    // }
+    // if (size > 30) LOG_TD(TAG, "...");
+    // for (size_t i = max(size - 15, size_t(15)); i < size; i++) {
+    //     LOG_TD(TAG, "%c", (char)frame.getFrameByte(i));
+    // }
     
     // Decode the frame
     DLMSDecoder decoder;
@@ -136,6 +136,7 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
             LOG_TD(TAG, "M-Bus frame detected");
             // M-Bus decoding is not implemented yet, but we can log it
             isDecoded=false;
+            break;
         default:
             LOG_TW(TAG, "Unknown frame type");
             break;
@@ -150,7 +151,7 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     } else {
         Debug::addFailedFrame();
         Debug::clearFaultyFrameData();
-        for (size_t i = 0; i < size; i++) {
+        for (size_t i = 0; i < frameSize; i++) {
             Debug::addFaultyFrameData(frame.getFrameByte(i));
         }
         LOG_TE(TAG, "Failed to decode P1 data frame");
@@ -165,11 +166,8 @@ void DataReaderTask::rotateP1MeterBaudRate() {
         LOG_TD(TAG, "Rotating P1 meter condfig to %d", baudRateIx);
         
         if (!p1Meter.begin(p1Meter.getConfig(baudRateIx))) {
-            LOG_TE(TAG, "Failed to reinitialize P1 meter with config ix", baudRateIx);
-        } else {
-            LOG_TD(TAG, "P1 meter reinitialized successfully with config ix", baudRateIx);
-        }
-    }
+            LOG_TE(TAG, "Failed to reinitialize P1 meter with config ix: %d", baudRateIx);
+        }    }
 
     lastReadTime = millis();
 }

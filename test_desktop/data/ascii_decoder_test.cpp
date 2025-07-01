@@ -17,7 +17,7 @@ namespace ascii_decoder_test {
                 return 0;
             }
         
-            size_t getFrameSize() const override {
+            int getFrameSize() const override {
                 return size_;
             }
         

@@ -2,6 +2,8 @@
 #include <time.h>
 #include <cstdio> 
 
+#include "zap_log.h" // Added for logging
+static constexpr LogTag TAG_DD = LogTag("dlms_decoder", ZLOG_LEVEL_DEBUG);
 
 // Notes on format
 // https://github.com/bmork/obinsect/blob/master/random-notes.md
@@ -235,6 +237,7 @@ bool DLMSDecoder::processObisValue(const uint8_t* obisCode, const IFrameData& fr
                                      uint8_t dataType, P1Data& p1data) {
     bool known = false;
     
+    LOG_TD(TAG_DD, "Processing OBIS code at position %d", position);
     // Print debug info
     P1_DLMS_LOG(printf("  [%04d] Data Type: 0x%02X\n", position-1, dataType));
     
@@ -372,6 +375,7 @@ uint16_t crc16(const IFrameData& frame, int position, int len) {
  bool DLMSDecoder::decodeBuffer(const IFrameData& frame, P1Data& p1data, const int startPos) {
     int currentPos = startPos;
     bool dataFound = false;
+    LOG_TD(TAG_DD, "Decoding DLMS frame of size %d bytes", frame.getFrameSize());
     while (currentPos < frame.getFrameSize() - 10) {
         int startPos = currentPos;
         

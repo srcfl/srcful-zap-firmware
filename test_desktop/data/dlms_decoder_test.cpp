@@ -18,7 +18,7 @@ namespace dlms_decoder_test {
                 return 0;
             }
         
-            size_t getFrameSize() const override {
+            int getFrameSize() const override {
                 return size_;
             }
         
@@ -39,6 +39,20 @@ namespace dlms_decoder_test {
             }
         }
         return false; // Not found
+    }
+
+    int test_dlms_decoder_empty_frame() {
+        P1Data p1data;
+        p1data.setDeviceId("12345678901234567890");
+        DLMSDecoder decoder;
+
+        FrameData frameData(hdlc_empty_frame, sizeof(hdlc_empty_frame)); 
+
+        assert(decoder.decodeBuffer(frameData, p1data, 0) == false); // Expecting false for empty frame
+
+        assert(p1data.obisStringCount == 0); // No OBIS strings should be found
+
+        return 0;
     }
 
     int test_dlms_decoder() {
@@ -68,6 +82,7 @@ namespace dlms_decoder_test {
    
     int run() {
         test_dlms_decoder();
+        test_dlms_decoder_empty_frame();
         return 0;
     }
 }

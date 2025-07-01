@@ -114,7 +114,7 @@ public:
     uint32_t getOverflowCount() const { return _circularBuffer.getOverflowCount(); }
 
     // IFrameData interface implementation
-    virtual size_t getFrameSize() const override { 
+    virtual int getFrameSize() const override { 
         return _currentFrameSize; 
     } 
     

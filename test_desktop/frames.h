@@ -484,6 +484,9 @@ uint8_t ascii_incomplete_frame[] = {
 uint8_t hdlc_small_frame[] = {
     0x7e, 0x24, 0x0a, 0x24, 0x0a, 0x24, 0x0a, 0x35, 0x0a, 0x35, 0x0a, 0x35, 0x0a, 0x65, 0x0a, 0x65, 0x0a, 0x65, 0x4a, 0x17, 0x7e
 };
+uint8_t hdlc_empty_frame[] = {
+    0x7e, 0x7e
+};
 
 const uint8_t mbus_frame[] = {
     0x68, 0xFA, 0xFA, 0x68,
@@ -539,7 +542,7 @@ const uint8_t mbus_with_decoded_german_dlsm_cosem_data[] = {   // this is the sa
     0x00, // Control information field
     0x01, // Source SAP
     0x67, // Destination SAP
-    0xDB, // Encrypted
+    0xDB, // Encrypted byte 9
     0x08, 0x4B, 0x46, 0x4D, 0x67, 0x50, 0x00, 0x00, 0x09, // System title, fixed length? This is actually the start of the DLSM/Cosem structure in the encrypted frame case
     0x81, 0xF8, 0x20, // possibly some kind of security header: 81 // Prefix for 1-byte length F8 Length (248), starting from 0xDB and including end byte 20 // Security tag 0010 0000, 0=Compression off, 0=Unicast, 1=Encryption, 0=No auth, 0000= Security Suite ID
     0x00, 0x00, 0x00, 0x23, // frame counter, guessing this is 4 byte unsigned integer
