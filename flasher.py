@@ -501,6 +501,18 @@ class ESP32SequentialFlasher:
         device_number = 1
         all_results = []
         
+        # Determine output file base name at the start
+        if not output_file_base:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_file_base = f"flash_results_{timestamp}"
+        else:
+            # If a base name is provided, append a timestamp to avoid overwriting if run multiple times
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_file_base = f"{output_file_base}_{timestamp}"
+        
+        csv_output_file = f"{output_file_base}.csv"
+        print(f"CSV results will be saved to: {csv_output_file}")
+        
         try:
             while True:
                 print(f"\n--- Ready for device #{device_number} ---")
@@ -511,6 +523,7 @@ class ESP32SequentialFlasher:
                 
                 if result['success']:
                     print(f"\n✓ Device #{device_number} completed successfully!")
+                    self.append_to_csv(result, csv_output_file)
                     print("You can now disconnect this device and connect the next one.")
                 else:
                     print(f"\n✗ Device #{device_number} failed: {', '.join(result['errors'])}")
@@ -521,62 +534,54 @@ class ESP32SequentialFlasher:
                 device_number += 1
                 
         except KeyboardInterrupt:
-            print(f"\n\nFlashing stopped by user after {device_number - 1} devices.")
+            print(f"\n\nFlashing stopped by user after {len(all_results)} devices.")
         
         # Save results and show summary
         if all_results:
-            self.save_results(all_results, output_file_base=output_file_base)
+            self.save_json_results(all_results, output_file_base=output_file_base)
             self.print_summary(all_results)
         
         return all_results
     
-    def save_results(self, results: List[Dict], output_file_base: str = None):
-        """Save results to JSON and CSV files"""
-        if not output_file_base:
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_file_base = f"flash_results_{timestamp}"
-        else:
-            # If a base name is provided, append a timestamp to avoid overwriting if run multiple times with same base
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_file_base = f"{output_file_base}_{timestamp}"
+    def append_to_csv(self, result: Dict, csv_file_path: str):
+        """Append a single successful result to a CSV file."""
+        if not result.get('success'):
+            return
 
+        csv_headers = ['ecc_serial', 'mac_eth0', 'mac_wlan0', 'helium_public_key', 'full_public_key']
+        
+        # Check if file exists to determine if we need to write headers
+        file_exists = Path(csv_file_path).is_file()
+
+        try:
+            with open(csv_file_path, 'a', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=csv_headers)
+                if not file_exists:
+                    writer.writeheader()
+                
+                ecc_serial = result.get('serial_number', '')
+                full_public_key = result.get('public_key', '')
+                
+                writer.writerow({
+                    'ecc_serial': ecc_serial,
+                    'mac_eth0': '',  # Empty as per requirement
+                    'mac_wlan0': '',  # Empty as per requirement
+                    'helium_public_key': '',  # Empty as per requirement
+                    'full_public_key': full_public_key
+                })
+            print(f"Result for device #{result.get('device_number')} appended to: {csv_file_path}")
+        except IOError as e:
+            print(f"Error writing to CSV file {csv_file_path}: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred while writing CSV: {e}")
+
+    def save_json_results(self, results: List[Dict], output_file_base: str):
+        """Save final results to a JSON file."""
         # Save JSON results
         json_output_file = f"{output_file_base}.json"
         with open(json_output_file, 'w') as f:
             json.dump(results, f, indent=2)
         print(f"\nJSON results saved to: {json_output_file}")
-
-        # Save CSV results
-        csv_output_file = f"{output_file_base}.csv"
-        csv_headers = ['ecc_serial', 'mac_eth0', 'mac_wlan0', 'helium_public_key', 'full_public_key']
-        
-        successful_results = [r for r in results if r.get('success')]
-
-        if not successful_results:
-            print("No successful devices to write to CSV.")
-            return
-
-        try:
-            with open(csv_output_file, 'w', newline='') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=csv_headers)
-                writer.writeheader()
-                for result in successful_results:
-                    # Ensure serial_number and public_key are not None before writing
-                    ecc_serial = result.get('serial_number', '')
-                    full_public_key = result.get('public_key', '')
-                    
-                    writer.writerow({
-                        'ecc_serial': ecc_serial,
-                        'mac_eth0': '',  # Empty as per requirement
-                        'mac_wlan0': '',  # Empty as per requirement
-                        'helium_public_key': '',  # Empty as per requirement
-                        'full_public_key': full_public_key
-                    })
-            print(f"CSV results saved to: {csv_output_file}")
-        except IOError as e:
-            print(f"Error writing CSV file: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred while writing CSV: {e}")
 
     def print_summary(self, results: List[Dict]):
         """Print summary of results"""
