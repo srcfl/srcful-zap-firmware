@@ -91,7 +91,7 @@ bool P1Meter::begin(const Config& config) {
     _serial.setTxBufferSize(2048); delay(100);
     _serial.begin(config.baudRate, config.config, _rxPin, _txOutPin); delay(100);// RX on _rxPin, TX for UART1 not used for input
     _serial.setRxInvert(true); delay(100); // Invert RX signal for P1 meter compatibility
-    LOG_I(TAG, "Initialized input UART1 with baud rate %d, config %d", config.baudRate, config.baudRate);
+    LOG_I(TAG, "Initialized input UART1 with baud rate %d, config %d", config.baudRate, config.config);
 
     // Configure LED pin
     if (_ledPin >= 0) {

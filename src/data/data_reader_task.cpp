@@ -6,7 +6,7 @@
 #include "../zap_log.h" // Added for logging
 
 // Define TAG for logging
-static constexpr LogTag TAG = LogTag("data_reader_task", ZLOG_LEVEL_DEBUG);
+static constexpr LogTag TAG = LogTag("data_reader_task", ZLOG_LEVEL_INFO);
 
 DataReaderTask::DataReaderTask(uint32_t stackSize, UBaseType_t priority) 
     : taskHandle(nullptr), stackSize(stackSize), priority(priority), shouldRun(false),

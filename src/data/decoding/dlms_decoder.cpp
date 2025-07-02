@@ -3,7 +3,7 @@
 #include <cstdio> 
 
 #include "zap_log.h" // Added for logging
-static constexpr LogTag TAG_DD = LogTag("dlms_decoder", ZLOG_LEVEL_DEBUG);
+static constexpr LogTag TAG_DD = LogTag("dlms_decoder", ZLOG_LEVEL_INFO);
 
 // Notes on format
 // https://github.com/bmork/obinsect/blob/master/random-notes.md
