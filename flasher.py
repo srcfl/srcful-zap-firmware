@@ -22,6 +22,7 @@ Usage:
 
 import subprocess
 import serial
+import serial.tools.list_ports
 import time
 import json
 import argparse
@@ -143,8 +144,6 @@ class ESP32SequentialFlasher:
     
     def find_esp32_port(self) -> Optional[str]:
         """Find the first available ESP32 serial port"""
-        import serial.tools.list_ports
-        
         try:
             available_ports = list(serial.tools.list_ports.comports())
             print(f"Available ports: {[p.device for p in available_ports]}")
@@ -243,10 +242,27 @@ class ESP32SequentialFlasher:
         
         return False
     
+    def wait_for_device_disconnection(self, port: str, timeout: int = 120):
+        """Wait for the device on the specified port to be disconnected."""
+        print(f"Flashing complete. Please disconnect the device from port {port}.")
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if not self.check_port_ready(port):
+                print(f"✓ Device disconnected from {port}. Ready for the next one.")
+                time.sleep(1)  # Brief pause before next cycle
+                return True
+            time.sleep(0.5)
+        print(f"✗ Timed out waiting for device on {port} to be disconnected.")
+        return False
+    
     def erase_flash(self, port: str, chip_type: str = 'auto') -> bool:
         """Completely erase the ESP32 flash memory"""
         try:
             print(f"Erasing flash on {port}...")
+            
+            # Add a small delay to ensure port is free
+            time.sleep(1.5)
+            
             cmd = [
                 'esptool.py',
                 '--port', port,
@@ -279,6 +295,14 @@ class ESP32SequentialFlasher:
         """Flash all required files to ESP32"""
         try:
             print(f"Flashing firmware to {port}...")
+            
+            # Add a small delay and verify port exists before flashing
+            time.sleep(1.5)
+            
+            # Check if port still exists
+            if not Path(port).exists():
+                print(f"✗ Port {port} no longer exists. Device may have disconnected.")
+                return False
             
             # Build esptool command with all flash files
             cmd = [
@@ -409,6 +433,19 @@ class ESP32SequentialFlasher:
             print(f"✗ Serial read error on {port}: {e}")
             return None
     
+    def check_port_ready(self, port: str) -> bool:
+        """Quietly check if a port is connected and ready."""
+        try:
+            # Check if port exists in the list of comports
+            if port not in [p.device for p in serial.tools.list_ports.comports()]:
+                return False
+            # Try to open it briefly to ensure it's responsive
+            with serial.Serial(port, self.baudrate, timeout=0.5):
+                pass
+            return True
+        except (serial.SerialException, FileNotFoundError, PermissionError):
+            return False
+
     def process_device(self, port: str, device_number: int, erase_first: bool = True, chip_type: str = 'auto', verify: bool = False) -> Dict:
         """Process a single device: erase, flash, and read output"""
         print(f"\n{'='*60}")
@@ -427,10 +464,7 @@ class ESP32SequentialFlasher:
         }
         
         try:
-            # Step 1: Wait for device connection
-            if not self.wait_for_device_connection(port):
-                result['errors'].append('Device connection timeout')
-                return result
+            # Step 1: Device connection is already confirmed by the main loop.
             
             # Step 2: Erase flash (optional but recommended for clean state)
             if erase_first:
@@ -477,8 +511,7 @@ class ESP32SequentialFlasher:
     def run_sequential_flashing(self, port: str, erase_first: bool = True, chip_type: str = 'auto', verify: bool = False, output_file_base: str = None):
         """Run sequential flashing process"""
         print(f"Starting sequential flashing on port: {port}")
-        print(f"Flash files ready: {len(self.flash_files)}")
-        print("\nInstructions:")
+        print("This script will automatically detect device connection and disconnection.")
         print("1. Connect an ESP32 device to the port")
         print("2. Wait for flashing to complete")
         print("3. Disconnect the device and connect the next one")
@@ -488,82 +521,93 @@ class ESP32SequentialFlasher:
         device_number = 1
         all_results = []
         
-        try:
-            while True:
-                print(f"\n--- Ready for device #{device_number} ---")
-                input("Press Enter when device is connected (or Ctrl+C to quit)...")
-                
-                result = self.process_device(port, device_number, erase_first, chip_type, verify)
-                all_results.append(result)
-                
-                if result['success']:
-                    print(f"\n✓ Device #{device_number} completed successfully!")
-                    print("You can now disconnect this device and connect the next one.")
-                else:
-                    print(f"\n✗ Device #{device_number} failed: {', '.join(result['errors'])}")
-                    retry = input("Retry this device? (y/N): ")
-                    if retry.lower() == 'y':
-                        continue  # Don't increment device_number
-                
-                device_number += 1
-                
-        except KeyboardInterrupt:
-            print(f"\n\nFlashing stopped by user after {device_number - 1} devices.")
-        
-        # Save results and show summary
-        if all_results:
-            self.save_results(all_results, output_file_base=output_file_base)
-            self.print_summary(all_results)
-        
-        return all_results
-    
-    def save_results(self, results: List[Dict], output_file_base: str = None):
-        """Save results to JSON and CSV files"""
+        # Determine output file base name at the start
         if not output_file_base:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             output_file_base = f"flash_results_{timestamp}"
         else:
-            # If a base name is provided, append a timestamp to avoid overwriting if run multiple times with same base
+            # If a base name is provided, append a timestamp to avoid overwriting if run multiple times
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             output_file_base = f"{output_file_base}_{timestamp}"
+        
+        csv_output_file = f"{output_file_base}.csv"
+        print(f"CSV results will be saved to: {csv_output_file}")
+        
+        try:
+            while True:
+                print(f"\n--- Waiting for device #{device_number} on {port} ---")
+                
+                # 1. Wait for connection
+                while not self.check_port_ready(port):
+                    time.sleep(0.5)
+                
+                print(f"✓ Device #{device_number} detected on {port}. Starting flash process...")
+                time.sleep(1) # Allow port to stabilize before processing
 
+                result = self.process_device(port, device_number, erase_first, chip_type, verify)
+                all_results.append(result)
+                
+                if result['success']:
+                    self.append_to_csv(result, csv_output_file)
+                else:
+                    print(f"\n✗ Device #{device_number} failed. See errors above.")
+
+                # 2. Wait for disconnection, whether it succeeded or failed
+                if not self.wait_for_device_disconnection(port):
+                    print("Stopping due to timeout waiting for disconnection.")
+                    break # Exit the main loop if timeout occurs
+
+                device_number += 1
+                
+        except KeyboardInterrupt:
+            print(f"\n\nFlashing stopped by user after {len(all_results)} devices.")
+        
+        # Save final JSON summary and show summary
+        if all_results:
+            self.save_json_results(all_results, output_file_base=output_file_base)
+            self.print_summary(all_results)
+        
+        return all_results
+    
+    def append_to_csv(self, result: Dict, csv_file_path: str):
+        """Append a single successful result to a CSV file."""
+        if not result.get('success'):
+            return
+
+        csv_headers = ['ecc_serial', 'mac_eth0', 'mac_wlan0', 'helium_public_key', 'full_public_key']
+        
+        # Check if file exists to determine if we need to write headers
+        file_exists = Path(csv_file_path).is_file()
+
+        try:
+            with open(csv_file_path, 'a', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=csv_headers)
+                if not file_exists:
+                    writer.writeheader()
+                
+                ecc_serial = result.get('serial_number', '')
+                full_public_key = result.get('public_key', '')
+                
+                writer.writerow({
+                    'ecc_serial': ecc_serial,
+                    'mac_eth0': '',  # Empty as per requirement
+                    'mac_wlan0': '',  # Empty as per requirement
+                    'helium_public_key': '',  # Empty as per requirement
+                    'full_public_key': full_public_key
+                })
+            print(f"Result for device #{result.get('device_number')} appended to: {csv_file_path}")
+        except IOError as e:
+            print(f"Error writing to CSV file {csv_file_path}: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred while writing CSV: {e}")
+
+    def save_json_results(self, results: List[Dict], output_file_base: str):
+        """Save final results to a JSON file."""
         # Save JSON results
         json_output_file = f"{output_file_base}.json"
         with open(json_output_file, 'w') as f:
             json.dump(results, f, indent=2)
         print(f"\nJSON results saved to: {json_output_file}")
-
-        # Save CSV results
-        csv_output_file = f"{output_file_base}.csv"
-        csv_headers = ['ecc_serial', 'mac_eth0', 'mac_wlan0', 'helium_public_key', 'full_public_key']
-        
-        successful_results = [r for r in results if r.get('success')]
-
-        if not successful_results:
-            print("No successful devices to write to CSV.")
-            return
-
-        try:
-            with open(csv_output_file, 'w', newline='') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=csv_headers)
-                writer.writeheader()
-                for result in successful_results:
-                    # Ensure serial_number and public_key are not None before writing
-                    ecc_serial = result.get('serial_number', '')
-                    full_public_key = result.get('public_key', '')
-                    
-                    writer.writerow({
-                        'ecc_serial': ecc_serial,
-                        'mac_eth0': '',  # Empty as per requirement
-                        'mac_wlan0': '',  # Empty as per requirement
-                        'helium_public_key': '',  # Empty as per requirement
-                        'full_public_key': full_public_key
-                    })
-            print(f"CSV results saved to: {csv_output_file}")
-        except IOError as e:
-            print(f"Error writing CSV file: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred while writing CSV: {e}")
 
     def print_summary(self, results: List[Dict]):
         """Print summary of results"""
@@ -597,7 +641,6 @@ class ESP32SequentialFlasher:
 def list_available_ports():
     """List all available serial ports for debugging"""
     try:
-        import serial.tools.list_ports
         available_ports = list(serial.tools.list_ports.comports())
         
         print("=== AVAILABLE SERIAL PORTS ===")
