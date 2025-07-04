@@ -32,7 +32,7 @@ static constexpr LogTag TAG = LogTag("main", ZLOG_LEVEL_INFO);
 BackendApiTask backendApiTask; // Create a backend API task instance
 WifiManager wifiManager(MDNS_NAME); // Create a WiFi manager instance, pass mDNS name
 WifiStatusTask wifiStatusTask; // Create a WiFi status task instance
-DataReaderTask dataReaderTask; // Create a data reader task instance
+DataReaderTask g_dataReaderTask; // Create a data reader task instance
 ServerTask serverTask(80); // Create a server task instance
 
 OTAHandler g_otaHandler;
@@ -137,8 +137,8 @@ void setup() {
     // dataSenderTask.setBleActive(true);
     
     // Configure and start the data reader task
-    dataReaderTask.setInterval(10000); // 10 seconds interval for generating data
-    dataReaderTask.begin(backendApiTask.getQueueHandle()); // Share the queue between tasks
+    g_dataReaderTask.setInterval(10000); // 10 seconds interval for generating data
+    g_dataReaderTask.begin(backendApiTask.getQueueHandle()); // Share the queue between tasks
     
     // Start the backend API task
     backendApiTask.begin(&wifiManager);  // Pass the WiFi manager reference

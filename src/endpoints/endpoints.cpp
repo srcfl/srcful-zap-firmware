@@ -10,10 +10,12 @@
 #include "wifi/wifi_manager.h"
 #include "endpoint_handlers.h"
 #include "system_endpoint_handlers.h"
+#include "data_reader_endpoint_handlers.h"
 
 // External variable declarations
 extern WifiManager wifiManager;
 extern OTAHandler g_otaHandler;
+extern DataReaderTask g_dataReaderTask;
 
 SystemRebootHandler g_systemRebootHandler;
 
@@ -36,5 +38,7 @@ OTAStatusHandler g_otaStatusHandler(g_otaHandler);
 EchoHandler g_echoHandler;
 DebugHandler g_debugHandler;
 BLEStopHandler g_bleStopHandler;
+
+DataReaderGetHandler g_dataReaderGetHandler(g_dataReaderTask);
 
 

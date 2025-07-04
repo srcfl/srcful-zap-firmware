@@ -20,7 +20,10 @@ public:
     char szDeviceId[DEVICE_ID_LEN];             // Device ID
     char szMeterModel[METER_MODEL_LEN];           // Meter model/manufacturer
 
+    uint64_t timestamp; // Timestamp of the data
+
     void setDeviceId(const char *szDeviceId);
+    void setTimeStamp();
 
     // Constructor
     P1Data() :

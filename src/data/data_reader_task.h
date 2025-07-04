@@ -27,6 +27,10 @@ public:
     // Set the interval for reading data (in milliseconds)
     void setInterval(uint32_t interval);
 
+    const P1Data& getLastDecodedData() const {
+        return lastDecodedData;  // Return the last decoded P1 data
+    }
+
 
     
 private:
@@ -48,6 +52,8 @@ private:
 
     unsigned long lastReadTime;
     unsigned char baudRateIx;
+
+    P1Data lastDecodedData;  // Store the last decoded P1 data
 
     P1Meter p1Meter;  // Pointer to the P1Meter instance for reading data
 };

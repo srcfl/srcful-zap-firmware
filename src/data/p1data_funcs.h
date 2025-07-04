@@ -1,5 +1,4 @@
 #pragma once
-#include <Arduino.h>
 #include "../zap_str.h"
 #include "decoding/p1data.h"
 

@@ -90,6 +90,9 @@ namespace json_light_test {
         std::vector<zap::Str> arr;
         uint8_t data [] = {0x01, 0xff, 0x00};
 
+        char arrayOfStrings[2][10] = {"item3", "item4"};
+
+
         arr.push_back(zap::Str("item1"));
         arr.push_back(zap::Str("item2"));
 
@@ -99,6 +102,7 @@ namespace json_light_test {
         builder.add("boolean", true);
         builder.addArray("array", arr);
         builder.add("hex", data, sizeof(data));
+        builder.addArray("arrayOfStrings", (const char*)arrayOfStrings, 2, 10);
         zap::Str json = builder.end();
         
         assert(json.indexOf("{") == 0);
@@ -107,6 +111,7 @@ namespace json_light_test {
         assert(json.indexOf("\"number\":42") != -1);
         assert(json.indexOf("\"boolean\":true") != -1);
         assert(json.indexOf("\"array\":[\"item1\",\"item2\"]") != -1);
+        assert(json.indexOf("\"arrayOfStrings\":[\"item3\",\"item4\"]") != -1);
 
         assert(json.indexOf("\"hex\":\"01ff00\"") != -1);
 

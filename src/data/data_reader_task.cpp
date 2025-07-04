@@ -146,8 +146,11 @@ void DataReaderTask::handleFrame(const IFrameData& frame) {
     
     if (isDecoded) {
         Debug::addFrame();
-        enqueueData(p1data);
         lastReadTime = millis();
+        p1data.setTimeStamp();
+        enqueueData(p1data);
+        
+        lastDecodedData = p1data; // Store the last decoded data for potential future use
     } else {
         Debug::addFailedFrame();
         Debug::clearFaultyFrameData();

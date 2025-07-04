@@ -219,16 +219,16 @@ public:
         return *this;
     }
 
-    GenericJsonBuilder& addArray(const char* key, const char* const* values, size_t count) {
+    GenericJsonBuilder& addArray(const char* key, const char* elements_block, size_t element_count, size_t element_length) {
         if (!_firstItem) _buffer.append(',');
         _buffer.append('"');
         _buffer.append(key);
         _buffer.append("\":["); // Start array
-        for (size_t i = 0; i < count; i++) {
+        for (size_t i = 0; i < element_count * element_length; i+=element_length) {
              if (i > 0) _buffer.append(','); // Comma between elements
             _buffer.append('"'); // Start string element
             // --- Use helper function ---
-            appendEscaped(values[i]);
+            appendEscaped(&(elements_block[i]));
             // -------------------------
             _buffer.append('"'); // End string element
         }

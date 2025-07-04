@@ -20,6 +20,8 @@ const char* EndpointMapper::OTA_STATUS_PATH = "/api/ota/status";
 const char* EndpointMapper::DEBUG_PATH = "/api/debug";
 const char* EndpointMapper::ECHO_PATH = "/api/echo";
 
+const char* EndpointMapper::P1_DATA_PATH = "/api/data/p1/obis";
+
 // Global instance of OTA handler
 // TODO: The endpoint should be passed to the OTA handler
 
@@ -40,7 +42,9 @@ const Endpoint endpoints[] = {
     Endpoint(Endpoint::ECHO, Endpoint::Verb::POST, EndpointMapper::ECHO_PATH, g_echoHandler), 
 
     Endpoint(Endpoint::OTA_UPDATE, Endpoint::Verb::POST, EndpointMapper::OTA_UPDATE_PATH, g_otaUpdateHandler),
-    Endpoint(Endpoint::OTA_STATUS, Endpoint::Verb::GET, EndpointMapper::OTA_STATUS_PATH, g_otaStatusHandler)
+    Endpoint(Endpoint::OTA_STATUS, Endpoint::Verb::GET, EndpointMapper::OTA_STATUS_PATH, g_otaStatusHandler),
+
+    Endpoint(Endpoint::P1_DATA, Endpoint::Verb::GET, EndpointMapper::P1_DATA_PATH, g_dataReaderGetHandler)
 };
 
 EndpointMapper::Iterator EndpointMapper::begin() const { return EndpointMapper::Iterator(endpoints); }

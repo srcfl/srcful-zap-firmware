@@ -216,3 +216,4 @@ bool P1Meter::onFrameDetected(const IFrameData& frame) {
     
     return true;
 }
+

@@ -4,14 +4,14 @@
 #include "config.h"
 
 
+
 bool createP1JWTPayload(const P1Data& p1data, char* outBuffer, size_t outBufferSize) {
     
     
     // we get the unitx time in ms from the system clock
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    uint64_t epochTimeMs = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
-    zap::Str timestampStr(epochTimeMs);
+    zap::Str timestampStr(p1data.timestamp); // Assuming timestamp is already in milliseconds
     
     // Start the payload object
     JsonBuilderFixed payload(outBuffer, outBufferSize);
