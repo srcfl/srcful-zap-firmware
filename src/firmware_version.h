@@ -3,7 +3,7 @@
 // Firmware version information
 #define FIRMWARE_VERSION_MAJOR 0
 #define FIRMWARE_VERSION_MINOR 1
-#define FIRMWARE_VERSION_PATCH 3    // 0.1.1 mbus frame detection. 0.1.2 dlms parsing bugfix 0.1.3 removed some debug logs
+#define FIRMWARE_VERSION_PATCH 4    // 0.1.1 mbus frame detection. 0.1.2 dlms parsing bugfix 0.1.3 removed some debug logs, 0.1.4 added obis data api endpoint
 
 // Helper macro to create version string
 #define STRINGIFY(x) #x
