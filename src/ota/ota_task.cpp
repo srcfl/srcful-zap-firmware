@@ -255,7 +255,7 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
         
         snprintf(result.message, sizeof(result.message) - 1, 
                 "HTTP GET failed with code: %d", httpCode);
-        result.statusCode = 500;
+        result.statusCode = httpCode;
         return false;
     }
     
@@ -269,7 +269,7 @@ bool OTATask::performUpdate(const OTAUpdateRequest& request, OTAUpdateResult& re
         http.end();
         
         snprintf(result.message, sizeof(result.message) - 1, 
-                "Failed to start update: %d", Update.getError());
+                "Failed to start update size: %d", contentLength);
         return false;
     }
     

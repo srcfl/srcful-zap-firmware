@@ -44,7 +44,8 @@ static const P1Meter::Config CONFIGS[] = {
     {2400, SERIAL_8N1},     // some mbus meters 
     {2400, SERIAL_8E1},     // some mbus meters 
     {9600, SERIAL_7E1},
-    {115200, SERIAL_8N1}    // most modern meters 
+    {115200, SERIAL_8N1},    // most modern meters
+    {115200, SERIAL_7N1}    // kamstrup omnia
 };
 const P1Meter::Config* P1Meter::configs() const {
    return CONFIGS;   
