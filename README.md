@@ -21,6 +21,43 @@ This repository contains the firmware for the Srcful ZAP, an ESP32-C3 based devi
 *   **Robust Operation:** Uses FreeRTOS tasks for managing concurrent operations (WiFi, data reading, backend communication, local server).
 *   **PlatformIO Build System:** Developed using the PlatformIO IDE framework for ESP32 development.
 
+## API Endpoints
+
+### Modbus TCP Endpoint
+
+The firmware includes a Modbus TCP client endpoint for reading from and writing to Modbus devices:
+
+**Endpoint:** `POST /api/modbus/tcp`
+
+**Read Registers (Function codes 3, 4):**
+```json
+{
+  "ip": "192.168.1.134",
+  "port": 502,
+  "slave": 1,
+  "start": 0,
+  "num": 2,
+  "func": 3
+}
+```
+
+**Write Registers (Function code 16):**
+```json
+{
+  "ip": "192.168.1.134",
+  "port": 502,
+  "slave": 1,
+  "start": 0,
+  "func": 16,
+  "values": [1, 2, 3]
+}
+```
+
+**Supported function codes:**
+- `3`: Read Holding Registers
+- `4`: Read Input Registers  
+- `16`: Write Multiple Registers
+
 ## Hardware
 
 The firmware is designed for an ESP32-C3 based board equipped with:

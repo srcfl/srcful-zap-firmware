@@ -36,7 +36,8 @@ class Endpoint {
         OTA_STATUS,
         DEBUG,
         ECHO,
-        P1_DATA,  
+        P1_DATA,
+        MODBUS_TCP,
         UNKNOWN
     };
     const Type type;

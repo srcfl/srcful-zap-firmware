@@ -40,5 +40,6 @@ DebugHandler g_debugHandler;
 BLEStopHandler g_bleStopHandler;
 
 DataReaderGetHandler g_dataReaderGetHandler(g_dataReaderTask);
+ModbusTcpHandler g_modbusTcpHandler;
 
 

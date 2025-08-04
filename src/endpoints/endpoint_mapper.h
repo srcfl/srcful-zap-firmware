@@ -34,6 +34,7 @@ public:
     static const char* INITIALIZE_PATH;
 
     static const char* P1_DATA_PATH;
+    static const char* MODBUS_TCP_PATH;
     
     // Iterator support
     class Iterator {

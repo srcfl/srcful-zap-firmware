@@ -8,6 +8,7 @@
 #include "wifi_endpoint_handlers.h"
 #include "system_endpoint_handlers.h"
 #include "data_reader_endpoint_handlers.h"
+#include "modbus_endpoint_handlers.h"
 
 // Create handler instances
 extern WiFiConfigHandler g_wifiConfigHandler;
@@ -27,3 +28,4 @@ extern DebugHandler g_debugHandler;
 extern OTAUpdateHandler g_otaUpdateHandler;
 extern OTAStatusHandler g_otaStatusHandler;
 extern DataReaderGetHandler g_dataReaderGetHandler;
+extern ModbusTcpHandler g_modbusTcpHandler;
