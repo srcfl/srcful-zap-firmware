@@ -20,6 +20,7 @@
 #include "main_action_manager.h"
 #include "main_actions.h" 
 #include "ble/ble_handler.h"
+#include "mqtt/mqtt_client.h"
 
 #include "zap_log.h"
 
@@ -39,6 +40,9 @@ OTAHandler g_otaHandler;
 
 // Instantiate MainActionManager directly
 MainActionManager mainActionManager;
+
+// MQTT Client instance with larger stack for SSL operations
+ZapMQTTClient mqttClient(1024 * 12); // 12KB stack for SSL handshakes
 
 String configuredSSID = "";
 String configuredPassword = "";
@@ -145,6 +149,35 @@ void setup() {
     backendApiTask.setInterval(300000);  // 5 minutes interval (300,000 ms) for state updates
     backendApiTask.setBleActive(true);   // Initialize with BLE active (same as dataSenderTask)
     
+    // Initialize and start MQTT client if configured
+    if (strlen(MQTT_SERVER) > 0) {
+        LOG_TI(TAG, "Initializing MQTT client...");
+        mqttClient.setWifiManager(&wifiManager);
+        mqttClient.setServer(MQTT_SERVER, MQTT_PORT, MQTT_USE_SSL);
+        
+        // Set dynamic MQTT credentials based on device ID
+        String deviceId = crypto_getId().c_str();  // This includes "zap-" prefix
+        const char* hardcodedJWT = "";
+        
+        LOG_TI(TAG, "Setting MQTT username to device ID: %s", deviceId.c_str());
+        mqttClient.setCredentials(deviceId.c_str(), hardcodedJWT);
+        
+        // Set client ID and subscribe topic based on device serial number
+        String clientId = deviceId;
+        String subscribeTopic = clientId + "/commands";
+        
+        LOG_TI(TAG, "Setting MQTT client ID to: %s", clientId.c_str());
+        mqttClient.setClientId(clientId.c_str());
+        
+        LOG_TI(TAG, "Setting MQTT subscribe topic to: %s", subscribeTopic.c_str());
+        mqttClient.subscribe(subscribeTopic.c_str());
+        
+        mqttClient.begin(&wifiManager);
+        LOG_TI(TAG, "MQTT client initialized");
+    } else {
+        LOG_TI(TAG, "MQTT disabled (no server configured)");
+    }
+    
     // Start the server task
     // server task is started/restarted in the main loop when wifi is connected
     // serverTask.begin();
@@ -156,6 +189,10 @@ void setup() {
 
 void loop() {
     const unsigned long currentTime = millis();
+    // Track WiFi connection state for MQTT status updates
+    static bool wasWiFiConnected = false;
+    bool isWiFiConnected = wifiManager.isConnected();
+    
     // --- Check for deferred actions FIRST ---
     mainActionManager.checkAndExecute(currentTime, wifiManager, backendApiTask, bleHandler); // Call method on the instance
 
@@ -222,6 +259,11 @@ void loop() {
 
     if (wifiManager.isConnected()) {
         
+        // Log MQTT status on WiFi connection
+        if (!wasWiFiConnected && mqttClient.isConnected()) {
+            LOG_TD(TAG, "WiFi and MQTT connected");
+        }
+        
         // Check if the server task is running, restart if needed
         if (!serverTask.isRunning()) {
             LOG_TD(TAG, "Server task not running, restarting...");
@@ -232,7 +274,34 @@ void loop() {
             LOG_TV(TAG, "BLE is active, scheduling stop");
             MainActions::triggerAction(MainActions::Type::BLE_DISCONNECT, 30 * 1000); // Request BLE disconnect in 30 seconds
         }
+        
+        // Example: Publish harvest data via MQTT every 60 seconds
+        static unsigned long lastMqttPublish = 0;
+        if (mqttClient.isConnected() && (currentTime - lastMqttPublish > 60000)) {
+            lastMqttPublish = currentTime;
+            
+            String serialNumber = crypto_getId().c_str();
+            LOG_TI(TAG, "=== MQTT PUBLISH DEBUG ===");
+            LOG_TI(TAG, "Serial number: %s", serialNumber.c_str());
+            LOG_TI(TAG, "Publishing to harvest topic: %s/harvest", serialNumber.c_str());
+            
+            // Example: publish harvest data (replace with actual meter readings)
+            char harvestData[128];
+            snprintf(harvestData, sizeof(harvestData), "{\"energy\":123.45,\"timestamp\":%lu}", millis());
+            mqttClient.publishHarvestData(harvestData);
+            
+            LOG_TI(TAG, "Publishing to heartbeat topic: %s/heartbeat", serialNumber.c_str());
+            mqttClient.publishHeartbeat();
+        }
+    } else {
+        // WiFi disconnected
+        if (wasWiFiConnected) {
+            LOG_TD(TAG, "WiFi disconnected");
+        }
     }
+    
+    // Update WiFi connection state
+    wasWiFiConnected = isWiFiConnected;
 
     if (!buttonPressed && bleHandler.isActive()) {
         // If BLE is active and button is not pressed, turn on the LED
