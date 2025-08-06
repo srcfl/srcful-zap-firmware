@@ -21,10 +21,83 @@
 #include "main_actions.h" 
 #include "ble/ble_handler.h"
 #include "mqtt/mqtt_client.h"
+#include "json_light/json_light.h"
 
 #include "zap_log.h"
 
 static constexpr LogTag TAG = LogTag("main", ZLOG_LEVEL_INFO);
+
+// Function to generate authentication JWT for MQTT
+String generateAuthJWT(const String& deviceId) {
+    LOG_TI(TAG, "Starting JWT generation for device: %s", deviceId.c_str());
+    
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t currentEpochSec = (uint64_t)(tv.tv_sec);
+    uint64_t expirationTime = currentEpochSec + 10; // 10 seconds from now
+    
+    // Generate random JTI (using millis and device specific data for uniqueness)
+    char jtiBuffer[25];
+    snprintf(jtiBuffer, sizeof(jtiBuffer), "%08lx%08lx", 
+             (unsigned long)(millis() & 0xFFFFFFFF), 
+             (unsigned long)(ESP.getEfuseMac() & 0xFFFFFFFF));
+    
+    LOG_TI(TAG, "Generated JTI: %s, exp: %llu", jtiBuffer, (unsigned long long)expirationTime);
+    LOG_TI(TAG, "Free heap before JSON building: %d", ESP.getFreeHeap());
+    
+    // Use JsonBuilder like data_sender.cpp does - dynamic version
+    JsonBuilder headerBuilder;
+    headerBuilder.beginObject()
+        .add("alg", "ES256")
+        .add("typ", "JWT")
+        .add("device", deviceId.c_str())
+        .add("opr", "production");
+    zap::Str headerStr = headerBuilder.end();
+    
+    LOG_TI(TAG, "Free heap after header building: %d", ESP.getFreeHeap());
+    
+    JsonBuilder payloadBuilder;
+    payloadBuilder.beginObject()
+        .add("exp", expirationTime)
+        .add("jti", jtiBuffer);
+    zap::Str payloadStr = payloadBuilder.end();
+    
+    LOG_TI(TAG, "Free heap after payload building: %d", ESP.getFreeHeap());
+    LOG_TI(TAG, "JWT Header: %s", headerStr.c_str());
+    LOG_TI(TAG, "JWT Payload: %s", payloadStr.c_str());
+    
+    // Check if PRIVATE_KEY_HEX is valid before calling crypto
+    if (!PRIVATE_KEY_HEX || strlen(PRIVATE_KEY_HEX) == 0) {
+        LOG_TE(TAG, "PRIVATE_KEY_HEX is null or empty!");
+        return "";
+    }
+    
+    LOG_TI(TAG, "Private key length: %d", strlen(PRIVATE_KEY_HEX));
+    LOG_TI(TAG, "Free heap before crypto_create_jwt: %d", ESP.getFreeHeap());
+    
+    // Sign and generate JWT
+    zap::Str jwt = crypto_create_jwt(headerStr.c_str(), payloadStr.c_str(), PRIVATE_KEY_HEX);
+    
+    LOG_TI(TAG, "Free heap after crypto_create_jwt: %d", ESP.getFreeHeap());
+    
+    if (jwt.length() == 0) {
+        LOG_TE(TAG, "Failed to create authentication JWT");
+        return "";
+    }
+    
+    LOG_TI(TAG, "JWT length: %d", jwt.length());
+    LOG_TI(TAG, "Generated JWT: %s", jwt.c_str());
+    LOG_TI(TAG, "Free heap before String conversion: %d", ESP.getFreeHeap());
+    
+    // Convert to String more safely
+    String result;
+    result.reserve(jwt.length() + 10); // Pre-allocate memory
+    result = jwt.c_str();
+    
+    LOG_TI(TAG, "Generated auth JWT with exp: %llu, jti: %s", (unsigned long long)expirationTime, jtiBuffer);
+    LOG_TI(TAG, "Result String length: %d", result.length());
+    return result;
+}
 
 
 #define IO_BUTTON 9
@@ -152,15 +225,26 @@ void setup() {
     // Initialize and start MQTT client if configured
     if (strlen(MQTT_SERVER) > 0) {
         LOG_TI(TAG, "Initializing MQTT client...");
+        LOG_TI(TAG, "Free heap before MQTT init: %d", ESP.getFreeHeap());
+        
         mqttClient.setWifiManager(&wifiManager);
         mqttClient.setServer(MQTT_SERVER, MQTT_PORT, MQTT_USE_SSL);
         
         // Set dynamic MQTT credentials based on device ID
         String deviceId = crypto_getId().c_str();  // This includes "zap-" prefix
-        const char* hardcodedJWT = "";
+        LOG_TI(TAG, "Device ID: %s", deviceId.c_str());
+        LOG_TI(TAG, "Free heap before JWT generation: %d", ESP.getFreeHeap());
+        
+        String authJWT = generateAuthJWT(deviceId);
+        LOG_TI(TAG, "Free heap after JWT generation: %d", ESP.getFreeHeap());
+        
+        if (authJWT.length() == 0) {
+            LOG_TE(TAG, "Failed to generate auth JWT, MQTT will not work properly");
+            return;
+        }
         
         LOG_TI(TAG, "Setting MQTT username to device ID: %s", deviceId.c_str());
-        mqttClient.setCredentials(deviceId.c_str(), hardcodedJWT);
+        mqttClient.setCredentials(deviceId.c_str(), authJWT.c_str());
         
         // Set client ID and subscribe topic based on device serial number
         String clientId = deviceId;
