@@ -1,0 +1,8 @@
+LICENSE
+README.md
+pyproject.toml
+src/srcful_zap_firmware.egg-info/PKG-INFO
+src/srcful_zap_firmware.egg-info/SOURCES.txt
+src/srcful_zap_firmware.egg-info/dependency_links.txt
+src/srcful_zap_firmware.egg-info/requires.txt
+src/srcful_zap_firmware.egg-info/top_level.txt

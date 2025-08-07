@@ -35,6 +35,7 @@ public:
     // Convenience methods for common operations
     void publishHarvestData(const char* harvestData);
     void publishHeartbeat();
+    void publishCommandAck(const char* decisionId, const char* status, const char* message);
     
     // Set the WiFi manager instance
     void setWifiManager(WifiManager* manager) { wifiManager = manager; }
@@ -45,6 +46,9 @@ private:
     
     // MQTT callback for received messages
     static void mqttCallback(char* topic, byte* payload, unsigned int length);
+    
+    // Command processing
+    void processCommand(const char* commandJson);
     
     // Connection management
     bool connectToMQTT();

@@ -1,6 +1,9 @@
 #include "mqtt_client.h"
 #include "../config.h"
 #include "../zap_log.h"
+#include "../json_light/json_light.h"
+#include "../endpoints/modbus_endpoint_handlers.h"
+#include "../crypto.h"
 
 // Define TAG for logging
 static const char* TAG = "mqtt_client";
@@ -178,6 +181,209 @@ void ZapMQTTClient::publishHeartbeat() {
     publish(topic, payload, false);
 }
 
+void ZapMQTTClient::publishCommandAck(const char* decisionId, const char* status, const char* message) {
+    char topic[128];
+    char payload[512];
+    
+    // Get current timestamp (simple format)
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    char timestamp[32];
+    snprintf(timestamp, sizeof(timestamp), "%lu", tv.tv_sec);
+    
+    snprintf(topic, sizeof(topic), "%s/commands/ack", clientId);
+    snprintf(payload, sizeof(payload), 
+        "{\"decision_id\":\"%s\",\"status\":\"%s\",\"timestamp\":\"%s\",\"message\":\"%s\"}", 
+        decisionId, status, timestamp, message);
+    
+    publish(topic, payload, false);
+    LOG_I(TAG, "Published command ack: %s", payload);
+}
+
+void ZapMQTTClient::processCommand(const char* commandJson) {
+    LOG_I(TAG, "Processing MQTT command: %s", commandJson);
+    
+    JsonParser parser(commandJson);
+    
+    // Extract decision_id
+    char decisionId[64];
+    if (!parser.getString("decision_id", decisionId, sizeof(decisionId))) {
+        LOG_E(TAG, "Missing decision_id in command");
+        return;
+    }
+    
+    // For simplicity, manually parse the first device from the devices array
+    // Find devices array and extract first device info
+    const char* devicesStart = strstr(commandJson, "\"devices\"");
+    if (!devicesStart) {
+        LOG_E(TAG, "No devices found in command");
+        publishCommandAck(decisionId, "error", "No devices found in command");
+        return;
+    }
+    
+    const char* arrayStart = strchr(devicesStart, '[');
+    const char* firstDeviceStart = strchr(arrayStart, '{');
+    if (!arrayStart || !firstDeviceStart) {
+        LOG_E(TAG, "Invalid devices array format");
+        publishCommandAck(decisionId, "error", "Invalid devices array format");
+        return;
+    }
+    
+    // Find the end of the first device object
+    int braceCount = 0;
+    const char* firstDeviceEnd = firstDeviceStart;
+    while (*firstDeviceEnd) {
+        if (*firstDeviceEnd == '{') braceCount++;
+        else if (*firstDeviceEnd == '}') {
+            braceCount--;
+            if (braceCount == 0) break;
+        }
+        firstDeviceEnd++;
+    }
+    
+    if (braceCount != 0) {
+        LOG_E(TAG, "Invalid device object format");
+        publishCommandAck(decisionId, "error", "Invalid device object format");
+        return;
+    }
+    
+    // Create a substring for the first device
+    size_t deviceLen = firstDeviceEnd - firstDeviceStart + 1;
+    char deviceJson[deviceLen + 1];
+    strncpy(deviceJson, firstDeviceStart, deviceLen);
+    deviceJson[deviceLen] = '\0';
+    
+    LOG_I(TAG, "First device JSON: %s", deviceJson);
+    
+    JsonParser deviceParser(deviceJson);
+    
+    // Extract device info
+    char deviceSn[32];
+    char deviceIp[16];
+    int port, slaveId;
+    
+    if (!deviceParser.getString("sn", deviceSn, sizeof(deviceSn)) ||
+        !deviceParser.getString("ip", deviceIp, sizeof(deviceIp)) ||
+        !deviceParser.getInt("port", port) ||
+        !deviceParser.getInt("slave_id", slaveId)) {
+        LOG_E(TAG, "Missing device parameters");
+        publishCommandAck(decisionId, "error", "Missing device parameters");
+        return;
+    }
+    
+    // Similarly parse the first command from commands array
+    const char* commandsStart = strstr(deviceJson, "\"commands\"");
+    if (!commandsStart) {
+        LOG_E(TAG, "No commands found for device");
+        publishCommandAck(decisionId, "error", "No commands found for device");
+        return;
+    }
+    
+    const char* cmdArrayStart = strchr(commandsStart, '[');
+    const char* firstCmdStart = strchr(cmdArrayStart, '{');
+    if (!cmdArrayStart || !firstCmdStart) {
+        LOG_E(TAG, "Invalid commands array format");
+        publishCommandAck(decisionId, "error", "Invalid commands array format");
+        return;
+    }
+    
+    // Find the end of the first command object
+    braceCount = 0;
+    const char* firstCmdEnd = firstCmdStart;
+    while (*firstCmdEnd) {
+        if (*firstCmdEnd == '{') braceCount++;
+        else if (*firstCmdEnd == '}') {
+            braceCount--;
+            if (braceCount == 0) break;
+        }
+        firstCmdEnd++;
+    }
+    
+    if (braceCount != 0) {
+        LOG_E(TAG, "Invalid command object format");
+        publishCommandAck(decisionId, "error", "Invalid command object format");
+        return;
+    }
+    
+    // Create a substring for the first command
+    size_t cmdLen = firstCmdEnd - firstCmdStart + 1;
+    char firstCommandJson[cmdLen + 1];
+    strncpy(firstCommandJson, firstCmdStart, cmdLen);
+    firstCommandJson[cmdLen] = '\0';
+    
+    LOG_I(TAG, "First command JSON: %s", firstCommandJson);
+    
+    JsonParser commandParser(firstCommandJson);
+    
+    char commandName[32];
+    char functionCode[32];
+    int address;
+    
+    if (!commandParser.getString("name", commandName, sizeof(commandName)) ||
+        !commandParser.getString("function_code", functionCode, sizeof(functionCode)) ||
+        !commandParser.getInt("address", address)) {
+        LOG_E(TAG, "Missing command parameters");
+        publishCommandAck(decisionId, "error", "Missing command parameters");
+        return;
+    }
+    
+    LOG_I(TAG, "Executing command '%s' on device %s (%s:%d, slave %d)", 
+          commandName, deviceSn, deviceIp, port, slaveId);
+    
+    // Build Modbus request JSON
+    char modbusJson[512];
+    if (strcmp(functionCode, "write_registers") == 0) {
+        // Extract values array from command JSON
+        const char* valuesStart = strstr(firstCommandJson, "\"values\"");
+        if (!valuesStart) {
+            LOG_E(TAG, "Missing values array for write operation");
+            publishCommandAck(decisionId, "error", "Missing values array");
+            return;
+        }
+        
+        const char* arrayStart = strchr(valuesStart, '[');
+        const char* arrayEnd = strchr(arrayStart, ']');
+        if (!arrayStart || !arrayEnd) {
+            LOG_E(TAG, "Invalid values array format");
+            publishCommandAck(decisionId, "error", "Invalid values array format");
+            return;
+        }
+        
+        // Copy the values array part
+        size_t valuesLen = arrayEnd - arrayStart + 1;
+        char valuesArray[128];
+        strncpy(valuesArray, arrayStart, valuesLen);
+        valuesArray[valuesLen] = '\0';
+        
+        snprintf(modbusJson, sizeof(modbusJson), 
+            "{\"ip\":\"%s\",\"port\":%d,\"slave\":%d,\"start\":%d,\"func\":16,\"values\":%s}",
+            deviceIp, port, slaveId, address, valuesArray);
+    } else {
+        LOG_E(TAG, "Unsupported function code: %s", functionCode);
+        publishCommandAck(decisionId, "error", "Unsupported function code");
+        return;
+    }
+    
+    LOG_I(TAG, "Modbus request: %s", modbusJson);
+    
+    // Execute Modbus command using existing handler
+    ModbusTcpHandler modbusHandler;
+    zap::Str modbusRequest(modbusJson);
+    EndpointResponse response = modbusHandler.handle(modbusRequest);
+    
+    if (response.statusCode == 200) {
+        // Success
+        char successMsg[128];
+        snprintf(successMsg, sizeof(successMsg), "Command '%s' executed successfully", commandName);
+        publishCommandAck(decisionId, "completed", successMsg);
+        LOG_I(TAG, "Command executed successfully: %s", successMsg);
+    } else {
+        // Error
+        publishCommandAck(decisionId, "error", "Modbus command failed");
+        LOG_E(TAG, "Modbus command failed with status %d", response.statusCode);
+    }
+}
+
 bool ZapMQTTClient::connectToMQTT() {
     if (!wifiManager || !wifiManager->isConnected()) {
         LOG_W(TAG, "WiFi not connected, skipping MQTT connection");
@@ -349,8 +555,8 @@ void ZapMQTTClient::mqttCallback(char* topic, byte* payload, unsigned int length
             // Send immediate heartbeat
             instance->publishHeartbeat();
         } else {
-            // Handle other JSON commands here
-            // To extend: add more else-if conditions for new commands
+            // Handle JSON commands
+            instance->processCommand(message);
         }
     }
 }
