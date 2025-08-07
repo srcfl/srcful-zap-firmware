@@ -1,4 +1,0 @@
-esptool>=4.9.0
-platformio>=6.1.18
-pyserial>=3.5
-serial>=0.0.97
