@@ -86,7 +86,22 @@ String generateAuthJWT(const String& deviceId) {
     }
     
     LOG_TI(TAG, "JWT length: %d", jwt.length());
-    LOG_TI(TAG, "Generated JWT: %s", jwt.c_str());
+    
+    // Print JWT in chunks to avoid truncation
+    const char* jwtStr = jwt.c_str();
+    int jwtLen = jwt.length();
+    LOG_TI(TAG, "=== JWT TOKEN (length: %d) ===", jwtLen);
+    
+    // Print in 200-character chunks
+    for (int i = 0; i < jwtLen; i += 200) {
+        int chunkLen = (i + 200 < jwtLen) ? 200 : (jwtLen - i);
+        char chunk[201];
+        strncpy(chunk, jwtStr + i, chunkLen);
+        chunk[chunkLen] = '\0';
+        LOG_TI(TAG, "JWT[%d-%d]: %s", i, i + chunkLen - 1, chunk);
+    }
+    LOG_TI(TAG, "=== END JWT TOKEN ===");
+    
     LOG_TI(TAG, "Free heap before String conversion: %d", ESP.getFreeHeap());
     
     // Convert to String more safely
@@ -94,7 +109,6 @@ String generateAuthJWT(const String& deviceId) {
     result.reserve(jwt.length() + 10); // Pre-allocate memory
     result = jwt.c_str();
     
-    LOG_TI(TAG, "Generated auth JWT with exp: %llu, jti: %s", (unsigned long long)expirationTime, jtiBuffer);
     LOG_TI(TAG, "Result String length: %d", result.length());
     return result;
 }
