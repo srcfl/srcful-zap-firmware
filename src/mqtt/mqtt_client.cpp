@@ -8,6 +8,9 @@
 // Define TAG for logging
 static const char* TAG = "mqtt_client";
 
+// Root topic for all MQTT messages
+static const char* MQTT_ROOT_TOPIC = "device";
+
 // Static instance for callback
 ZapMQTTClient* ZapMQTTClient::instance = nullptr;
 
@@ -20,7 +23,12 @@ ZapMQTTClient::ZapMQTTClient(uint32_t stackSize, UBaseType_t priority)
     strcpy(server, "");
     strcpy(username, "");
     strcpy(password, "");
-    strcpy(clientId, "zap_client");
+    
+    // Use crypto ID as client ID instead of hardcoded value
+    zap::Str cryptoId = crypto_getId();
+    strncpy(clientId, cryptoId.c_str(), sizeof(clientId) - 1);
+    clientId[sizeof(clientId) - 1] = '\0';
+    
     strcpy(subscribeTopic, "");
     
     // Set static instance for callback
@@ -168,17 +176,10 @@ void ZapMQTTClient::publish(const char* topic, const char* payload, bool retaine
 }
 
 void ZapMQTTClient::publishHarvestData(const char* harvestData) {
-    char topic[64];
-    snprintf(topic, sizeof(topic), "%s/harvest", clientId);
-    publish(topic, harvestData, false);
-}
-
-void ZapMQTTClient::publishHeartbeat() {
-    char topic[64];
-    char payload[128];
-    snprintf(topic, sizeof(topic), "%s/heartbeat", clientId);
-    snprintf(payload, sizeof(payload), "{\"uptime\":%lu,\"heap\":%d}", millis(), ESP.getFreeHeap());
-    publish(topic, payload, false);
+    // TODO: Re-enable harvest data publishing when needed
+    // char topic[64];
+    // snprintf(topic, sizeof(topic), "%s/%s/harvest", MQTT_ROOT_TOPIC, clientId);
+    // publish(topic, harvestData, false);
 }
 
 void ZapMQTTClient::publishCommandAck(const char* decisionId, const char* status, const char* message) {
@@ -191,7 +192,7 @@ void ZapMQTTClient::publishCommandAck(const char* decisionId, const char* status
     char timestamp[32];
     snprintf(timestamp, sizeof(timestamp), "%lu", tv.tv_sec);
     
-    snprintf(topic, sizeof(topic), "%s/commands/ack", clientId);
+    snprintf(topic, sizeof(topic), "%s/%s/commands/ack", MQTT_ROOT_TOPIC, clientId);
     snprintf(payload, sizeof(payload), 
         "{\"decision_id\":\"%s\",\"status\":\"%s\",\"timestamp\":\"%s\",\"message\":\"%s\"}", 
         decisionId, status, timestamp, message);
@@ -507,12 +508,11 @@ void ZapMQTTClient::taskFunction(void* parameter) {
                 // Connected - handle MQTT loop
                 client->mqttClient.loop();
                 
-                // Send periodic keep-alive or heartbeat if needed
+                // Keep-alive tracking (heartbeat removed for now)
                 unsigned long now = millis();
                 if (now - client->lastKeepAlive > 30000) { // Every 30 seconds
                     client->lastKeepAlive = now;
-                    // Send heartbeat with device status
-                    client->publishHeartbeat();
+                    // TODO: Publish some form of heartbeat or keep-alive message
                 }
             }
             
@@ -552,8 +552,8 @@ void ZapMQTTClient::mqttCallback(char* topic, byte* payload, unsigned int length
     // Simple command handling - check if this is our commands topic
     if (strcmp(topic, instance->subscribeTopic) == 0) {
         if (strcmp(message, "heartbeat") == 0) {
-            // Send immediate heartbeat
-            instance->publishHeartbeat();
+            // Heartbeat functionality disabled for now
+            LOG_I(TAG, "Heartbeat request received but heartbeat is disabled");
         } else {
             // Handle JSON commands
             instance->processCommand(message);

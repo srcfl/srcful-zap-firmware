@@ -34,7 +34,6 @@ public:
     
     // Convenience methods for common operations
     void publishHarvestData(const char* harvestData);
-    void publishHeartbeat();
     void publishCommandAck(const char* decisionId, const char* status, const char* message);
     
     // Set the WiFi manager instance

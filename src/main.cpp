@@ -262,7 +262,7 @@ void setup() {
         
         // Set client ID and subscribe topic based on device serial number
         String clientId = deviceId;
-        String subscribeTopic = clientId + "/commands";
+        String subscribeTopic = "device/" + clientId + "/commands";
         
         LOG_TI(TAG, "Setting MQTT client ID to: %s", clientId.c_str());
         mqttClient.setClientId(clientId.c_str());
@@ -386,10 +386,7 @@ void loop() {
             // Example: publish harvest data (replace with actual meter readings)
             char harvestData[128];
             snprintf(harvestData, sizeof(harvestData), "{\"energy\":123.45,\"timestamp\":%lu}", millis());
-            mqttClient.publishHarvestData(harvestData);
-            
-            LOG_TI(TAG, "Publishing to heartbeat topic: %s/heartbeat", serialNumber.c_str());
-            mqttClient.publishHeartbeat();
+            // mqttClient.publishHarvestData(harvestData);
         }
     } else {
         // WiFi disconnected
