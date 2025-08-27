@@ -1,0 +1,76 @@
+********************************************************************************
+Obsolete PIO Core v6.1.17 is used (previous was 6.1.18)
+Please remove multiple PIO Cores from a system:
+https://docs.platformio.org/en/latest/core/installation/troubleshooting.html
+********************************************************************************
+Processing esp32-c3 (platform: https://github.com/tasmota/platform-espressif32/releases/download/2023.07.00/platform-espressif32.zip; board: esp32-c3-devkitm-1; framework: arduino; monitor_speed: 115200; upload_speed: 115200; build_flags: -Wl,-Map=output.map, -DBOARD_TYPE=ESP32C3, -DCORE_DEBUG_LEVEL=3, -DCONFIG_ARDUHAL_LOG_COLORS=1, -DCONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=1, -DCONFIG_ESP_SYSTEM_PANIC_GDBSTUB=1, -DCONFIG_ESP_CONSOLE_UART_BAUDRATE=115200, -DCONFIG_ESP32_SPIRAM_SUPPORT=y, -DCONFIG_ESP_HEAP_MINIMUM_FREE=8192, -DUSE_BLE_SETUP, -DARDUINO_USB_MODE=1, -DARDUINO_USB_CDC_ON_BOOT=1, -DCONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=1, -DCONFIG_BOOTLOADER_SKIP_VALIDATE_IN_DEEP_SLEEP=1, -DCONFIG_BOOTLOADER_RESERVE_RTC_SIZE=0x2000, -DUSE_NIMBLE, -DNIMBLE_OPTIMIZE=1, -DNIMBLE_ROLE_CENTRAL=0, -DNIMBLE_ROLE_PERIPHERAL=1, -DNIMBLE_ROLE_BROADCASTER=1, -DNIMBLE_ROLE_OBSERVER=0, -DNIMBLE_MAX_CONNECTIONS=1, -DNIMBLE_MAX_BONDS=1, -DNIMBLE_MAX_CCCDS=8, -DNIMBLE_L2CAP_COC_MAX_NUM=0, -DNIMBLE_PINNED_TO_CORE_0=1, -DNIMBLE_TASK_STACK_SIZE=4096, -DNIMBLE_CRYPTO_STACK_NIMBLE=1, -DCONFIG_BT_NIMBLE_MSYS_1_BLOCK_COUNT=12, -DCONFIG_BT_NIMBLE_MSYS_1_BLOCK_SIZE=256, -DMBEDTLS_ECDSA_C, -DMBEDTLS_ECP_DP_SECP256R1_ENABLED, -Wno-error, -Wno-write-strings, -include src/sdkconfig_override.h, -fstack-protector; lib_deps: h2zero/NimBLE-Arduino @ ^1.4.1)
+--------------------------------------------------------------------------------
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-c3-devkitm-1.html
+PLATFORM: Espressif 32 (2023.7.0) (https://github.com/tasmota/platform-espressif32/releases/download/2023.07.00/platform-espressif32.zip) > Espressif ESP32-C3-DevKitM-1
+HARDWARE: ESP32C3 160MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 2.0.11 (https://github.com/tasmota/arduino-esp32/releases/download/2.0.11/framework-arduinoespressif32.zip) 
+ - tool-esptoolpy @ 1.40602.0 (4.6.2, https://github.com/tasmota/esptool/releases/download/v4.6.2/esptool-4.6.2.zip) 
+ - tool-mklittlefs @ 1.203.210628 (2.3) 
+ - tool-mkspiffs @ 2.230.0 (2.30) 
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 34 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- NimBLE-Arduino @ 1.4.3 (License: Unknown, Path: /home/h0bb3/projects/github/srcful-zap-firmware/.pio/libdeps/esp32-c3/NimBLE-Arduino)
+|-- HTTPClient @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/HTTPClient)
+|   |-- WiFi @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WiFi)
+|   |-- WiFiClientSecure @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure)
+|   |   |-- WiFi @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WiFi)
+|-- WiFi @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WiFi)
+|-- WiFiClientSecure @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure)
+|   |-- WiFi @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WiFi)
+|-- ESPmDNS @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS)
+|   |-- WiFi @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WiFi)
+|-- Preferences @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/Preferences)
+|-- Update @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/Update)
+|-- WebServer @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WebServer)
+|   |-- WiFi @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/WiFi)
+|   |-- FS @ 2.0.0 (License: Unknown, Path: /home/h0bb3/.platformio/packages/framework-arduinoespressif32/libraries/FS)
+Building in release mode
+<lambda>(["checkprogsize"], [".pio/build/esp32-c3/firmware.elf"])
+MethodWrapper(["checkprogsize"], [".pio/build/esp32-c3/firmware.elf"])
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]  14.0% (used 45896 bytes from 327680 bytes)
+Flash: [========  ]  76.1% (used 997198 bytes from 1310720 bytes)
+.pio/build/esp32-c3/firmware.elf  :
+section                    size         addr
+.rtc.text                    16   1342177280
+.rtc.force_fast               0   1342177296
+.rtc_noinit                  16   1342177296
+.rtc.force_slow               0   1342177312
+.iram0.text               56292   1077411840
+.dram0.dummy              56320   1070071808
+.dram0.data               11088   1070128128
+.noinit                       0   1070139216
+.dram0.bss                34808   1070139216
+.flash.text              835810   1107296288
+.flash_rodata_dummy      851968   1006632992
+.flash.appdesc              256   1007484960
+.flash.rodata             94008   1007485216
+.eh_frame                  3056   1007579224
+.flash.rodata_noload      21379   1007582280
+.iram0.text_end              28   1077468132
+.iram0.data                   0   1077468160
+.iram0.bss                    0   1077468160
+.dram0.heap_start             8   1070174024
+.debug_info            10160882            0
+.debug_abbrev            746108            0
+.debug_loc              1637129            0
+.debug_aranges            78808            0
+.debug_ranges            209936            0
+.debug_line             3216544            0
+.debug_str              1075428            0
+.comment                     93            0
+.riscv.attributes            55            0
+.debug_frame             267024            0
+Total                  19357060
+========================= [SUCCESS] Took 6.03 seconds =========================

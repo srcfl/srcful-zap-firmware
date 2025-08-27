@@ -20,7 +20,7 @@ namespace json_light_test {
         const char* json = "{\"key\": \"value\"}";
         JsonParser parser(json);
         zap::Str ret;
-        parser.asString(ret);
+        parser.asString(ret);   
         assert(ret == "{\"key\": \"value\"}");
         
         return 0;
