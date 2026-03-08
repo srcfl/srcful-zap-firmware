@@ -188,6 +188,7 @@ int WifiManager::getStatus() const {
 
 bool WifiManager::setupMDNS(const char* hostname) {
     if (MDNS.begin(hostname)) {
+        MDNS.addService("http", "tcp", 80);
         return true;
     } else {
         return false;
